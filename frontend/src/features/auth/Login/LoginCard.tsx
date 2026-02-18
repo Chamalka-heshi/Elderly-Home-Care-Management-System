@@ -59,10 +59,6 @@ export default function LoginCard({ onSuccessClose, onGoSignup }: Props) {
       const res = await signin(payload);
       setUser(res.user);
 
-      // rememberMe
-      //   ? localStorage.setItem("rememberedEmail", email)
-      //   : localStorage.removeItem("rememberedEmail");
-
       onSuccessClose();
       navigate(`/${res.user.role}`, { replace: true });
     } catch (err) {
