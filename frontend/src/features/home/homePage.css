@@ -1,0 +1,55 @@
+/* modern hero overlay (stronger left, softer right) */
+.hp-heroOverlayModern {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(16, 185, 129, 0.18),
+      transparent 40%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.62),
+      rgba(0, 0, 0, 0.24) 55%,
+      rgba(0, 0, 0, 0.08)
+    );
+}
+
+/* quote marks for review section */
+.hp-quote {
+  position: absolute;
+  top: 18px;
+  font-size: 52px;
+  font-weight: 900;
+  color: #059669;
+  opacity: 0.25;
+  line-height: 1;
+}
+.hp-quote-left {
+  left: 18px;
+}
+.hp-quote-right {
+  right: 18px;
+}
+
+
+/* scroll indicator */
+.hp-scrollDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  animation: hp-bounce 1.4s infinite;
+}
+
+@keyframes hp-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateY(10px);
+    opacity: 1;
+  }
+}

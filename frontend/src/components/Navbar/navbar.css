@@ -1,0 +1,110 @@
+
+.hp-glassNav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.hp-navLink {
+  color: #334155;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.hp-navLink:hover {
+  color: #047857;
+}
+
+.hp-navLink--active {
+  color: #047857;
+  font-weight: 700;
+}
+
+/* Link underline effect */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #047857;
+  transition: width 0.3s ease;
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Mobile menu animations */
+@media (max-width: 768px) {
+  .hp-glassNav {
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* ========== FOOTER STYLES ========== */
+.hp-footerLink {
+  color: #64748b;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.hp-footerLink:hover {
+  color: #047857;
+}
+
+.hp-social {
+  transition: all 0.2s ease;
+}
+
+.hp-social:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .hp-footerLink {
+    font-size: 0.875rem;
+  }
+}
+
+/* Button styles */
+.btn-modern {
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-modern:active {
+  transform: scale(0.98);
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .hp-navLink,
+  .hp-footerLink,
+  .link-underline::after,
+  .hp-social,
+  .btn-modern {
+    transition: none;
+  }
+}
+
+/* Focus states for accessibility */
+.hp-navLink:focus-visible,
+.hp-footerLink:focus-visible,
+.btn-modern:focus-visible {
+  outline: 2px solid #047857;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
