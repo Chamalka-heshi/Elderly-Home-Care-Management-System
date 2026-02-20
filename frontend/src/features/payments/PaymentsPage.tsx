@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import Navbar from '../../components/Navbar/navbar';
 import Footer from '../../components/Footer/footer';
 import heroImage from '../../assets/Home/pa_image.png';
-import './CostPaymentPage.css';
+import './PaymentsPage.css';
 
 type BillingCycle = 'monthly' | 'yearly';
 
