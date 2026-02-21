@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./homePage.css";
-import "./indexEffects.css";
+
 
 import Navbar from "../../components/Navbar/navbar";
 import Footer from "../../components/Footer/footer";
