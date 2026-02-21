@@ -98,7 +98,7 @@ const App: React.FC = () => {
 
           {/* Family */}
           <Route
-            path="/family/dashboard"
+            path="/family/*"
             element={
               <ProtectedRoute role="family">
                 <FamilyDashboard />
