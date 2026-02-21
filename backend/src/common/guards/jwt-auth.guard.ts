@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
@@ -8,7 +9,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, info: any) {
+  handleRequest(err: any, user: any) {
     if (err || !user) {
       throw err || new UnauthorizedException('Invalid or expired token');
     }
