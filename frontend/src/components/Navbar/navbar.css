@@ -1,4 +1,6 @@
-
+/* ==========================
+   NAVBAR STYLES
+========================== */
 .hp-glassNav {
   position: sticky;
   top: 0;
@@ -9,6 +11,7 @@
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
 }
 
+/* Navigation links */
 .hp-navLink {
   color: #334155;
   text-decoration: none;
@@ -52,7 +55,9 @@
   }
 }
 
-/* ========== FOOTER STYLES ========== */
+/* ==========================
+   FOOTER STYLES
+========================== */
 .hp-footerLink {
   color: #64748b;
   text-decoration: none;
@@ -72,14 +77,16 @@
   transform: translateY(-2px);
 }
 
-/* Responsive adjustments */
+/* Footer responsive adjustments */
 @media (max-width: 640px) {
   .hp-footerLink {
     font-size: 0.875rem;
   }
 }
 
-/* Button styles */
+/* ==========================
+   BUTTON STYLES
+========================== */
 .btn-modern {
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -89,7 +96,10 @@
   transform: scale(0.98);
 }
 
-/* Accessibility improvements */
+/* ==========================
+   ACCESSIBILITY
+========================== */
+/* Reduce motion for users with motion sensitivity */
 @media (prefers-reduced-motion: reduce) {
   .hp-navLink,
   .hp-footerLink,
