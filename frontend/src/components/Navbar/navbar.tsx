@@ -13,6 +13,7 @@ const Navbar: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Auth modal controls
   const openLogin = () => {
     setAuthMode("login");
     setAuthOpen(true);
@@ -25,7 +26,7 @@ const Navbar: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
-  const closeAuth = () => setAuthOpen(false);
+  const handleAuthClose = () => setAuthOpen(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
@@ -51,8 +52,11 @@ const Navbar: React.FC = () => {
 
   return (
     <>
+      {/* ── Navbar Header ── */}
       <header className="hp-glassNav fixed top-0 left-0 right-0 z-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+
+          {/* ── Brand Logo ── */}
           <Link
             to="/"
             className="flex items-center gap-2 font-extrabold tracking-tight text-base sm:text-lg"
@@ -61,18 +65,19 @@ const Navbar: React.FC = () => {
             <span>Care Home</span>
           </Link>
 
+          {/* ── Desktop Navigation ── */}
           <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium">
             <a href="/" className="hp-navLink link-underline hp-navLink--active">
               Home
             </a>
-            <a
+            
               href="#about"
               onClick={(e) => handleScrollOrNavigate(e, "about", "/about")}
               className="hp-navLink link-underline"
             >
               About Us
             </a>
-            <a
+            
               href="#services"
               onClick={(e) => handleScrollOrNavigate(e, "services", "/services")}
               className="hp-navLink link-underline"
@@ -84,6 +89,7 @@ const Navbar: React.FC = () => {
             </Link>
           </nav>
 
+          {/* ── Desktop Auth Buttons ── */}
           <div className="hidden md:flex items-center gap-2">
             <Link
               to="/contact"
@@ -107,6 +113,7 @@ const Navbar: React.FC = () => {
             </button>
           </div>
 
+          {/* ── Hamburger Toggle ── */}
           <button
             onClick={toggleMobileMenu}
             className="md:hidden inline-flex items-center justify-center p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
@@ -137,24 +144,25 @@ const Navbar: React.FC = () => {
           </button>
         </div>
 
+        {/* ── Mobile Dropdown Menu ── */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-lg">
             <nav className="px-4 py-4 space-y-3">
-              <a
+              
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50"
               >
                 Home
               </a>
-              <a
+              
                 href="#about"
                 onClick={(e) => handleScrollOrNavigate(e, "about", "/about")}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
               >
                 About Us
               </a>
-              <a
+              
                 href="#services"
                 onClick={(e) => handleScrollOrNavigate(e, "services", "/services")}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
@@ -195,16 +203,17 @@ const Navbar: React.FC = () => {
         )}
       </header>
 
+      {/* ── Auth Modal ── */}
       <AuthModal
         open={authOpen}
-        onClose={closeAuth}
+        onClose={handleAuthClose}
         mode={authMode}
         onSwitchMode={(m: AuthMode) => setAuthMode(m)}
       >
         {authMode === "login" ? (
-          <LoginCard onGoSignup={() => setAuthMode("signup")} onSuccessClose={closeAuth} />
+          <LoginCard onGoSignup={() => setAuthMode("signup")} onSuccessClose={handleAuthClose} />
         ) : (
-          <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
+          <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={handleAuthClose} />
         )}
       </AuthModal>
     </>
