@@ -2,8 +2,48 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import LoginCard from "../../features/auth/Login/LoginCard";
 import SignupCard from "../../features/auth/Signin/Signupcard";
-import AuthModal, { type AuthMode } from "../Auth/AuthModal";
+import AuthModal, { type AuthMode } from "../auth/AuthModal";
 import "./navbar.css";
+
+// NavLink component moved outside Navbar
+interface NavLinkProps {
+  href?: string;
+  sectionId?: string;
+  fallbackPath?: string;
+  children: React.ReactNode;
+  className?: string;
+  handleScrollOrNavigate?: (
+    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
+    sectionId: string,
+    fallbackPath: string
+  ) => void;
+}
+
+const NavLinkComponent: React.FC<NavLinkProps> = ({
+  href,
+  sectionId,
+  fallbackPath,
+  children,
+  className,
+  handleScrollOrNavigate,
+}) => {
+  if (href && !sectionId) {
+    return (
+      <Link to={href} className={className} onClick={() => {}}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={`#${sectionId}`}
+      onClick={(e) => handleScrollOrNavigate?.(e, sectionId!, fallbackPath!)}
+      className={className}
+    >
+      {children}
+    </a>
+  );
+};
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -13,7 +53,6 @@ const Navbar: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Auth modal controls
   const openLogin = () => {
     setAuthMode("login");
     setAuthOpen(true);
@@ -26,9 +65,9 @@ const Navbar: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
-  const handleAuthClose = () => setAuthOpen(false);
+  const closeAuth = () => setAuthOpen(false);
 
-  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
+  const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
   const handleScrollOrNavigate = (
     e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
@@ -42,21 +81,16 @@ const Navbar: React.FC = () => {
       const section = document.getElementById(sectionId);
       if (section) {
         section.scrollIntoView({ behavior: "smooth" });
-      } else {
-        navigate(fallbackPath);
+        return;
       }
-    } else {
-      navigate(fallbackPath);
     }
+    navigate(fallbackPath);
   };
 
   return (
     <>
-      {/* ── Navbar Header ── */}
       <header className="hp-glassNav fixed top-0 left-0 right-0 z-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-
-          {/* ── Brand Logo ── */}
           <Link
             to="/"
             className="flex items-center gap-2 font-extrabold tracking-tight text-base sm:text-lg"
@@ -65,31 +99,34 @@ const Navbar: React.FC = () => {
             <span>Care Home</span>
           </Link>
 
-          {/* ── Desktop Navigation ── */}
           <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium">
-            <a href="/" className="hp-navLink link-underline hp-navLink--active">
+            <NavLinkComponent
+              href="/"
+              className="hp-navLink link-underline hp-navLink--active"
+            >
               Home
-            </a>
-            
-              href="#about"
-              onClick={(e) => handleScrollOrNavigate(e, "about", "/about")}
+            </NavLinkComponent>
+            <NavLinkComponent
+              sectionId="about"
+              fallbackPath="/about"
               className="hp-navLink link-underline"
+              handleScrollOrNavigate={handleScrollOrNavigate}
             >
               About Us
-            </a>
-            
-              href="#services"
-              onClick={(e) => handleScrollOrNavigate(e, "services", "/services")}
+            </NavLinkComponent>
+            <NavLinkComponent
+              sectionId="services"
+              fallbackPath="/services"
               className="hp-navLink link-underline"
+              handleScrollOrNavigate={handleScrollOrNavigate}
             >
               Services
-            </a>
-            <Link to="/payments" className="hp-navLink link-underline">
+            </NavLinkComponent>
+            <NavLinkComponent href="/payments" className="hp-navLink link-underline">
               Cost &amp; Payments
-            </Link>
+            </NavLinkComponent>
           </nav>
 
-          {/* ── Desktop Auth Buttons ── */}
           <div className="hidden md:flex items-center gap-2">
             <Link
               to="/contact"
@@ -107,82 +144,64 @@ const Navbar: React.FC = () => {
 
             <button
               onClick={openSignup}
-              className="btn-modern inline-flex items-center justify-center rounded-lg border border-emerald-600 px-3 lg:px-4 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 transition"
+              className="btn-modern inline-flex justify-center rounded-lg border border-emerald-600 px-3 lg:px-4 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 transition"
             >
               Sign Up
             </button>
           </div>
 
-          {/* ── Hamburger Toggle ── */}
           <button
             onClick={toggleMobileMenu}
             className="md:hidden inline-flex items-center justify-center p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
             aria-label="Toggle menu"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {mobileMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               )}
             </svg>
           </button>
         </div>
 
-        {/* ── Mobile Dropdown Menu ── */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-lg">
             <nav className="px-4 py-4 space-y-3">
-              
+              <NavLinkComponent
                 href="/"
-                onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50"
               >
                 Home
-              </a>
-              
-                href="#about"
-                onClick={(e) => handleScrollOrNavigate(e, "about", "/about")}
+              </NavLinkComponent>
+              <NavLinkComponent
+                sectionId="about"
+                fallbackPath="/about"
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+                handleScrollOrNavigate={handleScrollOrNavigate}
               >
                 About Us
-              </a>
-              
-                href="#services"
-                onClick={(e) => handleScrollOrNavigate(e, "services", "/services")}
+              </NavLinkComponent>
+              <NavLinkComponent
+                sectionId="services"
+                fallbackPath="/services"
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+                handleScrollOrNavigate={handleScrollOrNavigate}
               >
                 Services
-              </a>
-              <Link
-                to="/payments"
-                onClick={() => setMobileMenuOpen(false)}
+              </NavLinkComponent>
+              <NavLinkComponent
+                href="/payments"
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
               >
                 Cost &amp; Payments
-              </Link>
-              <Link
-                to="/contact"
-                onClick={() => setMobileMenuOpen(false)}
+              </NavLinkComponent>
+              <NavLinkComponent
+                href="/contact"
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
               >
                 Contact
-              </Link>
+              </NavLinkComponent>
 
               <div className="pt-4 border-t border-slate-200 space-y-2">
                 <button
@@ -203,17 +222,11 @@ const Navbar: React.FC = () => {
         )}
       </header>
 
-      {/* ── Auth Modal ── */}
-      <AuthModal
-        open={authOpen}
-        onClose={handleAuthClose}
-        mode={authMode}
-        onSwitchMode={(m: AuthMode) => setAuthMode(m)}
-      >
+      <AuthModal open={authOpen} onClose={closeAuth} mode={authMode} onSwitchMode={setAuthMode}>
         {authMode === "login" ? (
-          <LoginCard onGoSignup={() => setAuthMode("signup")} onSuccessClose={handleAuthClose} />
+          <LoginCard onGoSignup={() => setAuthMode("signup")} onSuccessClose={closeAuth} />
         ) : (
-          <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={handleAuthClose} />
+          <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
         )}
       </AuthModal>
     </>
