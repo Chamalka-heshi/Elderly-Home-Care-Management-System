@@ -56,7 +56,7 @@ const AboutPage: React.FC = () => {
     <div className="min-h-screen bg-[#F6F8F7]">
       <Navbar />
 
-      {/* HERO */}
+     
       <section
         className="about-hero relative overflow-hidden"
         style={{
@@ -87,7 +87,7 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* STATS STRIP */}
+      
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 md:-mt-10 relative z-20">
         <div className="about-stats">
           {stats.map((s, idx) => (
@@ -99,7 +99,7 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* MISSION / VISION */}
+      
       <section id="mission" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
           <div className="about-card">
@@ -143,7 +143,7 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* STORY / TIMELINE */}
+      
       <section className="bg-white/70 border-y border-black/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
           <div className="max-w-3xl">
@@ -156,7 +156,7 @@ const AboutPage: React.FC = () => {
           </div>
 
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-            {/* timeline */}
+            
             <div className="about-timeline">
               {timeline.map((t, idx) => (
                 <div key={idx} className="about-timelineItem">
@@ -169,7 +169,7 @@ const AboutPage: React.FC = () => {
               ))}
             </div>
 
-            {/* story highlight card */}
+            
             <div className="about-highlight">
               <div className="about-highlightBadge">Why families choose us</div>
 
@@ -200,7 +200,7 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* TEAM */}
+      
       <section id="team" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-[#101828]">
