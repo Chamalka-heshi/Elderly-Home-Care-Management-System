@@ -20,8 +20,9 @@ import AdminDashboard from './features/dashboards/adminDashboard';
 import DoctorDashboard from './features/dashboards/doctorDashboard';
 import CaregiverDashboard from './features/dashboards/caregiverDashboard';
 import FamilyDashboard from './features/dashboards/FamilyDashboard';
-import FamilyProfile from './components/UserProfile';
 
+// Profile Page
+import Profile from './components/UserProfile';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -50,7 +51,6 @@ const SignupPage: React.FC = () => {
 };
 
 /* -------------------- App -------------------- */
-
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -66,7 +66,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
 
-          {/* Admin */}
+          {/* Dashboards */}
           <Route
             path="/admin/*"
             element={
@@ -75,8 +75,6 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-
-          {/* Doctor */}
           <Route
             path="/doctor/*"
             element={
@@ -85,8 +83,6 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-
-          {/* Caregiver */}
           <Route
             path="/caregiver/*"
             element={
@@ -95,8 +91,6 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-
-          {/* Family */}
           <Route
             path="/family/*"
             element={
@@ -106,11 +100,36 @@ const App: React.FC = () => {
             }
           />
 
+          {/* Protected Profile Pages per Role */}
+          <Route
+            path="/admin/profile"
+            element={
+              <ProtectedRoute role="admin">
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/profile"
+            element={
+              <ProtectedRoute role="doctor">
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/caregiver/profile"
+            element={
+              <ProtectedRoute role="caregiver">
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/family/profile"
             element={
               <ProtectedRoute role="family">
-                <FamilyProfile />
+                <Profile />
               </ProtectedRoute>
             }
           />
