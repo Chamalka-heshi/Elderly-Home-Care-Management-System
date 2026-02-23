@@ -1,12 +1,7 @@
-/**
- * src/features/dashboards/doctor/components/Sidebar.tsx
- * Mirrors admin Sidebar exactly — doctor-specific MenuLabel union & subtitle copy.
- */
-
 import React, { useState, useMemo } from "react";
 import SignOutButton from "../../../../components/signoutbtn";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
+// ── Icons 
 const SparkleIcon = () => (
   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 2l1.2 4.2L17.4 8l-4.2 1.2L12 13.4l-1.2-4.2L6.6 8l4.2-1.8L12 2zm7 7l.8 2.8 2.8.8-2.8.8L19 16.6l-.8-2.8-2.8-.8 2.8-1.2L19 9zM4 14l1 3.3L8.3 18 5 19l-1 3-1-3-3-.7 3-.7L4 14z" />
@@ -25,7 +20,7 @@ const XIcon = () => (
   </svg>
 );
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types 
 export type MenuLabel =
   | "Dashboard"
   | "Patient Management"
@@ -48,7 +43,7 @@ interface Props {
   onNavigate: (label: MenuLabel) => void;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component 
 const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNavigate }) => {
   const [search, setSearch] = useState("");
 

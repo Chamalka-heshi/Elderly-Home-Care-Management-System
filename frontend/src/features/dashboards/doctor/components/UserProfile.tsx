@@ -1,13 +1,7 @@
-/**
- * src/features/dashboards/doctor/components/UserProfile.tsx
- * Slide-over profile panel — mirrors admin UserProfile exactly.
- * Footer updated to "Doctor Panel".
- */
-
 import React, { useState, useCallback } from "react";
 import { useAuth } from "../../../../auth/AuthContext";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
+// ── Icons 
 const XIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -60,7 +54,7 @@ const AlertIcon = () => (
   </svg>
 );
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
+// ── UI helpers 
 const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <label className="mb-1.5 block text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
     {children}
@@ -88,7 +82,7 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 
 interface Props { open: boolean; onClose: () => void; }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component 
 const UserProfile: React.FC<Props> = ({ open, onClose }) => {
   const { user } = useAuth();
   const [tab, setTab] = useState<TabKey>("profile");

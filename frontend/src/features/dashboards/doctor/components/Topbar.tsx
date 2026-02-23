@@ -1,8 +1,3 @@
-/**
- * src/features/dashboards/doctor/components/Topbar.tsx
- * Mirrors admin Topbar exactly — role badge shows "Doctor".
- */
-
 import React from "react";
 import { useAuth } from "../../../../auth/AuthContext";
 import type { MenuLabel } from "./Sidebar";
@@ -49,7 +44,7 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
     <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
 
-        {/* Left: hamburger + page title */}
+        
         <div className="flex items-center gap-3">
           <button
             className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 transition lg:hidden"
@@ -66,9 +61,9 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
           </div>
         </div>
 
-        {/* Right */}
+        
         <div className="flex items-center gap-3">
-          {/* Notification bell */}
+          
           <button
             className="relative rounded-xl p-2.5 text-slate-600 hover:bg-slate-100 transition"
             aria-label="Notifications"
@@ -77,7 +72,7 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
           </button>
 
-          {/* Profile chip */}
+          
           <button
             onClick={onProfileClick}
             title="View / edit profile"
