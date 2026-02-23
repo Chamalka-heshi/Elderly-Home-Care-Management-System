@@ -1,17 +1,4 @@
-/**
- * src/features/dashboards/admin/AdminDashboard.tsx
- * ──────────────────────────────────────────────────
- * Main admin dashboard shell.
- *
- * Key design decisions
- * ────────────────────
- *  • Sidebar / Topbar remain in admin/components/ (role-specific theming)
- *  • Widgets (FormModal, Badge, StatCard, TableShell) are now imported from
- *    the shared common/widgets/ folder — single source of truth.
- *  • AdminProfile is rendered as a full-screen fixed overlay (not a separate
- *    route), activated by clicking the profile avatar in the Topbar.
- *  • DoctorDashboard mirrors this exact pattern for consistency.
- */
+
 
 import React, { useEffect, useState, useCallback } from "react";
 import * as adminApi from "../../../api/admin.api";
@@ -20,14 +7,14 @@ import type {
   CreateAdminRequest, CreateDoctorRequest, CreateCaregiverRequest,
 } from "../../../api/admin.api";
 
-// ── Layout components (admin-specific) ───────────────────────────────────────
+// ── Layout components 
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
 import Topbar                                      from "./components/Topbar";
 
-// ── Shared widgets from common ────────────────────────────────────────────────
+// ── Shared widgets from common 
 import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
 
-// ── Shared icons from common ──────────────────────────────────────────────────
+// ── Shared icons from common 
 import {
   IconLayoutDashboard, IconShield, IconUsers,
   IconHeart, IconStethoscope, IconUserPlus, IconSettings,
@@ -35,10 +22,10 @@ import {
   type IconProps,
 } from "../common/icons";
 
-// ── Shared UI from common ─────────────────────────────────────────────────────
+// ── Shared UI from common 
 import { DashboardAmbientBg } from "../common/ui";
 
-// ── Pages (admin-specific) ────────────────────────────────────────────────────
+// ── Pages (admin-specific) 
 import AdminProfile       from "./pages/AdminProfile";
 import DashboardHome      from "./pages/DashboardHome";
 import AdminManagement    from "./pages/AdminManagement";
@@ -48,7 +35,7 @@ import FamilyManagement   from "./pages/FamilyManagement";
 import PatientManagement  from "./pages/PatientManagement";
 import Settings           from "./pages/Settings";
 
-// ── Menu items ────────────────────────────────────────────────────────────────
+// ── Menu items 
 
 const MENU_ITEMS: MenuItem[] = [
   { icon: IconLayoutDashboard, label: "Dashboard"           },
@@ -60,7 +47,7 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
 ];
 
-// ── Form field configs ─────────────────────────────────────────────────────────
+// ── Form field configs 
 
 const ADMIN_FIELDS: FieldConfig[] = [
   { name: "fullName",      label: "Full Name",      required: true, placeholder: "Enter full name" },
@@ -104,25 +91,25 @@ const CAREGIVER_FIELDS: FieldConfig[] = [
   },
 ];
 
-// ── Toast type ─────────────────────────────────────────────────────────────────
+// ── Toast type 
 
 interface Toast { id: number; kind: "success" | "error"; message: string; }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component 
 
 const AdminDashboard: React.FC = () => {
-  // ── UI state ──────────────────────────────────────────────────────────────
+  // ── UI state 
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfile,   setShowProfile]   = useState(false); // full-screen AdminProfile overlay
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
-  // ── Modal state ───────────────────────────────────────────────────────────
+  // ── Modal state 
   const [showAddAdmin,     setShowAddAdmin]     = useState(false);
   const [showAddDoctor,    setShowAddDoctor]    = useState(false);
   const [showAddCaregiver, setShowAddCaregiver] = useState(false);
 
-  // ── Data state ────────────────────────────────────────────────────────────
+  // ── Data state 
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [admins,         setAdmins]         = useState<Admin[]>([]);
   const [doctors,        setDoctors]        = useState<Doctor[]>([]);
@@ -130,11 +117,11 @@ const AdminDashboard: React.FC = () => {
   const [families,       setFamilies]       = useState<Family[]>([]);
   const [patients,       setPatients]       = useState<Patient[]>([]);
 
-  // ── Loading flags ─────────────────────────────────────────────────────────
+  // ── Loading flags 
   const [pageLoading,  setPageLoading]  = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Helpers 
 
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
@@ -142,7 +129,7 @@ const AdminDashboard: React.FC = () => {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
   }, []);
 
-  // ── Data loaders ──────────────────────────────────────────────────────────
+  // ── Data loaders 
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -188,7 +175,6 @@ const AdminDashboard: React.FC = () => {
     finally { setPageLoading(false); }
   }, [addToast]);
 
-  // Trigger the right loader whenever the active menu item changes
   useEffect(() => {
     if      (activeMenu === "Dashboard")            loadDashboard();
     else if (activeMenu === "Admin Management")     loadAdmins();
@@ -196,7 +182,7 @@ const AdminDashboard: React.FC = () => {
     else if (activeMenu === "Caregiver Management") loadCaregivers();
     else if (activeMenu === "Family Management")    loadFamilies();
     else if (activeMenu === "Patient Management")   loadPatients();
-  }, [activeMenu]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeMenu]); 
 
   // ── Form submit handlers ──────────────────────────────────────────────────
 
@@ -295,12 +281,12 @@ const AdminDashboard: React.FC = () => {
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to delete patient"); }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render 
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
 
-      {/* Fixed ambient gradient blobs (dashboard variant) */}
+      {/* Fixed ambient gradient blobs */}
       <DashboardAmbientBg />
 
       {/* Toast notifications */}
@@ -330,7 +316,7 @@ const AdminDashboard: React.FC = () => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Topbar — onProfileClick opens the full-screen AdminProfile overlay */}
+          {/* Topbar — */}
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
@@ -346,7 +332,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Page content — rendered based on the active sidebar item */}
+            {/* Page content  */}
             {!pageLoading && activeMenu === "Dashboard" && dashboardStats && (
               <DashboardHome
                 stats={dashboardStats}
@@ -377,8 +363,7 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ── Full-screen AdminProfile overlay ──────────────────────────────────
-           Activated by clicking the profile avatar in the Topbar.
-           DoctorDashboard uses the exact same pattern with DoctorProfile.    */}
+               */}
       {showProfile && (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-50">
           <AdminProfile onBack={() => setShowProfile(false)} />
