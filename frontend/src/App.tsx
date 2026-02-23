@@ -17,10 +17,11 @@ import SignupCard from "./features/auth/Signin/Signupcard";
 import AdminDashboard    from "./features/dashboards/admin/AdminDashboard";
 import DoctorDashboard   from "./features/dashboards/doctor/DoctorDashboard";
 // import CaregiverDashboard from "./features/dashboards/caregiverDashboard";
-// import FamilyDashboard   from "./features/dashboards/FamilyDashboard";
+import FamilyDashboard   from "./features/dashboards/familymember/FamilyMemberDashboard";
 
 import AdminProfile  from "./features/dashboards/admin/pages/AdminProfile";
 import DoctorProfile from "./features/dashboards/doctor/pages/DoctorProfile";
+import FamilyMemberProfile from "./features/dashboards/familymember/pages/FamilyMemberProfile";
 
 
 const LoginPage: React.FC = () => {
@@ -57,6 +58,12 @@ const DoctorProfilePage: React.FC = () => {
   const navigate = useNavigate();
   return <DoctorProfile onBack={() => navigate("/doctor")} />;
 };
+
+const FamilyProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  return <FamilyMemberProfile onBack={() => navigate("/family")} />;
+}
+
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
@@ -99,6 +106,7 @@ const App: React.FC = () => (
             </ProtectedRoute>
           }
         />
+        */}
         <Route
           path="/family/*"
           element={
@@ -106,7 +114,7 @@ const App: React.FC = () => (
               <FamilyDashboard />
             </ProtectedRoute>
           }
-        /> */}
+        />
 
         <Route
           path="/admin/profile"
@@ -134,14 +142,15 @@ const App: React.FC = () => (
             </ProtectedRoute>
           }
         />
+        */}
         <Route
           path="/family/profile"
           element={
             <ProtectedRoute role="family">
-              <FamilyProfile onBack={() => {}} />
+              <FamilyProfilePage />
             </ProtectedRoute>
           }
-        /> */}
+        /> 
 
         {/* ── Catch-all redirect ── */}
         <Route path="*" element={<Navigate to="/" />} />
