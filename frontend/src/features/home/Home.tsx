@@ -12,7 +12,7 @@ import bestCareImg from "../../assets/Home/best-care.jpg";
 
 
 //../../../components/Auth/AuthModal
-import AuthModal, { type AuthMode } from "../../components/Auth/AuthModal";
+import AuthModal, { type AuthMode } from "../../components/auth/AuthModal";
 import LoginCard from "../auth/Login/LoginCard";
 import SignupCard from "../auth/Signin/Signupcard";
 
