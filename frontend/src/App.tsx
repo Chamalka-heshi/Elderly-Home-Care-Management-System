@@ -11,18 +11,29 @@ import Payments from "./features/payments/PaymentsPage";
 import Contact  from "./features/contact/contactPage";
 
 
-import LoginCard  from "./features/auth/Login/LoginCard";
-import SignupCard from "./features/auth/Signin/Signupcard";
+import LoginCard           from "./features/auth/Login/LoginCard";
+import SignupCard          from "./features/auth/Signin/Signupcard";
+import ForgotPasswordCard  from "./features/auth/ForgotPassword/ForgotPassword";
 
 import AdminDashboard    from "./features/dashboards/admin/AdminDashboard";
 import DoctorDashboard   from "./features/dashboards/doctor/DoctorDashboard";
-// import CaregiverDashboard from "./features/dashboards/caregiverDashboard";
+import CaregiverDashboard from "./features/dashboards/caregiver/CaregiverDashboard";
 import FamilyDashboard   from "./features/dashboards/familymember/FamilyMemberDashboard";
 
 import AdminProfile  from "./features/dashboards/admin/pages/AdminProfile";
 import DoctorProfile from "./features/dashboards/doctor/pages/DoctorProfile";
 import FamilyMemberProfile from "./features/dashboards/familymember/pages/FamilyMemberProfile";
+import CaregiverProfile from "./features/dashboards/caregiver/pages/CaregiverProfile";
 
+
+const ForgotPasswordPage: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <ForgotPasswordCard onGoLogin={() => navigate("/login")} />
+    </div>
+  );
+};
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +42,7 @@ const LoginPage: React.FC = () => {
       <LoginCard
         onSuccessClose={() => navigate("/")}
         onGoSignup={() => navigate("/signup")}
+        onForgotPassword={() => navigate("/forgot-password")}
       />
     </div>
   );
@@ -64,6 +76,10 @@ const FamilyProfilePage: React.FC = () => {
   return <FamilyMemberProfile onBack={() => navigate("/family")} />;
 }
 
+const CaregiverProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  return <CaregiverProfile onBack={() => navigate("/caregiver")} />;
+}
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
@@ -78,8 +94,9 @@ const App: React.FC = () => (
         <Route path="/services" element={<Services />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/contact"  element={<Contact />} />
-        <Route path="/login"    element={<LoginPage />} />
-        <Route path="/signup"   element={<SignupPage />} />
+        <Route path="/login"           element={<LoginPage />} />
+        <Route path="/signup"          element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* ── Dashboard shells ── */}
         <Route
@@ -98,7 +115,7 @@ const App: React.FC = () => (
             </ProtectedRoute>
           }
         />
-        {/* <Route
+        <Route
           path="/caregiver/*"
           element={
             <ProtectedRoute role="caregiver">
@@ -106,7 +123,6 @@ const App: React.FC = () => (
             </ProtectedRoute>
           }
         />
-        */}
         <Route
           path="/family/*"
           element={
@@ -134,15 +150,15 @@ const App: React.FC = () => (
         />
 
 *
-        {/* <Route
+        <Route
           path="/caregiver/profile"
           element={
             <ProtectedRoute role="caregiver">
-              <CaregiverProfile onBack={() => {}} />
+              <CaregiverProfilePage />
             </ProtectedRoute>
           }
         />
-        */}
+       
         <Route
           path="/family/profile"
           element={

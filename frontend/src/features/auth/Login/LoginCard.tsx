@@ -10,9 +10,10 @@ import { useAuth } from "../../../auth/AuthContext";
 type Props = {
   onSuccessClose: () => void;
   onGoSignup: () => void;
+  onForgotPassword?: () => void;
 };
 
-export default function LoginCard({ onSuccessClose, onGoSignup }: Props) {
+export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword }: Props) {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
 
@@ -167,7 +168,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup }: Props) {
             <button
               type="button"
               className="text-sm font-extrabold text-emerald-700 transition hover:underline hover:underline-offset-4"
-              onClick={() => setError("Forgot password is not yet implemented")}
+              onClick={() => onForgotPassword ? onForgotPassword() : setError("Forgot password is not yet implemented")}
             >
               Forgot password?
             </button>
