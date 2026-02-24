@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export type AuthMode = "login" | "signup";
+export type AuthMode = "login" | "signup" | "forgot";
 
 type Props = {
   open: boolean;
@@ -36,6 +36,15 @@ export default function AuthModal({
 
   if (!open) return null;
 
+  const topLabel =
+    mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Reset Password";
+
+  const switchLabel =
+    mode === "signup" ? "Go to Login" : "Go to Sign up";
+
+  const switchTarget: AuthMode =
+    mode === "signup" ? "login" : "signup";
+
   return (
     <div className="fixed inset-0 z-[9999]">
       {/* blur + dark overlay */}
@@ -59,21 +68,19 @@ export default function AuthModal({
           <div className="flex items-center justify-between border-b border-slate-200/60 bg-white/40 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              <p className="text-sm font-extrabold text-slate-800">
-                {mode === "login" ? "Sign in" : "Create account"}
-              </p>
+              <p className="text-sm font-extrabold text-slate-800">{topLabel}</p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => onSwitchMode(mode === "login" ? "signup" : "login")}
+                onClick={() => onSwitchMode(switchTarget)}
                 className="
                   rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700
                   transition hover:bg-slate-50
                 "
               >
-                {mode === "login" ? "Go to Sign up" : "Go to Login"}
+                {switchLabel}
               </button>
 
               <button

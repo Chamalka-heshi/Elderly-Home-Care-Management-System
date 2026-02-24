@@ -168,7 +168,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
             <button
               type="button"
               className="text-sm font-extrabold text-emerald-700 transition hover:underline hover:underline-offset-4"
-              onClick={() => onForgotPassword ? onForgotPassword() : setError("Forgot password is not yet implemented")}
+              onClick={onForgotPassword}
             >
               Forgot password?
             </button>

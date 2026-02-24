@@ -15,6 +15,7 @@ import bestCareImg from "../../assets/Home/best-care.jpg";
 import AuthModal, { type AuthMode } from "../../components/auth/AuthModal";
 import LoginCard from "../auth/Login/LoginCard";
 import SignupCard from "../auth/Signin/Signupcard";
+import ForgotPasswordCard from "../auth/ForgotPassword/ForgotPassword";
 
 interface Service {
   title: string;
@@ -250,10 +251,15 @@ const Home: React.FC = () => {
           <LoginCard
             onSuccessClose={closeAuth}
             onGoSignup={() => setAuthMode("signup")}
+            onForgotPassword={() => setAuthMode("forgot")}
           />
-        ) : (
+        ) : authMode === "signup" ? (
           <SignupCard
             onSuccessClose={closeAuth}
+            onGoLogin={() => setAuthMode("login")}
+          />
+        ) : (
+          <ForgotPasswordCard
             onGoLogin={() => setAuthMode("login")}
           />
         )}
