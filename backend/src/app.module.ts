@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -20,27 +21,19 @@ import { AdminModule } from './modules/admin/admin.module';
     // Database
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: process.env.DB_HOST || 'localhost',
-        port: +(process.env.DB_PORT || 5432),
-        username: 'postgres',
-        password: 'ilikeit',
-        database: 'ecms',
-        // entities: [User, Patient],
-        //
-        // type: 'postgres',
-        // host: configService.get('DB_HOST'),
-        // port: +configService.get('DB_PORT'),
-        // username: configService.get('DB_USERNAME'),
-        // password: configService.get('DB_PASSWORD'),
-        // database: configService.get('DB_NAME'),
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-        //synchronize: configService.get('NODE_ENV') === 'development', // Only in dev
-        logging: configService.get('NODE_ENV') === 'development',
+        synchronize:true,
+        //synchronize: configService.get<string>('NODE_ENV') === 'development',
+        logging: configService.get<string>('NODE_ENV') === 'development',
       }),
-      inject: [ConfigService],
     }),
 
     // Modules
