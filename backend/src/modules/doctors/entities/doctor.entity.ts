@@ -5,11 +5,14 @@ import {
   Column,
   OneToOne,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+/**
+ * Stores doctor-specific data.
+ * Common fields (fullName, contactNumber, createdAt, updatedAt)
+ * live on the User entity.
+ */
 @Entity('doctors')
 export class Doctor {
   @PrimaryGeneratedColumn('uuid')
@@ -19,9 +22,7 @@ export class Doctor {
   @JoinColumn()
   user: User;
 
-  @Column()
-  fullName: string;
-
+  // ── Doctor-specific fields ───────────────────────────────────────────────
   @Column()
   specialization: string;
 
@@ -34,28 +35,18 @@ export class Doctor {
   @Column({ type: 'int' })
   experienceYears: number;
 
-  @Column()
-  contactNumber: string;
-
   @Column({ nullable: true })
   hospitalAffiliation: string;
 
   @Column({ nullable: true, type: 'decimal', precision: 10, scale: 2 })
   consultationFee: number;
 
-  // Using simple-json to safely handle arrays with special characters
   @Column({ type: 'simple-json', nullable: true })
   availableDays: string[];
 
   @Column({ nullable: true })
-  availableTimeStart: string; // '09:00'
+  availableTimeStart: string;
 
   @Column({ nullable: true })
-  availableTimeEnd: string; // '17:00'
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  availableTimeEnd: string;
 }

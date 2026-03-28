@@ -1,8 +1,11 @@
+/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   Index,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { UserRole } from '../../../common/enums/user-role.enum';
 
@@ -25,6 +28,19 @@ export class User {
   })
   role: UserRole;
 
+  // ── Common profile fields (shared across all roles) ──────────────────────
+  @Column()
+  fullName: string;
+
+  @Column({ nullable: true })
+  contactNumber: string;
+
   @Column({ default: true })
   isActive: boolean;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

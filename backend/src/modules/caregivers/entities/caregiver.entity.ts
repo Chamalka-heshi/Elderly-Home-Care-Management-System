@@ -5,11 +5,14 @@ import {
   Column,
   OneToOne,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+/**
+ * Stores caregiver-specific data.
+ * Common fields (fullName, contactNumber, createdAt, updatedAt)
+ * live on the User entity.
+ */
 @Entity('caregivers')
 export class Caregiver {
   @PrimaryGeneratedColumn('uuid')
@@ -19,14 +22,9 @@ export class Caregiver {
   @JoinColumn()
   user: User;
 
-  @Column()
-  fullName: string;
-
+  // ── Caregiver-specific fields ────────────────────────────────────────────
   @Column({ unique: true })
   nic: string;
-
-  @Column()
-  contactNumber: string;
 
   @Column({ nullable: true })
   address: string;
@@ -37,7 +35,6 @@ export class Caregiver {
   @Column({ type: 'int', nullable: true })
   experienceYears: number;
 
-  // Using simple-json to safely handle arrays with special characters
   @Column({ type: 'simple-json', nullable: true })
   specializations: string[];
 
@@ -46,10 +43,4 @@ export class Caregiver {
 
   @Column({ type: 'simple-json', nullable: true })
   availableShifts: string[];
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }
