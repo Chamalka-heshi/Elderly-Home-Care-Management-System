@@ -14,19 +14,12 @@ export class FamilyService {
     private usersService: UsersService,
   ) {}
 
-  async create(data: {
-    user: User;
-    fullName: string;
-    contactNumber: string;
-    address?: string;
-    emergencyContact?: string;
-  }): Promise<FamilyMember> {
-    const familyMember = this.familyRepository.create({
-      user: data.user,
-      fullName: data.fullName,
-      contactNumber: data.contactNumber,
-    });
-
+  /**
+   * Creates a FamilyMember profile record linked to an existing User.
+   * fullName and contactNumber are already stored on the User record.
+   */
+  async create(data: { user: User }): Promise<FamilyMember> {
+    const familyMember = this.familyRepository.create({ user: data.user });
     return this.familyRepository.save(familyMember);
   }
 
@@ -53,7 +46,7 @@ export class FamilyService {
   async findAll(): Promise<FamilyMember[]> {
     return this.familyRepository.find({
       relations: ['user', 'patients'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } } as any,
     });
   }
 
@@ -61,22 +54,27 @@ export class FamilyService {
     return this.familyRepository.find({
       where: { user: { isActive: true } },
       relations: ['user', 'patients'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } } as any,
     });
   }
 
-  async update(id: string, updateData: Partial<Pick<FamilyMember, 'fullName' | 'contactNumber'>>): Promise<FamilyMember> {
-    if (!id) {
-      throw new BadRequestException('Family member ID is required');
-    }
+  /**
+   * Update common profile fields via the User record (cascade saves automatically).
+   */
+  async update(
+    id: string,
+    updateData: Partial<Pick<User, 'fullName' | 'contactNumber'>>,
+  ): Promise<FamilyMember> {
+    if (!id) throw new BadRequestException('Family member ID is required');
 
-    await this.familyRepository.update({ id }, updateData);
-    return this.findById(id);
+    const member = await this.findById(id);
+
+    if (updateData.fullName) member.user.fullName = updateData.fullName;
+    if (updateData.contactNumber) member.user.contactNumber = updateData.contactNumber;
+
+    return this.familyRepository.save(member);
   }
 
-  /**
-   * Deactivate is handled entirely via User.isActive — single source of truth.
-   */
   async deactivate(id: string): Promise<void> {
     if (!id) throw new BadRequestException('Family member ID is required');
     const member = await this.findById(id);

@@ -20,20 +20,25 @@ export class CaregiversService {
   ) {}
 
   async create(createCaregiverDto: CreateCaregiverDto): Promise<Caregiver> {
-    const { email, password, certifications, ...caregiverData } = createCaregiverDto;
+    const { email, password, fullName, contactNumber, certifications, ...caregiverData } = createCaregiverDto;
 
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('Email already registered');
     }
 
-    const user = await this.usersService.create(email, password, UserRole.CAREGIVER);
+    // fullName and contactNumber are stored on the User record
+    const user = await this.usersService.create(
+      email,
+      password,
+      UserRole.CAREGIVER,
+      fullName,
+      contactNumber,
+    );
 
     const caregiver = this.caregiverRepository.create({
       user,
-      fullName: caregiverData.fullName,
       nic: caregiverData.nic || '000000000V',
-      contactNumber: caregiverData.contactNumber,
       address: caregiverData.address,
       qualification: caregiverData.qualification,
       experienceYears: caregiverData.yearsOfExperience || 0,
@@ -48,7 +53,7 @@ export class CaregiversService {
   async findAll(): Promise<Caregiver[]> {
     return this.caregiverRepository.find({
       relations: ['user'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } },
     });
   }
 
@@ -56,7 +61,7 @@ export class CaregiversService {
     return this.caregiverRepository.find({
       where: { user: { isActive: true } },
       relations: ['user'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } },
     });
   }
 
@@ -83,8 +88,11 @@ export class CaregiversService {
   async update(id: string, updateData: Partial<CreateCaregiverDto>): Promise<Caregiver> {
     const caregiver = await this.findOne(id);
 
-    if (updateData.fullName) caregiver.fullName = updateData.fullName;
-    if (updateData.contactNumber) caregiver.contactNumber = updateData.contactNumber;
+    // Common fields — update on the User record (cascade saves automatically)
+    if (updateData.fullName) caregiver.user.fullName = updateData.fullName;
+    if (updateData.contactNumber) caregiver.user.contactNumber = updateData.contactNumber;
+
+    // Caregiver-specific fields
     if (updateData.qualification) caregiver.qualification = updateData.qualification;
     if (updateData.yearsOfExperience !== undefined) caregiver.experienceYears = updateData.yearsOfExperience;
     if (updateData.certifications) caregiver.specializations = updateData.certifications;
@@ -94,9 +102,6 @@ export class CaregiversService {
     return this.caregiverRepository.save(caregiver);
   }
 
-  /**
-   * Deactivate is handled entirely via User.isActive — single source of truth.
-   */
   async deactivate(id: string): Promise<void> {
     const caregiver = await this.findOne(id);
     await this.usersService.deactivateUser(caregiver.user.id);

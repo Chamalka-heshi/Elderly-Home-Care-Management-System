@@ -20,23 +20,28 @@ export class DoctorsService {
   ) {}
 
   async create(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
-    const { email, password, ...doctorData } = createDoctorDto;
+    const { email, password, fullName, contactNumber, ...doctorData } = createDoctorDto;
 
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('Email already registered');
     }
 
-    const user = await this.usersService.create(email, password, UserRole.DOCTOR);
+    // fullName and contactNumber are stored on the User record
+    const user = await this.usersService.create(
+      email,
+      password,
+      UserRole.DOCTOR,
+      fullName,
+      contactNumber,
+    );
 
     const doctor = this.doctorRepository.create({
       user,
-      fullName: doctorData.fullName,
       specialization: doctorData.specialization,
       licenseNumber: doctorData.licenseNumber,
       qualification: doctorData.qualification || 'MBBS',
       experienceYears: doctorData.yearsOfExperience || 0,
-      contactNumber: doctorData.contactNumber,
       hospitalAffiliation: doctorData.hospitalAffiliation,
       consultationFee: doctorData.consultationFee,
       availableDays: doctorData.availableDays,
@@ -50,7 +55,7 @@ export class DoctorsService {
   async findAll(): Promise<Doctor[]> {
     return this.doctorRepository.find({
       relations: ['user'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } },
     });
   }
 
@@ -58,7 +63,7 @@ export class DoctorsService {
     return this.doctorRepository.find({
       where: { user: { isActive: true } },
       relations: ['user'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } },
     });
   }
 
@@ -85,11 +90,14 @@ export class DoctorsService {
   async update(id: string, updateData: Partial<CreateDoctorDto>): Promise<Doctor> {
     const doctor = await this.findOne(id);
 
-    if (updateData.fullName) doctor.fullName = updateData.fullName;
+    // Common fields — update on the User record (cascade saves automatically)
+    if (updateData.fullName) doctor.user.fullName = updateData.fullName;
+    if (updateData.contactNumber) doctor.user.contactNumber = updateData.contactNumber;
+
+    // Doctor-specific fields
     if (updateData.specialization) doctor.specialization = updateData.specialization;
     if (updateData.licenseNumber) doctor.licenseNumber = updateData.licenseNumber;
     if (updateData.yearsOfExperience !== undefined) doctor.experienceYears = updateData.yearsOfExperience;
-    if (updateData.contactNumber) doctor.contactNumber = updateData.contactNumber;
     if (updateData.hospitalAffiliation) doctor.hospitalAffiliation = updateData.hospitalAffiliation;
     if (updateData.consultationFee !== undefined) doctor.consultationFee = updateData.consultationFee;
     if (updateData.availableDays) doctor.availableDays = updateData.availableDays;
@@ -99,9 +107,6 @@ export class DoctorsService {
     return this.doctorRepository.save(doctor);
   }
 
-  /**
-   * Deactivate is handled entirely via User.isActive — single source of truth.
-   */
   async deactivate(id: string): Promise<void> {
     const doctor = await this.findOne(id);
     await this.usersService.deactivateUser(doctor.user.id);

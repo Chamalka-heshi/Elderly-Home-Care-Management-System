@@ -42,37 +42,33 @@ export class AuthService {
   async familySignup(signupDto: FamilySignupDto) {
     const { email, password, fullName, contactNumber } = signupDto;
 
-    // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Create user account
+    // fullName and contactNumber are stored on the User record
     const user = await this.usersService.create(
       email,
       password,
       UserRole.FAMILY,
-    );
-
-    // Create family member profile
-    const familyMember = await this.familyService.create({
-      user,
       fullName,
       contactNumber,
-    });
+    );
 
-    // Generate JWT token
+    // FamilyMember profile — no extra fields needed
+    await this.familyService.create({ user });
+
     const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Family member registered successfully',
       user: {
         id: user.id,
-        fullName: familyMember.fullName,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
-        contactNumber: familyMember.contactNumber,
+        contactNumber: user.contactNumber,
       },
       token,
     };
@@ -82,31 +78,26 @@ export class AuthService {
    * ADMIN ONLY: Create Doctor Account
    */
   async createDoctor(createDoctorDto: CreateDoctorDto, adminUserId: string) {
-    // Verify admin role
     const admin = await this.usersService.findById(adminUserId);
     if (!admin || admin.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can create doctor accounts');
     }
 
-    // Check if user already exists
-    const existingUser = await this.usersService.findByEmail(
-      createDoctorDto.email,
-    );
+    const existingUser = await this.usersService.findByEmail(createDoctorDto.email);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Create doctor using the service
     const doctor = await this.doctorsService.create(createDoctorDto);
 
     return {
       message: 'Doctor account created successfully',
       doctor: {
         id: doctor.id,
-        fullName: doctor.fullName,
+        fullName: doctor.user.fullName,
         email: doctor.user.email,
         role: doctor.user.role,
-        contactNumber: doctor.contactNumber,
+        contactNumber: doctor.user.contactNumber,
         specialization: doctor.specialization,
         licenseNumber: doctor.licenseNumber,
       },
@@ -120,31 +111,26 @@ export class AuthService {
     createCaregiverDto: CreateCaregiverDto,
     adminUserId: string,
   ) {
-    // Verify admin role
     const admin = await this.usersService.findById(adminUserId);
     if (!admin || admin.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can create caregiver accounts');
     }
 
-    // Check if user already exists
-    const existingUser = await this.usersService.findByEmail(
-      createCaregiverDto.email,
-    );
+    const existingUser = await this.usersService.findByEmail(createCaregiverDto.email);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Create caregiver using the service
     const caregiver = await this.caregiversService.create(createCaregiverDto);
 
     return {
       message: 'Caregiver account created successfully',
       caregiver: {
         id: caregiver.id,
-        fullName: caregiver.fullName,
+        fullName: caregiver.user.fullName,
         email: caregiver.user.email,
         role: caregiver.user.role,
-        contactNumber: caregiver.contactNumber,
+        contactNumber: caregiver.user.contactNumber,
       },
     };
   }
@@ -156,7 +142,6 @@ export class AuthService {
     createAdminDto: CreateAdminDto,
     currentAdminUserId: string,
   ) {
-    // Verify admin role
     const admin = await this.usersService.findById(currentAdminUserId);
     if (!admin || admin.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can create admin accounts');
@@ -164,27 +149,27 @@ export class AuthService {
 
     const { email, password, fullName, contactNumber } = createAdminDto;
 
-    // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Create admin user account
     const user = await this.usersService.create(
       email,
       password,
       UserRole.ADMIN,
+      fullName,
+      contactNumber,
     );
 
     return {
       message: 'Admin account created successfully',
       user: {
         id: user.id,
-        fullName,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
-        contactNumber,
+        contactNumber: user.contactNumber,
       },
     };
   }
@@ -235,18 +220,15 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    // Find user by email
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check if user is active
     if (!user.isActive) {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    // Validate password
     const isPasswordValid = await this.usersService.validatePassword(
       password,
       user.password,
@@ -255,108 +237,67 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Get role-specific profile data based on user's role
+    // Load role-specific profile (for extra fields only — common ones are on user)
     let profileData = null;
-    let fullName = null;
-    let contactNumber = null;
 
     switch (user.role) {
       case UserRole.FAMILY:
         profileData = await this.familyService.findByUserId(user.id);
-        if (profileData) {
-          fullName = profileData.fullName;
-          contactNumber = profileData.contactNumber;
-        }
         break;
-
       case UserRole.DOCTOR:
         profileData = await this.doctorsService.findByUserId(user.id);
-        if (profileData) {
-          fullName = profileData.fullName;
-          contactNumber = profileData.contactNumber;
-        }
         break;
-
       case UserRole.CAREGIVER:
         profileData = await this.caregiversService.findByUserId(user.id);
-        if (profileData) {
-          fullName = profileData.fullName;
-          contactNumber = profileData.contactNumber;
-        }
         break;
-
       case UserRole.ADMIN:
-        fullName = 'Admin';
         break;
     }
 
-    // Generate JWT token
     const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Login successful',
       user: {
         id: user.id,
-        fullName,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
-        contactNumber,
+        contactNumber: user.contactNumber,
         profile: profileData,
       },
       token,
     };
   }
 
-  /**
-   * Get Current User Profile
-   */
   async getProfile(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Get role-specific profile data
     let profileData = null;
-    let fullName = null;
-    let contactNumber = null;
 
     switch (user.role) {
       case UserRole.FAMILY:
         profileData = await this.familyService.findByUserId(user.id);
-        if (profileData) {
-          fullName = profileData.fullName;
-          contactNumber = profileData.contactNumber;
-        }
         break;
-
       case UserRole.DOCTOR:
         profileData = await this.doctorsService.findByUserId(user.id);
-        if (profileData) {
-          fullName = profileData.fullName;
-          contactNumber = profileData.contactNumber;
-        }
         break;
-
       case UserRole.CAREGIVER:
         profileData = await this.caregiversService.findByUserId(user.id);
-        if (profileData) {
-          fullName = profileData.fullName;
-          contactNumber = profileData.contactNumber;
-        }
         break;
-
       case UserRole.ADMIN:
-        fullName = 'Admin';
         break;
     }
 
     return {
       id: user.id,
-      fullName,
+      fullName: user.fullName,
       email: user.email,
       role: user.role,
-      contactNumber,
+      contactNumber: user.contactNumber,
       profile: profileData,
     };
   }

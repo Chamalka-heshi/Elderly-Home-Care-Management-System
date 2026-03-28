@@ -28,23 +28,30 @@ export class AdminService {
   // ==================== ADMIN MANAGEMENT ====================
 
   async create(createAdminDto: CreateAdminDto): Promise<Admin> {
-    const { email, password, ...adminData } = createAdminDto;
+    const { email, password, fullName, contactNumber } = createAdminDto;
 
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('Email already registered');
     }
 
-    const user = await this.usersService.create(email, password, UserRole.ADMIN);
+    // fullName and contactNumber stored on the User record
+    const user = await this.usersService.create(
+      email,
+      password,
+      UserRole.ADMIN,
+      fullName,
+      contactNumber,
+    );
 
-    const admin = this.adminRepository.create({ user, ...adminData });
+    const admin = this.adminRepository.create({ user });
     return this.adminRepository.save(admin);
   }
 
   async findAll(): Promise<Admin[]> {
     return this.adminRepository.find({
       relations: ['user'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } },
     });
   }
 
@@ -70,8 +77,12 @@ export class AdminService {
 
   async update(id: string, updateData: Partial<CreateAdminDto>): Promise<Admin> {
     const admin = await this.findOne(id);
-    Object.assign(admin, updateData);
-    return this.adminRepository.save(admin);
+
+    // Common fields live on the User record
+    if (updateData.fullName) admin.user.fullName = updateData.fullName;
+    if (updateData.contactNumber) admin.user.contactNumber = updateData.contactNumber;
+
+    return this.adminRepository.save(admin); // cascade saves user
   }
 
   /**
@@ -129,18 +140,18 @@ export class AdminService {
   async getAllFamilies() {
     const families = await this.familyRepository.find({
       relations: ['user', 'patients'],
-      order: { createdAt: 'DESC' },
+      order: { user: { createdAt: 'DESC' } },
     });
 
     return {
       families: families.map((family) => ({
         id: family.id,
-        fullName: family.fullName,
+        fullName: family.user.fullName,
         email: family.user.email,
-        contactNumber: family.contactNumber,
+        contactNumber: family.user.contactNumber,
         isActive: family.user.isActive,
         patientsCount: family.patients?.length || 0,
-        joinedDate: family.createdAt,
+        joinedDate: family.user.createdAt,
       })),
       total: families.length,
     };
@@ -158,12 +169,12 @@ export class AdminService {
 
     return {
       id: family.id,
-      fullName: family.fullName,
+      fullName: family.user.fullName,
       email: family.user.email,
-      contactNumber: family.contactNumber,
+      contactNumber: family.user.contactNumber,
       isActive: family.user.isActive,
       patientsCount: family.patients?.length || 0,
-      joinedDate: family.createdAt,
+      joinedDate: family.user.createdAt,
     };
   }
 
@@ -186,7 +197,7 @@ export class AdminService {
 
     return {
       id: family.id,
-      fullName: family.fullName,
+      fullName: family.user.fullName,
       isActive,
     };
   }
@@ -208,7 +219,7 @@ export class AdminService {
         medicalCondition: patient.chronicConditions || patient.medicalHistory,
         status: patient.isActive ? 'Active' : 'Inactive',
         familyId: patient.familyMemberId,
-        familyName: patient.familyMember?.fullName || 'N/A',
+        familyName: patient.familyMember?.user?.fullName || 'N/A',
       })),
       total: patients.length,
     };
@@ -232,7 +243,7 @@ export class AdminService {
       medicalCondition: patient.chronicConditions || patient.medicalHistory,
       status: patient.isActive ? 'Active' : 'Inactive',
       familyId: patient.familyMemberId,
-      familyName: patient.familyMember?.fullName || 'N/A',
+      familyName: patient.familyMember?.user?.fullName || 'N/A',
     };
   }
 

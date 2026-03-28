@@ -17,15 +17,17 @@ export class UsersService {
     email: string,
     password: string,
     role: UserRole,
+    fullName: string,
+    contactNumber?: string,
   ): Promise<User> {
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = this.userRepository.create({
       email,
       password: hashedPassword,
       role,
+      fullName,
+      contactNumber,
       isActive: true,
     });
 
