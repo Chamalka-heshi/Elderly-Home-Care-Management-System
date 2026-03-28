@@ -8,11 +8,6 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-/**
- * Stores caregiver-specific data.
- * Common fields (fullName, contactNumber, createdAt, updatedAt)
- * live on the User entity.
- */
 @Entity('caregivers')
 export class Caregiver {
   @PrimaryGeneratedColumn('uuid')

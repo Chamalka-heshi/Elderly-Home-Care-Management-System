@@ -48,11 +48,11 @@ export class AdminController {
       message: 'Admin created successfully',
       admin: {
         id: admin.id,
-        fullName: admin.fullName,
+        fullName: admin.user.fullName,
         email: admin.user.email,
-        contactNumber: admin.contactNumber,
+        contactNumber: admin.user.contactNumber,
         isActive: admin.user.isActive,
-        createdAt: admin.createdAt,
+        createdAt: admin.user.createdAt,
       },
     };
   }
@@ -64,11 +64,11 @@ export class AdminController {
     return {
       admins: admins.map((admin) => ({
         id: admin.id,
-        fullName: admin.fullName,
+        fullName: admin.user.fullName,
         email: admin.user.email,
-        contactNumber: admin.contactNumber,
+        contactNumber: admin.user.contactNumber,
         isActive: admin.user.isActive,
-        createdAt: admin.createdAt,
+        createdAt: admin.user.createdAt,
       })),
       total: admins.length,
     };
@@ -84,9 +84,9 @@ export class AdminController {
       message: 'Doctor created successfully',
       doctor: {
         id: doctor.id,
-        fullName: doctor.fullName,
+        fullName: doctor.user.fullName,
         email: doctor.user.email,
-        contactNumber: doctor.contactNumber,
+        contactNumber: doctor.user.contactNumber,
         specialization: doctor.specialization,
         licenseNumber: doctor.licenseNumber,
         experienceYears: doctor.experienceYears,
@@ -103,15 +103,15 @@ export class AdminController {
     return {
       doctors: doctors.map((doctor) => ({
         id: doctor.id,
-        fullName: doctor.fullName,
+        fullName: doctor.user.fullName,
         email: doctor.user.email,
-        contactNumber: doctor.contactNumber,
+        contactNumber: doctor.user.contactNumber,
         specialization: doctor.specialization,
         licenseNumber: doctor.licenseNumber,
         yearsOfExperience: doctor.experienceYears,
         hospitalAffiliation: doctor.hospitalAffiliation || 'N/A',
         isActive: doctor.user.isActive,
-        createdAt: doctor.createdAt,
+        createdAt: doctor.user.createdAt,
       })),
       total: doctors.length,
     };
@@ -123,9 +123,9 @@ export class AdminController {
 
     return {
       id: doctor.id,
-      fullName: doctor.fullName,
+      fullName: doctor.user.fullName,
       email: doctor.user.email,
-      contactNumber: doctor.contactNumber,
+      contactNumber: doctor.user.contactNumber,
       specialization: doctor.specialization,
       licenseNumber: doctor.licenseNumber,
       yearsOfExperience: doctor.experienceYears,
@@ -149,7 +149,7 @@ export class AdminController {
       message: 'Doctor updated successfully',
       doctor: {
         id: doctor.id,
-        fullName: doctor.fullName,
+        fullName: doctor.user.fullName,
         specialization: doctor.specialization,
         licenseNumber: doctor.licenseNumber,
         hospitalAffiliation: doctor.hospitalAffiliation,
@@ -180,9 +180,9 @@ export class AdminController {
       message: 'Caregiver created successfully',
       caregiver: {
         id: caregiver.id,
-        fullName: caregiver.fullName,
+        fullName: caregiver.user.fullName,
         email: caregiver.user.email,
-        contactNumber: caregiver.contactNumber,
+        contactNumber: caregiver.user.contactNumber,
         specializations: caregiver.specializations,
         experienceYears: caregiver.experienceYears,
         isActive: caregiver.user.isActive,
@@ -197,14 +197,14 @@ export class AdminController {
     return {
       caregivers: caregivers.map((caregiver) => ({
         id: caregiver.id,
-        fullName: caregiver.fullName,
+        fullName: caregiver.user.fullName,
         email: caregiver.user.email,
-        contactNumber: caregiver.contactNumber,
+        contactNumber: caregiver.user.contactNumber,
         specializations: caregiver.specializations || [],
         availableShifts: caregiver.availableShifts || [],
         yearsOfExperience: caregiver.experienceYears || 0,
         isActive: caregiver.user.isActive,
-        createdAt: caregiver.createdAt,
+        createdAt: caregiver.user.createdAt,
       })),
       total: caregivers.length,
     };
@@ -216,9 +216,9 @@ export class AdminController {
 
     return {
       id: caregiver.id,
-      fullName: caregiver.fullName,
+      fullName: caregiver.user.fullName,
       email: caregiver.user.email,
-      contactNumber: caregiver.contactNumber,
+      contactNumber: caregiver.user.contactNumber,
       specializations: caregiver.specializations,
       availableShifts: caregiver.availableShifts,
       yearsOfExperience: caregiver.experienceYears,
@@ -237,8 +237,8 @@ export class AdminController {
       message: 'Caregiver updated successfully',
       caregiver: {
         id: caregiver.id,
-        fullName: caregiver.fullName,
-        contactNumber: caregiver.contactNumber,
+        fullName: caregiver.user.fullName,
+        contactNumber: caregiver.user.contactNumber,
       },
     };
   }

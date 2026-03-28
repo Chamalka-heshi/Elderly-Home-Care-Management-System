@@ -8,11 +8,6 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-/**
- * Stores doctor-specific data.
- * Common fields (fullName, contactNumber, createdAt, updatedAt)
- * live on the User entity.
- */
 @Entity('doctors')
 export class Doctor {
   @PrimaryGeneratedColumn('uuid')
