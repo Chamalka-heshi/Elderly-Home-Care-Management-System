@@ -28,6 +28,7 @@ export type MenuLabel =
   | "Patient Management"
   | "Doctor Management"
   | "Caregiver Management"
+  | "Contact Messages"
   | "Settings";
 
 export interface MenuItem {

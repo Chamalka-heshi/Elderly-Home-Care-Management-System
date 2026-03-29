@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState, useCallback } from "react";
 import * as adminApi from "../../../api/admin.api";
 import type {
@@ -33,6 +31,7 @@ import DoctorManagement   from "./pages/DoctorManagement";
 import CaregiverManagement from "./pages/CaregiverManagement";
 import FamilyManagement   from "./pages/FamilyManagement";
 import PatientManagement  from "./pages/PatientManagement";
+import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
 
 // ── Menu items 
@@ -44,6 +43,12 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: IconHeart,           label: "Patient Management"  },
   { icon: IconStethoscope,     label: "Doctor Management"   },
   { icon: IconUserPlus,        label: "Caregiver Management"},
+  { icon: (p: IconProps) => (
+      <svg className={p.className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0-4 4H8l-4-4m16 0H4" />
+      </svg>
+    ), label: "Contact Messages" },
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
 ];
 
@@ -182,6 +187,7 @@ const AdminDashboard: React.FC = () => {
     else if (activeMenu === "Caregiver Management") loadCaregivers();
     else if (activeMenu === "Family Management")    loadFamilies();
     else if (activeMenu === "Patient Management")   loadPatients();
+    // Contact Messages loads itself internally
   }, [activeMenu]); 
 
   // ── Form submit handlers ──────────────────────────────────────────────────
@@ -356,6 +362,9 @@ const AdminDashboard: React.FC = () => {
             )}
             {!pageLoading && activeMenu === "Patient Management" && (
               <PatientManagement patients={patients} loading={false} onDelete={handleDeletePatient} />
+            )}
+            {activeMenu === "Contact Messages" && (
+              <ContactMessages addToast={addToast} />
             )}
             {!pageLoading && activeMenu === "Settings" && <Settings />}
           </main>
