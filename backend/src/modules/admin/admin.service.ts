@@ -12,6 +12,8 @@ import { UsersService } from '../users/users.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Patient } from '../patients/entities/patient.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
+import { Caregiver } from '../caregivers/entities/caregiver.entity';
 
 @Injectable()
 export class AdminService {
@@ -20,6 +22,10 @@ export class AdminService {
     private adminRepository: Repository<Admin>,
     @InjectRepository(Patient)
     private patientRepository: Repository<Patient>,
+    @InjectRepository(Doctor)
+    private doctorRepository: Repository<Doctor>,
+    @InjectRepository(Caregiver)
+    private caregiverRepository: Repository<Caregiver>,
     @InjectRepository(FamilyMember)
     private familyRepository: Repository<FamilyMember>,
     private usersService: UsersService,
@@ -101,12 +107,14 @@ export class AdminService {
   // ==================== DASHBOARD STATISTICS ====================
 
   async getDashboardStats() {
-    const [totalFamilies, totalPatients, totalAdmins, activePatients] =
+    const [totalFamilies, totalPatients, totalAdmins, activePatients,totalDoctors,totalCaregivers] =
       await Promise.all([
         this.familyRepository.count({ where: { user: { isActive: true } } }),
         this.patientRepository.count(),
         this.adminRepository.count({ where: { user: { isActive: true } } }),
         this.patientRepository.count({ where: { isActive: true } }),
+        this.doctorRepository.count({ where: { user: { isActive: true } } }),
+        this.caregiverRepository.count({ where: { user: { isActive: true } } }),
       ]);
 
     const firstDayOfMonth = new Date();
@@ -119,8 +127,6 @@ export class AdminService {
 
     const earnings = 125000;
     const upcomingAppointments = 0;
-    const totalDoctors = 0;
-    const totalCaregivers = 0;
 
     return {
       totalFamilies,

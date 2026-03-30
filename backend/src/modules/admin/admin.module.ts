@@ -9,10 +9,12 @@ import { DoctorsModule } from '../doctors/doctors.module';
 import { CaregiversModule } from '../caregivers/caregivers.module';
 import { Patient } from '../patients/entities/patient.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
+import { Caregiver } from '../caregivers/entities/caregiver.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Admin, Patient, FamilyMember]),
+    TypeOrmModule.forFeature([Admin, Patient, FamilyMember,Doctor,Caregiver]),
     UsersModule,
     DoctorsModule,
     CaregiversModule,
