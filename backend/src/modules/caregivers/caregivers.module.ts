@@ -4,9 +4,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CaregiversService } from './caregivers.service';
 import { Caregiver } from './entities/caregiver.entity';
 import { UsersModule } from '../users/users.module';
+import { CareNotesModule } from './care-notes/care-notes.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Caregiver]), UsersModule],
+  imports: [TypeOrmModule.forFeature([Caregiver]), UsersModule, CareNotesModule],
+  
   providers: [CaregiversService],
   exports: [CaregiversService],
 })

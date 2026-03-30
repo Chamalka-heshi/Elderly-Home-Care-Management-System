@@ -78,3 +78,4 @@ export class CreateCaregiverDto {
   @IsArray()
   availableShifts?: string[];
 }
+
