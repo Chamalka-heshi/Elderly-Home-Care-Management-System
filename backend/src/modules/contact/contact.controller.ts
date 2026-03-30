@@ -1,14 +1,27 @@
+/* eslint-disable prettier/prettier */
 import {
-  Body, Controller, Delete, Get, Param, Post,
-  Req, UseGuards, ValidationPipe,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ContactService } from './contact.service';
-import { CreateContactMessageDto, ReplyContactMessageDto } from './dto/create-contact-message.dto';
+import {
+  CreateContactMessageDto,
+  ReplyContactMessageDto,
+  UpdateContactInfoDto,
+} from './dto/create-contact-message.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard }   from '../../common/guards/roles.guard';
 import { Roles }        from '../../common/decorators/roles.decorator';
-import { UserRole }     from '../../common/enums/user-role.enum'; // ← adjust path if needed
+import { UserRole }     from '../../common/enums/user-role.enum';
 
 @Controller('contact')
 export class ContactController {
@@ -16,19 +29,38 @@ export class ContactController {
 
   // ── Public ────────────────────────────────────────────────────────────────
 
-  /** GET /api/contact/info */
+  /** GET /api/contact/info — system phone, email, address */
   @Get('info')
   getInfo() {
     return this.contactService.getInfo();
   }
 
-  /** POST /api/contact/message */
+  /** POST /api/contact/message — visitor submits a contact form */
   @Post('message')
-  createMessage(@Body(new ValidationPipe({ whitelist: true })) dto: CreateContactMessageDto) {
+  createMessage(
+    @Body(new ValidationPipe({ whitelist: true })) dto: CreateContactMessageDto,
+  ) {
     return this.contactService.createMessage(dto);
   }
 
-  // ── Admin-only ────────────────────────────────────────────────────────────
+  // ── Admin: contact info management ────────────────────────────────────────
+
+  /**
+   * PUT /api/contact/info
+   * Update the system's contact details (email, phone numbers, address …).
+   * These are shown on the public Contact page and used as the sender info
+   * in reply emails.
+   */
+  @Put('info')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  updateInfo(
+    @Body(new ValidationPipe({ whitelist: true })) dto: UpdateContactInfoDto,
+  ) {
+    return this.contactService.updateInfo(dto);
+  }
+
+  // ── Admin: message management ─────────────────────────────────────────────
 
   /** GET /api/contact/messages */
   @Get('messages')
@@ -46,9 +78,10 @@ export class ContactController {
     return this.contactService.getMessage(id);
   }
 
-  /** POST /api/contact/messages/:id/reply
-   *  Extracts the logged-in admin's id from the JWT payload and stores it.
-   *  req.user is populated by JwtStrategy — adjust .id / .sub to match yours.
+  /**
+   * POST /api/contact/messages/:id/reply
+   * Admin sends a reply — the response is persisted AND an email is dispatched
+   * to the original sender automatically.
    */
   @Post('messages/:id/reply')
   @UseGuards(JwtAuthGuard, RolesGuard)
