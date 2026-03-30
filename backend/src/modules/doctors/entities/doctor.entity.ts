@@ -1,12 +1,15 @@
 /* eslint-disable prettier/prettier */
+// modules/doctors/entities/doctor.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   OneToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Prescription } from '../../prescription/entities/prescription.entity';
 
 @Entity('doctors')
 export class Doctor {
@@ -17,7 +20,8 @@ export class Doctor {
   @JoinColumn()
   user: User;
 
-  // ── Doctor-specific fields ───────────────────────────────────────────────
+  // ── Doctor-specific fields ───────────────────────────────────────────────────
+
   @Column()
   specialization: string;
 
@@ -44,4 +48,15 @@ export class Doctor {
 
   @Column({ nullable: true })
   availableTimeEnd: string;
+
+  // ── Prescriptions written by this doctor ─────────────────────────────────────
+  //
+  // Inverse side: Prescription.doctor (ManyToOne).
+  // Not loaded eagerly — query PrescriptionsService.findAll(doctorId) instead.
+
+  @OneToMany(() => Prescription, (prescription) => prescription.doctor, {
+    cascade: false,
+    eager: false,
+  })
+  prescriptions: Prescription[];
 }
