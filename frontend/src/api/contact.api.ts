@@ -112,12 +112,12 @@ export const replyToMessage = async (
   return res.json();
 };
 
-/** PATCH /api/contact/info — admin updates clinic contact details */
+/** PUT /api/contact/info — admin updates clinic contact details */
 export const updateContactInfo = async (
   payload: Partial<ContactInfo>,
 ): Promise<{ message: string; data: ContactInfo }> => {
   const res = await fetch(`${API_BASE_URL}/contact/info`, {
-    method: 'PATCH',
+    method: 'PUT',          // ← was PATCH, now PUT to match the backend controller
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
