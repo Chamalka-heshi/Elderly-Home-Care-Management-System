@@ -348,7 +348,10 @@ export class AuthService {
 
     // 3. Find existing user or create a new one.
     let user = await this.userRepository.findOne({ where: { email } });
-    let userfamily = await this.familyService.findByUserId(user.id);
+    // if(user){
+    //     let userfamily = await this.familyService.findByUserId(user.id);
+    // }
+    
     let isNewUser = false;
 
     if (!user) {
@@ -374,9 +377,9 @@ export class AuthService {
       if (!user.avatarUrl && picture) user.avatarUrl = picture;
       await this.userRepository.save(user);
     }
-    else if (!userfamily) {
-      await this.familyService.create({ user });  
-    }  
+    // else if (!userfamily) {
+    //   await this.familyService.create({ user });  
+    // }  
 
     // 4. Issue our own JWT (same structure as regular login).
     const token = this.generateToken(user.id, user.email, user.role);
