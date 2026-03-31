@@ -14,6 +14,7 @@ import {
 import { AuthService } from './auth.service';
 import { FamilySignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { FirebaseAuthDto } from './dto/firebase-auth.dto';
 import { CreateDoctorDto } from '../doctors/dto/create-doctor.dto';
 import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
 import { CreateAdminDto } from '../admin/dto/create-admin.dto';
@@ -24,9 +25,9 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 
 interface JwtUser {
-  sub?: string; // common JWT field
-  userId?: string; // alternative
-  id?: string; // fallback
+  sub?: string;
+  userId?: string;
+  id?: string;
   email?: string;
   role?: UserRole;
 }
@@ -51,6 +52,23 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  // ── POST /api/auth/firebase ───────────────────────────────────────────────
+  // Google sign-in via Firebase.
+  // Firebase handles OAuth on the frontend; we verify the ID token here.
+  @Post('firebase')
+  @HttpCode(HttpStatus.OK)
+  async firebaseAuth(@Body() dto: FirebaseAuthDto) {
+    const result = await this.authService.firebaseAuth(dto.idToken);
+    return {
+      token:     result.token,
+      user:      result.user,
+      message:   result.isNewUser
+        ? 'Account created successfully'
+        : 'Signed in successfully',
+      isNewUser: result.isNewUser,
+    };
   }
 
   /* =========================================================
