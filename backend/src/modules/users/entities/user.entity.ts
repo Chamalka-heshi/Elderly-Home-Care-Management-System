@@ -28,7 +28,7 @@ export class User {
   })
   role: UserRole;
 
-  // ── Common profile fields (shared across all roles) ──────────────────────
+  // ── Common profile fields ─────────────────────────────────────────────────
   @Column()
   fullName: string;
 
@@ -38,6 +38,20 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  // ── Firebase / OAuth fields ───────────────────────────────────────────────
+
+  /**
+   * Firebase UID from the decoded ID token.
+   * Unique per Firebase project — used to link Google / Facebook sign-ins.
+   */
+  @Column({ type: 'varchar', nullable: true, unique: true, name: 'firebase_uid' })
+  firebaseUid: string | null;
+
+  /** Profile picture URL supplied by the OAuth provider. */
+  @Column({ type: 'varchar', nullable: true, name: 'avatar_url' })
+  avatarUrl: string | null;
+
+  // ── Timestamps ────────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
