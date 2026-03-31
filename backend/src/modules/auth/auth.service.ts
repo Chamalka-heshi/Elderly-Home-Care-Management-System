@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { FamilyService } from '../family/family.service';
@@ -21,6 +22,7 @@ import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
 import { CreateAdminDto } from '../admin/dto/create-admin.dto';
 import { CreatePatientDto } from '../patients/dto/create-patient.dto';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { FirebaseAdminService } from './firebase/firebase-admin.service';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +35,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly firebaseAdmin: FirebaseAdminService,
   ) {}
 
   /**
@@ -47,7 +50,6 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // fullName and contactNumber are stored on the User record
     const user = await this.usersService.create(
       email,
       password,
@@ -56,7 +58,6 @@ export class AuthService {
       contactNumber,
     );
 
-    // FamilyMember profile — no extra fields needed
     await this.familyService.create({ user });
 
     const token = this.generateToken(user.id, user.email, user.role);
@@ -181,7 +182,6 @@ export class AuthService {
     createPatientDto: CreatePatientDto,
     familyUserId: string,
   ) {
-    // Verify family role
     const familyUser = await this.usersService.findById(familyUserId);
     if (!familyUser || familyUser.role !== UserRole.FAMILY) {
       throw new ForbiddenException(
@@ -189,13 +189,11 @@ export class AuthService {
       );
     }
 
-    // Get family member profile
     const familyMember = await this.familyService.findByUserId(familyUserId);
     if (!familyMember) {
       throw new NotFoundException('Family member profile not found');
     }
 
-    // Create patient profile
     const patient = await this.patientsService.create(
       familyMember.id,
       createPatientDto,
@@ -215,7 +213,6 @@ export class AuthService {
 
   /**
    * UNIVERSAL: Login (All Roles)
-   * Automatically detects role from user record
    */
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
@@ -237,7 +234,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Load role-specific profile (for extra fields only — common ones are on user)
     let profileData = null;
 
     switch (user.role) {
@@ -303,7 +299,7 @@ export class AuthService {
   }
 
   /**
-   * Delete Account (Soft delete / Deactivate)
+   * Delete Account (soft delete / deactivate)
    */
   async deleteAccount(userId: string) {
     if (!userId) {
@@ -315,24 +311,89 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // Soft delete
     user.isActive = false;
     await this.userRepository.save(user);
 
     return { message: 'Account deleted successfully' };
   }
 
+  // ── POST /api/auth/firebase ───────────────────────────────────────────────
+  // Handles Google sign-in via Firebase.
+  // Firebase verifies OAuth on the frontend; we verify the ID token here
+  // and issue our own JWT.
+
+  async firebaseAuth(
+    idToken: string,
+  ): Promise<{ token: string; user: any; isNewUser: boolean }> {
+
+    // 1. Verify the Firebase ID token with the Admin SDK.
+    let decodedToken: Awaited<ReturnType<FirebaseAdminService['verifyIdToken']>>;
+    try {
+      decodedToken = await this.firebaseAdmin.verifyIdToken(idToken);
+    } catch (err: any) {
+      throw new UnauthorizedException(
+        `Invalid Firebase token: ${err?.message ?? 'verification failed'}`,
+      );
+    }
+
+    // 2. Extract user info from the verified token.
+    const { email, name, picture, uid } = decodedToken;
+
+    if (!email) {
+      throw new BadRequestException(
+        'Your Google account does not have a public email address. ' +
+        'Please use a different sign-in method.',
+      );
+    }
+
+    // 3. Find existing user or create a new one.
+    let user = await this.userRepository.findOne({ where: { email } });
+    let isNewUser = false;
+
+    if (!user) {
+      // First sign-in — create a FAMILY account automatically.
+      // Social-login users never use a password, so store an un-guessable placeholder.
+      user = this.userRepository.create({
+        email,
+        fullName:      name ?? email.split('@')[0],
+        password:      `FIREBASE_OAUTH::${crypto.randomBytes(32).toString('hex')}`,
+        role:          UserRole.FAMILY,
+        contactNumber: '',
+        firebaseUid:   uid,
+        avatarUrl:     picture ?? null,
+      });
+
+      user = await this.userRepository.save(user);
+      isNewUser = true;
+
+    } else if (!user.firebaseUid) {
+      // Existing email/password account — link Firebase UID to it.
+      user.firebaseUid = uid;
+      if (!user.avatarUrl && picture) user.avatarUrl = picture;
+      await this.userRepository.save(user);
+    }
+
+    // 4. Issue our own JWT (same structure as regular login).
+    const token = this.generateToken(user.id, user.email, user.role);
+
+    return {
+      token,
+      user: {
+        id:            user.id,
+        fullName:      user.fullName,
+        email:         user.email,
+        role:          user.role,
+        contactNumber: user.contactNumber,
+      },
+      isNewUser,
+    };
+  }
+
   /**
    * Generate JWT Token
    */
   private generateToken(userId: string, email: string, role: UserRole): string {
-    const payload = {
-      sub: userId,
-      email,
-      role,
-    };
-
-    return this.jwtService.sign(payload);
+    return this.jwtService.sign({ sub: userId, email, role });
   }
 
   /**
