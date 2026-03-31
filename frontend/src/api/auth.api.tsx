@@ -1,4 +1,5 @@
 import type { User, UserRole } from '../auth/AuthContext';
+import { signInWithGoogle, signOutFirebase } from '../config/firebase';
 
 export interface SignupRequest {
   fullName: string;
@@ -24,12 +25,25 @@ export interface SignupResponse {
   token: string;
 }
 
+export interface SocialAuthResponse {
+  token: string;
+  user: User;
+  message: string;
+  isNewUser?: boolean;
+}
+
 const API_BASE_URL = 'http://localhost:3000/api';
 
-/**
- * Family Member Signup
- * ROUTE: POST /api/auth/family/signup
- */
+// ── Helper ────────────────────────────────────────────────────────────────────
+
+const storeSession = (token: string, user: User) => {
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(user));
+};
+
+// ── Family Member Signup ──────────────────────────────────────────────────────
+// ROUTE: POST /api/auth/family/signup
+
 export const signup = async (data: SignupRequest): Promise<SignupResponse> => {
   try {
     const res = await fetch(`${API_BASE_URL}/auth/family/signup`, {
@@ -48,9 +62,7 @@ export const signup = async (data: SignupRequest): Promise<SignupResponse> => {
       throw new Error('Invalid response from server');
     }
 
-    localStorage.setItem('token', responseData.token);
-    localStorage.setItem('user', JSON.stringify(responseData.user));
-
+    storeSession(responseData.token, responseData.user);
     return responseData as SignupResponse;
   } catch (error) {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -60,10 +72,9 @@ export const signup = async (data: SignupRequest): Promise<SignupResponse> => {
   }
 };
 
-/**
- * Universal Sign In
- * ROUTE: POST /api/auth/login
- */
+// ── Universal Sign In ─────────────────────────────────────────────────────────
+// ROUTE: POST /api/auth/login
+
 export const signin = async (data: SigninRequest): Promise<SigninResponse> => {
   try {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -82,9 +93,7 @@ export const signin = async (data: SigninRequest): Promise<SigninResponse> => {
       throw new Error('Invalid response from server');
     }
 
-    localStorage.setItem('token', responseData.token);
-    localStorage.setItem('user', JSON.stringify(responseData.user));
-
+    storeSession(responseData.token, responseData.user);
     return responseData as SigninResponse;
   } catch (error) {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -94,14 +103,59 @@ export const signin = async (data: SigninRequest): Promise<SigninResponse> => {
   }
 };
 
-/**
- * Sign Out
- */
+// ── Firebase Google Auth ──────────────────────────────────────────────────────
+// Internal helper — sends the Firebase ID token to the backend for verification.
+// ROUTE: POST /api/auth/firebase
+
+const firebaseSocialAuth = async (idToken: string): Promise<SocialAuthResponse> => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/firebase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+
+    const responseData = await res.json();
+
+    if (!res.ok) {
+      throw new Error(responseData.message || responseData.error || 'Google sign-in failed');
+    }
+
+    if (!responseData.token || !responseData.user) {
+      throw new Error('Invalid response from server');
+    }
+
+    storeSession(responseData.token, responseData.user);
+    return responseData as SocialAuthResponse;
+  } catch (error) {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Unable to connect to server. Please ensure the backend is running.');
+    }
+    throw error;
+  }
+};
+
+// ── Google sign-in via Firebase ───────────────────────────────────────────────
+
+export const googleAuth = async (): Promise<SocialAuthResponse> => {
+  // 1. Open Google popup via Firebase Auth SDK
+  const credential = await signInWithGoogle();
+
+  // 2. Get the Firebase ID token (short-lived JWT signed by Firebase)
+  const idToken = await credential.user.getIdToken();
+
+  // 3. Send to backend for verification + session creation
+  return firebaseSocialAuth(idToken);
+};
+
+// ── Sign Out ──────────────────────────────────────────────────────────────────
+
 export const signout = async (
   setUser: (user: User | null) => void,
   navigate: (path: string) => void
 ): Promise<void> => {
   try {
+    await signOutFirebase();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
@@ -111,10 +165,9 @@ export const signout = async (
   }
 };
 
-/**
- * Delete Account
- * ROUTE: DELETE /api/auth/delete-account
- */
+// ── Delete Account ────────────────────────────────────────────────────────────
+// ROUTE: DELETE /api/auth/delete-account
+
 export const deleteAccount = async (): Promise<{ message: string }> => {
   try {
     const token = localStorage.getItem('token');
@@ -143,10 +196,9 @@ export const deleteAccount = async (): Promise<{ message: string }> => {
   }
 };
 
-/**
- * Get Current User Profile
- * ROUTE: GET /api/auth/profile
- */
+// ── Get Current User Profile ──────────────────────────────────────────────────
+// ROUTE: GET /api/auth/profile
+
 export const getProfile = async (): Promise<User> => {
   try {
     const token = localStorage.getItem('token');
@@ -192,13 +244,9 @@ export const getStoredUser = (): User | null => {
   }
 };
 
-export const getStoredToken = (): string | null => {
-  return localStorage.getItem('token');
-};
+export const getStoredToken = (): string | null => localStorage.getItem('token');
 
-export const isAuthenticated = (): boolean => {
-  return !!getStoredToken();
-};
+export const isAuthenticated = (): boolean => !!getStoredToken();
 
 export const hasRole = (role: UserRole): boolean => {
   const user = getStoredUser();
