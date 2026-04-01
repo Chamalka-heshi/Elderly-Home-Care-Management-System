@@ -3,9 +3,12 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import sideImg from "../../../assets/Home/Login Art.png";
-import { signin, googleAuth, isAuthenticated, getCurrentRole } from "../../../api/auth.api";
-import type { SigninRequest } from "../../../api/auth.api";
+
+// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
+import { signin, googleAuth, isAuthenticated, getCurrentRole } from "../../../api/auth/auth.api";
+import type { SigninRequest } from "../../../api/auth/auth.api";
 import { useAuth } from "../../../auth/AuthContext";
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Firebase error code → human-readable message ─────────────────────────────
 const friendlyFirebaseError = (code: string): string => {

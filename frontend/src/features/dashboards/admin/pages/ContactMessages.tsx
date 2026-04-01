@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import * as contactApi from '../../../../api/contact.api';
-import type { ContactMessage } from '../../../../api/contact.api';
+
+import * as contactApi from '../../../../api/contact/admin-contact.api';
+import type { ContactMessage } from '../../../../api/contact/contact.types';
 
 // ── Tiny icons ────────────────────────────────────────────────────────────
 
@@ -229,13 +230,17 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
   const [selected, setSelected]     = useState<ContactMessage | null>(null);
   const [filter, setFilter]         = useState<'all' | 'pending' | 'replied'>('all');
 
+  // FIX: Safely extract lengths from the array directly to satisfy TypeScript!
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await contactApi.getAllMessages();
-      setMessages(data.messages);
-      setTotal(data.total);
-      setPending(data.pending);
+      const msgs = data.messages || [];
+      
+      setMessages(msgs);
+      setTotal(msgs.length); // Calculated directly from array
+      setPending(msgs.filter((m) => m.status === 'pending').length); // Calculated directly
+      
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to load messages.');
     } finally {

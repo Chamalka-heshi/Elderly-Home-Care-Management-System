@@ -1,6 +1,7 @@
-
 import React from "react";
-import type { Family } from "../../../../api/admin.api";
+// ── NEW API IMPORT ──
+import type { Family } from "../../../../api/users/user.types";
+
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
 
@@ -36,8 +37,9 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
                 <td className="px-4 py-3 font-semibold text-slate-800">{f.fullName}</td>
                 <td className="px-4 py-3 text-slate-600">{f.email}</td>
                 <td className="px-4 py-3 text-slate-600">{f.contactNumber ?? "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{f.patientsCount}</td>
-                <td className="px-4 py-3 text-slate-600">{new Date(f.joinedDate).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-slate-600">{f.patientsCount ?? 0}</td>
+                {/* Changed f.joinedDate to f.createdAt to match the updated API type */}
+                <td className="px-4 py-3 text-slate-600">{new Date(f.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <Badge tone={f.isActive ? "emerald" : "red"}>{f.isActive ? "Active" : "Blocked"}</Badge>
                 </td>

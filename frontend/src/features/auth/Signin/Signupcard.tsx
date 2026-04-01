@@ -3,9 +3,20 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import sideImg from "../../../assets/Home/Login Art.png";
-import { signup, googleAuth } from "../../../api/auth.api";
-import type { SignupRequest } from "../../../api/auth.api";
+
+// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
+import { googleAuth } from "../../../api/auth/auth.api";
+import { signupFamily } from "../../../api/auth/family-auth.api";
 import { useAuth } from "../../../auth/AuthContext";
+
+// Define the interface locally since we removed it from the shared auth API
+export interface SignupRequest {
+  fullName: string;
+  email: string;
+  contactNumber: string;
+  password?: string; // Optional because Google sign-up doesn't use it
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Firebase error code → human-readable message ─────────────────────────────
 const friendlyFirebaseError = (code: string): string => {
@@ -87,7 +98,7 @@ export default function SignupCard({ onSuccessClose, onGoLogin }: Props) {
 
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
-    if (!passwordRegex.test(formData.password)) {
+    if (!passwordRegex.test(formData.password || "")) {
       setError("Password must include uppercase, lowercase, number & special character.");
       return;
     }
@@ -95,7 +106,8 @@ export default function SignupCard({ onSuccessClose, onGoLogin }: Props) {
     setLoading(true);
 
     try {
-      const response = await signup({
+      // Changed 'signup' to 'signupFamily'
+      const response = await signupFamily({
         ...formData,
         email: formData.email.trim().toLowerCase(),
         fullName: formData.fullName.trim(),

@@ -1,7 +1,8 @@
-
-
 import React from "react";
-import type { DashboardStats, Patient } from "../../../../api/admin.api";
+// ── NEW API IMPORTS ──
+import type { Patient } from "../../../../api/patients/patient.types";
+import type { DashboardStats } from "../AdminDashboard"; // DashboardStats is defined in AdminDashboard.tsx
+
 import StatCard   from "../../common/widgets/StatCard";
 import Badge      from "../../common/widgets/Badge";
 import type { MenuLabel } from "../components/Sidebar";
@@ -15,10 +16,9 @@ const ShieldIcon   = ({ className = "h-5 w-5" }) => <svg className={className} f
 const SettingsIcon = ({ className = "h-5 w-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="3" strokeWidth={2} /><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a7.97 7.97 0 00.1-1 7.97 7.97 0 00-.1-1l2.02-1.57-2-3.46-2.45 1a7.8 7.8 0 00-1.73-1L14.9 2h-4l-.32 2.97a7.8 7.8 0 00-1.73 1l-2.45-1-2 3.46L6.6 12a7.97 7.97 0 00-.1 1c0 .34.03.67.1 1L4.58 16.57l2 3.46 2.45-1c.53.42 1.11.77 1.73 1L10.9 22h4l.32-2.97c.62-.23 1.2-.58 1.73-1l2.45 1 2-3.46L19.4 15z" /></svg>;
 const SparkleIcon  = ({ className = "h-4 w-4" }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.2 4.2L17.4 8l-4.2 1.2L12 13.4l-1.2-4.2L6.6 8l4.2-1.8L12 2zm7 7l.8 2.8 2.8.8-2.8.8L19 16.6l-.8-2.8-2.8-.8 2.8-1.2L19 9z" /></svg>;
 
-const statusTone = (s: string) =>
-  s === "Confirmed" || s === "Active" ? "emerald" as const :
-  s === "Incoming"                    ? "amber"   as const :
-  s === "Cancelled"                   ? "red"     as const : "slate" as const;
+// Updated for boolean isActive field
+const statusTone = (isActive: boolean) =>
+  isActive ? "emerald" as const : "slate" as const;
 
 const ActionCard: React.FC<{
   title: string; subtitle: string;
@@ -98,8 +98,8 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
               <thead className="text-xs font-semibold text-slate-600">
                 <tr className="border-b border-slate-100">
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Family</th>
-                  <th className="px-4 py-3">Condition</th>
+                  <th className="px-4 py-3">NIC</th>
+                  <th className="px-4 py-3">Condition / History</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Admitted</th>
                   <th className="px-4 py-3 text-right">Action</th>
@@ -108,11 +108,11 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
               <tbody className="divide-y divide-slate-100">
                 {patients.slice(0, 5).map((p) => (
                   <tr key={p.id} className="transition hover:bg-slate-50/60">
-                    <td className="px-4 py-3 font-semibold text-slate-800">{p.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.familyName ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.medicalCondition ?? "—"}</td>
-                    <td className="px-4 py-3"><Badge tone={statusTone(p.status)}>{p.status}</Badge></td>
-                    <td className="px-4 py-3 text-slate-600">{new Date(p.admissionDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{p.fullName}</td>
+                    <td className="px-4 py-3 text-slate-600">{p.nic ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-600 truncate max-w-[150px]">{p.medicalHistory || p.chronicConditions || "—"}</td>
+                    <td className="px-4 py-3"><Badge tone={statusTone(p.isActive)}>{p.isActive ? "Active" : "Inactive"}</Badge></td>
+                    <td className="px-4 py-3 text-slate-600">{new Date(p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => onNavigate("Patient Management")} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700">
                         View
@@ -135,23 +135,23 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
           <p className="mt-1 text-xs text-slate-500">Fast navigation for daily admin tasks.</p>
           <div className="mt-5 space-y-3">
             <ActionCard title="Add a new doctor"  subtitle="Register & verify doctor accounts." icon={StethoscopeIcon} onClick={onAddDoctor} />
-            <ActionCard title="Manage families"   subtitle="Review linked family members."       icon={UsersIcon}       onClick={() => onNavigate("Family Management")} />
-            <ActionCard title="Admin controls"    subtitle="Roles, permissions & audit."         icon={ShieldIcon}      onClick={() => onNavigate("Admin Management")} />
-            <ActionCard title="System settings"  subtitle="Configure platform preferences."      icon={SettingsIcon}    onClick={() => onNavigate("Settings")} />
+            <ActionCard title="Manage families"   subtitle="Review linked family members."       icon={UsersIcon}      onClick={() => onNavigate("Family Management")} />
+            <ActionCard title="Admin controls"    subtitle="Roles, permissions & audit."         icon={ShieldIcon}     onClick={() => onNavigate("Admin Management")} />
+            <ActionCard title="System settings"  subtitle="Configure platform preferences."      icon={SettingsIcon}   onClick={() => onNavigate("Settings")} />
           </div>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-emerald-600 p-5 shadow-[0_20px_60px_rgba(2,6,23,0.10)]">
           <p className="text-xs font-semibold text-emerald-100">Monthly Snapshot</p>
-          <p className="mt-2 text-3xl font-extrabold text-white">Rs.{stats.earnings.toLocaleString()}</p>
+          <p className="mt-2 text-3xl font-extrabold text-white">Rs.{stats?.earnings?.toLocaleString() || "0"}</p>
           <p className="text-xs text-emerald-200">Estimated monthly earnings</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <div className="rounded-2xl bg-white/10 p-3 text-center">
-              <p className="text-xl font-bold text-white">{stats.newPatientsThisMonth}</p>
+              <p className="text-xl font-bold text-white">{stats?.newPatientsThisMonth || 0}</p>
               <p className="text-[10px] text-emerald-200">New patients</p>
             </div>
             <div className="rounded-2xl bg-white/10 p-3 text-center">
-              <p className="text-xl font-bold text-white">{stats.upcomingAppointments}</p>
+              <p className="text-xl font-bold text-white">{stats?.upcomingAppointments || 0}</p>
               <p className="text-[10px] text-emerald-200">Upcoming appts</p>
             </div>
           </div>

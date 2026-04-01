@@ -1,9 +1,58 @@
 import React, { useEffect, useState, useCallback } from "react";
-import * as adminApi from "../../../api/admin.api";
-import type {
-  Admin, Doctor, Caregiver, Family, Patient, DashboardStats,
-  CreateAdminRequest, CreateDoctorRequest, CreateCaregiverRequest,
-} from "../../../api/admin.api";
+
+// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
+import { getDashboardStats } from "../../../api/users/admin-dashboard.api";
+import {
+  getAllAdmins, createAdmin,
+  getAllDoctors, createDoctor, deactivateDoctor, activateDoctor,
+  getAllCaregivers, createCaregiver, deactivateCaregiver, activateCaregiver,
+  getAllFamilies, toggleFamilyStatus
+} from "../../../api/users/admin-users.api";
+import { getAllPatientsAdmin, deletePatientAdmin } from "../../../api/patients/admin-patient.api";
+
+// ── TYPES ────────────────────────────────────────────────────────────────────
+import type { BaseUser as Admin, Doctor, Caregiver, Family } from "../../../api/users/user.types";
+import type { Patient } from "../../../api/patients/patient.types";
+
+export interface DashboardStats {
+  totalFamilies: number;
+  totalPatients: number;
+  totalDoctors: number;
+  totalCaregivers: number;
+  totalAdmins: number;
+  activePatients: number;
+  newPatientsThisMonth: number;
+  upcomingAppointments: number;
+  earnings: number;
+}
+
+export interface CreateAdminRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  contactNumber?: string;
+}
+
+export interface CreateDoctorRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  contactNumber?: string;
+  specialization: string;
+  licenseNumber: string;
+  yearsOfExperience: number;
+}
+
+export interface CreateCaregiverRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  contactNumber?: string;
+  shiftPreference: "day" | "night" | "flexible";
+  certifications: string[];
+  yearsOfExperience: number;
+  availabilityStatus: "available" | "busy" | "off-duty";
+}
 
 // ── Layout components 
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
@@ -16,7 +65,7 @@ import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
 import {
   IconLayoutDashboard, IconShield, IconUsers,
   IconHeart, IconStethoscope, IconUserPlus, IconSettings,
-  IconCheckCircle, IconAlertCircle,
+  IconCheckCircle, IconAlertCircle, IconCalendar, IconInbox,
   type IconProps,
 } from "../common/icons";
 
@@ -31,6 +80,7 @@ import DoctorManagement   from "./pages/DoctorManagement";
 import CaregiverManagement from "./pages/CaregiverManagement";
 import FamilyManagement   from "./pages/FamilyManagement";
 import PatientManagement  from "./pages/PatientManagement";
+import AppointmentManagement from "./pages/AppointmentManagement";
 import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
 
@@ -43,12 +93,8 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: IconHeart,           label: "Patient Management"  },
   { icon: IconStethoscope,     label: "Doctor Management"   },
   { icon: IconUserPlus,        label: "Caregiver Management"},
-  { icon: (p: IconProps) => (
-      <svg className={p.className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0-4 4H8l-4-4m16 0H4" />
-      </svg>
-    ), label: "Contact Messages" },
+  { icon: IconCalendar,        label: "Appointment Management" },
+  { icon: IconInbox,           label: "Contact Messages"    },
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
 ];
 
@@ -140,8 +186,8 @@ const AdminDashboard: React.FC = () => {
     try {
       setPageLoading(true);
       const [stats, patientsData] = await Promise.all([
-        adminApi.getDashboardStats(),
-        adminApi.getAllPatients(),
+        getDashboardStats(),
+        getAllPatientsAdmin(),
       ]);
       setDashboardStats(stats);
       setPatients(patientsData.patients);
@@ -151,31 +197,31 @@ const AdminDashboard: React.FC = () => {
   }, [addToast]);
 
   const loadAdmins = useCallback(async () => {
-    try { setPageLoading(true); const d = await adminApi.getAllAdmins(); setAdmins(d.admins); }
+    try { setPageLoading(true); const d = await getAllAdmins(); setAdmins(d.admins); }
     catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to load admins"); }
     finally { setPageLoading(false); }
   }, [addToast]);
 
   const loadDoctors = useCallback(async () => {
-    try { setPageLoading(true); const d = await adminApi.getAllDoctors(); setDoctors(d.doctors); }
+    try { setPageLoading(true); const d = await getAllDoctors(); setDoctors(d.doctors); }
     catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to load doctors"); }
     finally { setPageLoading(false); }
   }, [addToast]);
 
   const loadCaregivers = useCallback(async () => {
-    try { setPageLoading(true); const d = await adminApi.getAllCaregivers(); setCaregivers(d.caregivers); }
+    try { setPageLoading(true); const d = await getAllCaregivers(); setCaregivers(d.caregivers); }
     catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to load caregivers"); }
     finally { setPageLoading(false); }
   }, [addToast]);
 
   const loadFamilies = useCallback(async () => {
-    try { setPageLoading(true); const d = await adminApi.getAllFamilies(); setFamilies(d.families); }
+    try { setPageLoading(true); const d = await getAllFamilies(); setFamilies(d.families); }
     catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to load families"); }
     finally { setPageLoading(false); }
   }, [addToast]);
 
   const loadPatients = useCallback(async () => {
-    try { setPageLoading(true); const d = await adminApi.getAllPatients(); setPatients(d.patients); }
+    try { setPageLoading(true); const d = await getAllPatientsAdmin(); setPatients(d.patients); }
     catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to load patients"); }
     finally { setPageLoading(false); }
   }, [addToast]);
@@ -203,8 +249,8 @@ const AdminDashboard: React.FC = () => {
     };
     try {
       setModalLoading(true);
-      const res = await adminApi.createAdmin(data);
-      addToast("success", res.message);
+      const res = await createAdmin(data);
+      addToast("success", (res as any).message || "Admin created successfully");
       setShowAddAdmin(false); loadAdmins();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create admin"); }
     finally { setModalLoading(false); }
@@ -224,8 +270,8 @@ const AdminDashboard: React.FC = () => {
     };
     try {
       setModalLoading(true);
-      const res = await adminApi.createDoctor(data);
-      addToast("success", res.message);
+      const res = await createDoctor(data);
+      addToast("success", (res as any).message || "Doctor created successfully");
       setShowAddDoctor(false); loadDoctors();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create doctor"); }
     finally { setModalLoading(false); }
@@ -234,8 +280,8 @@ const AdminDashboard: React.FC = () => {
   const handleToggleDoctorStatus = async (id: string, isActive: boolean) => {
     try {
       const res = isActive
-        ? await adminApi.deactivateDoctor(id)
-        : await adminApi.activateDoctor(id);
+        ? await deactivateDoctor(id)
+        : await activateDoctor(id);
       addToast("success", res.message); loadDoctors();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to update doctor"); }
   };
@@ -256,8 +302,8 @@ const AdminDashboard: React.FC = () => {
     };
     try {
       setModalLoading(true);
-      const res = await adminApi.createCaregiver(data);
-      addToast("success", res.message);
+      const res = await createCaregiver(data);
+      addToast("success", (res as any).message || "Caregiver created successfully");
       setShowAddCaregiver(false); loadCaregivers();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create caregiver"); }
     finally { setModalLoading(false); }
@@ -266,23 +312,23 @@ const AdminDashboard: React.FC = () => {
   const handleToggleCaregiverStatus = async (id: string, isActive: boolean) => {
     try {
       const res = isActive
-        ? await adminApi.deactivateCaregiver(id)
-        : await adminApi.activateCaregiver(id);
+        ? await deactivateCaregiver(id)
+        : await activateCaregiver(id);
       addToast("success", res.message); loadCaregivers();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to update caregiver"); }
   };
 
   const handleToggleFamilyStatus = async (id: string, isActive: boolean) => {
     try {
-      const res = await adminApi.toggleFamilyStatus(id, !isActive);
-      addToast("success", res.message); loadFamilies();
+      const res = await toggleFamilyStatus(id, !isActive);
+      addToast("success", (res as any).message || "Status updated successfully"); loadFamilies();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to update family"); }
   };
 
   const handleDeletePatient = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this patient?")) return;
     try {
-      const res = await adminApi.deletePatient(id);
+      const res = await deletePatientAdmin(id);
       addToast("success", res.message); loadPatients();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to delete patient"); }
   };
@@ -349,7 +395,7 @@ const AdminDashboard: React.FC = () => {
               />
             )}
             {!pageLoading && activeMenu === "Admin Management" && (
-              <AdminManagement admins={admins} loading={false} onAddAdmin={() => setShowAddAdmin(true)} />
+              <AdminManagement admins={admins as any} loading={false} onAddAdmin={() => setShowAddAdmin(true)} />
             )}
             {!pageLoading && activeMenu === "Doctor Management" && (
               <DoctorManagement doctors={doctors} loading={false} onAddDoctor={() => setShowAddDoctor(true)} onToggleStatus={handleToggleDoctorStatus} />
@@ -362,6 +408,9 @@ const AdminDashboard: React.FC = () => {
             )}
             {!pageLoading && activeMenu === "Patient Management" && (
               <PatientManagement patients={patients} loading={false} onDelete={handleDeletePatient} />
+            )}
+            {activeMenu === "Appointment Management" && (
+              <AppointmentManagement addToast={addToast}/>
             )}
             {activeMenu === "Contact Messages" && (
               <ContactMessages addToast={addToast} />

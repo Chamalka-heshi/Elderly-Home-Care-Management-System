@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { signout } from '../api/auth.api';
+import { signout } from "../api/auth/auth.api";
 import { useAuth } from '../auth/AuthContext';
 
 // LogOut icon as SVG component

@@ -1,6 +1,7 @@
-
 import React from "react";
-import type { Caregiver } from "../../../../api/admin.api";
+// ── NEW API IMPORT ──
+import type { Caregiver } from "../../../../api/users/user.types";
+
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
 
@@ -53,34 +54,41 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {caregivers.map((c) => (
-              <tr key={c.id} className="transition hover:bg-slate-50/60">
-                <td className="px-4 py-3 font-semibold text-slate-800">{c.fullName}</td>
-                <td className="px-4 py-3 text-slate-600">{c.email}</td>
-                <td className="px-4 py-3 capitalize text-slate-600">{c.shiftPreference}</td>
-                <td className="px-4 py-3 text-slate-600">{(c.certifications ?? []).join(", ") || "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{c.yearsOfExperience} yrs</td>
-                <td className="px-4 py-3">
-                  <Badge tone={availabilityTone(c.availabilityStatus ?? "")}>{c.availabilityStatus ?? "unknown"}</Badge>
-                </td>
-                <td className="px-4 py-3">
-                  <Badge tone={c.isActive ? "emerald" : "red"}>{c.isActive ? "Active" : "Inactive"}</Badge>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => onToggleStatus(c.id, c.isActive)}
-                    className={[
-                      "rounded-xl px-3 py-2 text-xs font-semibold shadow-sm transition",
-                      c.isActive
-                        ? "border border-slate-200 bg-white text-slate-800 hover:shadow-md"
-                        : "bg-emerald-600 text-white hover:bg-emerald-700",
-                    ].join(" ")}
-                  >
-                    {c.isActive ? "Deactivate" : "Activate"}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {caregivers.map((c) => {
+              // Safely extract fields whether they are flattened or nested in a 'user' object
+              const fullName = (c as any).user?.fullName || c.fullName;
+              const email = (c as any).user?.email || c.email;
+              const isActive = (c as any).user?.isActive ?? c.isActive;
+
+              return (
+                <tr key={c.id} className="transition hover:bg-slate-50/60">
+                  <td className="px-4 py-3 font-semibold text-slate-800">{fullName}</td>
+                  <td className="px-4 py-3 text-slate-600">{email}</td>
+                  <td className="px-4 py-3 capitalize text-slate-600">{c.shiftPreference}</td>
+                  <td className="px-4 py-3 text-slate-600">{(c.certifications ?? []).join(", ") || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.yearsOfExperience} yrs</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={availabilityTone(c.availabilityStatus ?? "")}>{c.availabilityStatus ?? "unknown"}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge tone={isActive ? "emerald" : "red"}>{isActive ? "Active" : "Inactive"}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => onToggleStatus(c.id, isActive)}
+                      className={[
+                        "rounded-xl px-3 py-2 text-xs font-semibold shadow-sm transition",
+                        isActive
+                          ? "border border-slate-200 bg-white text-slate-800 hover:shadow-md"
+                          : "bg-emerald-600 text-white hover:bg-emerald-700",
+                      ].join(" ")}
+                    >
+                      {isActive ? "Deactivate" : "Activate"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {caregivers.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">

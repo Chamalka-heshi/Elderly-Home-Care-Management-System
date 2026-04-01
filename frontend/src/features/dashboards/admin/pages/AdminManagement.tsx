@@ -1,6 +1,7 @@
-
 import React from "react";
-import type { Admin } from "../../../../api/admin.api";
+// ── NEW API IMPORT ──
+import type { BaseUser as Admin } from "../../../../api/users/user.types";
+
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
 
@@ -45,17 +46,25 @@ const AdminManagement: React.FC<Props> = ({ admins, loading, onAddAdmin }) => (
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {admins.map((a) => (
-              <tr key={a.id} className="transition hover:bg-slate-50/60">
-                <td className="px-4 py-3 font-semibold text-slate-800">{a.fullName}</td>
-                <td className="px-4 py-3 text-slate-600">{a.email}</td>
-                <td className="px-4 py-3 text-slate-600">{a.contactNumber ?? "—"}</td>
-                <td className="px-4 py-3">
-                  <Badge tone={a.isActive ? "emerald" : "red"}>{a.isActive ? "Active" : "Inactive"}</Badge>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{new Date(a.createdAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
+            {admins.map((a) => {
+              // Safely extract fields whether they are flattened or nested in a 'user' object
+              const fullName = (a as any).user?.fullName || a.fullName;
+              const email = (a as any).user?.email || a.email;
+              const isActive = (a as any).user?.isActive ?? a.isActive;
+              const contactNumber = (a as any).user?.contactNumber || a.contactNumber;
+
+              return (
+                <tr key={a.id} className="transition hover:bg-slate-50/60">
+                  <td className="px-4 py-3 font-semibold text-slate-800">{fullName}</td>
+                  <td className="px-4 py-3 text-slate-600">{email}</td>
+                  <td className="px-4 py-3 text-slate-600">{contactNumber ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={isActive ? "emerald" : "red"}>{isActive ? "Active" : "Inactive"}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{new Date(a.createdAt).toLocaleDateString()}</td>
+                </tr>
+              );
+            })}
             {admins.length === 0 && (
               <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">No admin accounts found.</td></tr>
             )}

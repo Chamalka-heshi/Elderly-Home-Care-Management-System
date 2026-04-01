@@ -3,11 +3,10 @@ import Navbar from '../../components/Navbar/navbar';
 import Footer from '../../components/Footer/footer';
 import image from '../../assets/Home/c_image.png';
 import './ContactPage.css';
-import {
-  getContactInfo,
-  submitContactMessage,
-  type ContactInfo,
-} from '../../api/contact.api';
+
+// ─── NEW API IMPORTS ──────────────────────────────────────────────────────────
+import { getContactInfo, submitContactMessage } from '../../api/contact/public-contact.api';
+import type { ContactInfo } from '../../api/contact/contact.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -41,8 +40,8 @@ const validators = {
  * Build a Google Maps embed src from whatever we have — no new backend field needed.
  *
  * Strategy (in priority order):
- *  1. If mapUrl looks like a full maps.google.com URL, swap ?output=embed in.
- *  2. Build from addressLine1 + city (works without an API key).
+ * 1. If mapUrl looks like a full maps.google.com URL, swap ?output=embed in.
+ * 2. Build from addressLine1 + city (works without an API key).
  */
 const resolveEmbedUrl = (info: ContactInfo): string | null => {
   // 1 — full Google Maps URL (contains /maps/place/ or maps?q=)
@@ -202,10 +201,10 @@ const ContactPage: React.FC = () => {
         <div className="cp-hero__inner">
           <span className="cp-hero__pill">Care Home Support</span>
           <h1 className="cp-hero__title">
-            Let&apos;s <em>Talk</em>
+            Let's <em>Talk</em>
           </h1>
           <p className="cp-hero__sub">
-            Questions about our services? We&apos;re here — 24 hours a day,
+            Questions about our services? We're here — 24 hours a day,
             every day of the year.
           </p>
           <div className="cp-hero__ctas">

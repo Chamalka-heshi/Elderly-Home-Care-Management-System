@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useCallback } from "react";
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
-import {
-  patientApi,
-  type Patient,
-  type CreatePatientPayload,
-  type Gender,
-} from "../../../../api/patient.api";
+
+// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
+import { getMyPatients, createPatient } from "../../../../api/patients/family-patient.api";
+import type { Patient, Gender } from "../../../../api/patients/patient.types";
+
+export interface CreatePatientPayload {
+  fullName:           string;
+  nic:                string;
+  dateOfBirth:        string;
+  gender:             Gender;
+  bloodGroup?:        string;
+  contactNumber?:     string;
+  emergencyContact?:  string;
+  address?:           string;
+  medicalHistory?:    string;
+  allergies?:         string;
+  currentMedications?: string;
+  chronicConditions?: string;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
 
@@ -66,7 +80,7 @@ const ElderlyProfile: React.FC = () => {
   const loadPatients = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await patientApi.getAll();
+      const res = await getMyPatients();
       setPatients(res.patients);          // backend returns { patients, total }
     } catch (err) {
       showToast((err as Error).message, false);
@@ -121,7 +135,7 @@ const ElderlyProfile: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
-      const res = await patientApi.create(form);
+      const res = await createPatient(form);
       setPatients((prev) => [res.patient, ...prev]);
       setForm(EMPTY_FORM);
       setShowModal(false);

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import TableShell from "../../common/widgets/TableShell";
-import { getContactInfo, updateContactInfo } from "../../../../api/contact.api";
+
+// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
+import { getContactInfo } from "../../../../api/contact/public-contact.api";
+import { updateContactInfo } from "../../../../api/contact/admin-contact.api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

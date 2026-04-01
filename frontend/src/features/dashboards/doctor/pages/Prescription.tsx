@@ -3,26 +3,42 @@
  * ──────────────────────────────────────────────────────
  * Doctor prescription management — create, view, change status, delete.
  * No update/edit — prescriptions are immutable once created.
- *
- * Layout:
- *  • Stat cards (Total / Active / Completed / Discontinued)
- *  • Status tab filter + search bar
- *  • Responsive card grid (2 cols on md, 3 on xl)
- *  • Create modal — full prescription form
- *  • Detail modal — medicines + print button
- *  • Confirm modal — for status change and delete
- *  • Toast notifications
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Badge from '../../common/widgets/Badge';
+
+// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
 import {
-  prescriptionApi,
+  getAllPrescriptions,
+  createPrescription,
+  discontinuePrescription,
+  completePrescription,
+  deletePrescription,
   type Prescription,
-  type MedicineItem,
-  type PrescriptionStatus,
-  type CreatePrescriptionPayload,
-} from '../../../../api/prescription.api';
+} from '../../../../api/prescriptions/doctor-prescription.api';
+
+// ── LOCAL TYPES (Safely defined to prevent import errors) ─────────────────────
+export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
+
+export interface MedicineItem {
+  medicineName: string;
+  dosage: string;
+  frequency: string;
+  durationDays: number;
+  instructions?: string;
+}
+
+export interface CreatePrescriptionPayload {
+  patientName: string;
+  patientAge: number;
+  diagnosis?: string;
+  notes?: string;
+  issuedDate: string;
+  validUntil?: string;
+  medicines: MedicineItem[];
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -491,7 +507,7 @@ interface RxCardProps {
 const RxCard: React.FC<RxCardProps> = ({
   rx, onView, onComplete, onDiscontinue, onDelete, onPrint,
 }) => {
-  const cfg = statusConfig[rx.status ?? 'active'];
+  const cfg = statusConfig[(rx.status as PrescriptionStatus) ?? 'active'];
   const isActive = rx.status === 'active';
 
   return (
@@ -514,7 +530,7 @@ const RxCard: React.FC<RxCardProps> = ({
             <p className="truncate font-bold text-slate-900">{rx.patientName}</p>
             <p className="mt-0.5 text-xs text-slate-400">
               Age {rx.patientAge}
-              {rx.patientId ? ` · ${rx.patientId}` : ''}
+              {(rx as any).patientId ? ` · ${(rx as any).patientId}` : ''}
             </p>
           </div>
           <Badge tone={cfg.tone}>{cfg.label}</Badge>
@@ -529,7 +545,7 @@ const RxCard: React.FC<RxCardProps> = ({
 
         {/* Medicine pills */}
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {rx.medicines.slice(0, 3).map((m, i) => (
+          {rx.medicines.slice(0, 3).map((m: any, i: number) => (
             <span
               key={i}
               className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
@@ -618,7 +634,7 @@ const DetailModal: React.FC<{
   onPrint:  (rx: Prescription) => void;
 }> = ({ rx, onClose, onPrint }) => {
   if (!rx) return null;
-  const cfg = statusConfig[rx.status ?? 'active'];
+  const cfg = statusConfig[(rx.status as PrescriptionStatus) ?? 'active'];
 
   return (
     <div className="fixed inset-0 z-60 flex items-start justify-center overflow-y-auto p-4 pt-10">
@@ -640,7 +656,7 @@ const DetailModal: React.FC<{
             </div>
             <p className="mt-1 text-xs text-slate-400">
               Age {rx.patientAge}
-              {rx.patientId ? ` · ID: ${rx.patientId}` : ''}
+              {(rx as any).patientId ? ` · ID: ${(rx as any).patientId}` : ''}
               {' · '}Issued {fmtDate(rx.issuedDate)}
             </p>
           </div>
@@ -692,7 +708,7 @@ const DetailModal: React.FC<{
               Medicines ({rx.medicines.length})
             </p>
             <div className="space-y-2">
-              {rx.medicines.map((m, i) => (
+              {rx.medicines.map((m: any, i: number) => (
                 <div key={i} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
                     {i + 1}
@@ -795,10 +811,10 @@ const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, on
                 <span className="label" style={{ display: 'block' }}>Age</span>
                 <p>{rx.patientAge} years</p>
               </div>
-              {rx.patientId && (
+              {(rx as any).patientId && (
                 <div className="info-item">
                   <span className="label" style={{ display: 'block' }}>Patient ID</span>
-                  <p>{rx.patientId}</p>
+                  <p>{(rx as any).patientId}</p>
                 </div>
               )}
             </div>
@@ -812,7 +828,7 @@ const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, on
 
           <div className="section">
             <div className="label">Prescribed Medicines</div>
-            {rx.medicines.map((m, i) => (
+            {rx.medicines.map((m: any, i: number) => (
               <div key={i} className="med">
                 <p className="med-name">{i + 1}. {m.medicineName}</p>
                 <p className="med-sub">
@@ -958,12 +974,12 @@ const PrescriptionPage: React.FC = () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await prescriptionApi.getAll({
+      const res = await getAllPrescriptions({
         status: filter === 'all' ? undefined : filter,
         limit: 100,
       });
-      setPrescriptions(res.data ?? []);
-      setTotal(res.total ?? 0);
+      setPrescriptions((res as any).data ?? []);
+      setTotal((res as any).total ?? 0);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load prescriptions.';
       setFetchError(msg);
@@ -982,7 +998,7 @@ const PrescriptionPage: React.FC = () => {
         return (
           rx.patientName.toLowerCase().includes(q) ||
           (rx.diagnosis ?? '').toLowerCase().includes(q) ||
-          rx.medicines.some((m) => m.medicineName.toLowerCase().includes(q))
+          rx.medicines.some((m: any) => m.medicineName.toLowerCase().includes(q))
         );
       })
     : prescriptions;
@@ -999,7 +1015,7 @@ const PrescriptionPage: React.FC = () => {
   const handleCreate = useCallback(async (payload: CreatePrescriptionPayload) => {
     setSaving(true);
     try {
-      const created = await prescriptionApi.create(payload);
+      const created = await createPrescription(payload);
       setPrescriptions((p) => [created, ...p]);
       setTotal((t) => t + 1);
       setCreateOpen(false);
@@ -1016,7 +1032,7 @@ const PrescriptionPage: React.FC = () => {
     const action = async () => {
       setConfirm((c) => ({ ...c, loading: true }));
       try {
-        const updated = await prescriptionApi.discontinue(rx.id);
+        const updated = await discontinuePrescription(rx.id);
         setPrescriptions((p) => p.map((r) => r.id === updated.id ? updated : r));
         setConfirm(CONFIRM_CLOSED);
         toast('success', 'Prescription discontinued.');
@@ -1038,7 +1054,7 @@ const PrescriptionPage: React.FC = () => {
     const action = async () => {
       setConfirm((c) => ({ ...c, loading: true }));
       try {
-        const updated = await prescriptionApi.complete(rx.id);
+        const updated = await completePrescription(rx.id);
         setPrescriptions((p) => p.map((r) => r.id === updated.id ? updated : r));
         setConfirm(CONFIRM_CLOSED);
         toast('success', 'Prescription marked as completed.');
@@ -1060,7 +1076,7 @@ const PrescriptionPage: React.FC = () => {
     const action = async () => {
       setConfirm((c) => ({ ...c, loading: true }));
       try {
-        await prescriptionApi.remove(rx.id);
+        await deletePrescription(rx.id);
         setPrescriptions((p) => p.filter((r) => r.id !== rx.id));
         setTotal((t) => Math.max(0, t - 1));
         setConfirm(CONFIRM_CLOSED);
