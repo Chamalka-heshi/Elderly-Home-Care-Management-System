@@ -1,0 +1,4 @@
+export interface BaseUser { id: string; fullName: string; email: string; contactNumber?: string; isActive: boolean; createdAt: string; }
+export interface Doctor extends BaseUser { specialization: string; licenseNumber: string; yearsOfExperience: number; availableDays?: string[]; availableTimeStart?: string; availableTimeEnd?: string; }
+export interface Caregiver extends BaseUser { shiftPreference: 'day'|'night'|'flexible'; certifications: string[]; yearsOfExperience: number; availabilityStatus: string; }
+export interface Family extends BaseUser { relationship?: string; emergencyContact?: string; address?: string; patientsCount: number; }
