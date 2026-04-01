@@ -11,6 +11,7 @@ import { CaregiversModule } from './modules/caregivers/caregivers.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ContactModule } from './modules/contact/contact.module';
 import {PrescriptionsModule} from './modules/prescription/prescription.module'
+import { ChannelingSlotModule } from './modules/channeling-slot/channeling-slot.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import {PrescriptionsModule} from './modules/prescription/prescription.module'
     AdminModule,
     ContactModule,
     PrescriptionsModule,
+    ChannelingSlotModule,
   ],
 })
 export class AppModule {}
