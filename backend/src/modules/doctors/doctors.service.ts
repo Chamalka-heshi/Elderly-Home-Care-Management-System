@@ -27,7 +27,6 @@ export class DoctorsService {
       throw new BadRequestException('Email already registered');
     }
 
-    // fullName and contactNumber are stored on the User record
     const user = await this.usersService.create(
       email,
       password,
@@ -90,11 +89,9 @@ export class DoctorsService {
   async update(id: string, updateData: Partial<CreateDoctorDto>): Promise<Doctor> {
     const doctor = await this.findOne(id);
 
-    // Common fields — update on the User record (cascade saves automatically)
     if (updateData.fullName) doctor.user.fullName = updateData.fullName;
     if (updateData.contactNumber) doctor.user.contactNumber = updateData.contactNumber;
 
-    // Doctor-specific fields
     if (updateData.specialization) doctor.specialization = updateData.specialization;
     if (updateData.licenseNumber) doctor.licenseNumber = updateData.licenseNumber;
     if (updateData.yearsOfExperience !== undefined) doctor.experienceYears = updateData.yearsOfExperience;
@@ -115,5 +112,20 @@ export class DoctorsService {
   async activate(id: string): Promise<void> {
     const doctor = await this.findOne(id);
     await this.usersService.activateUser(doctor.user.id);
+  }
+
+  async setAvailability(userId: string, availableDays: string[], availableTimeStart: string, availableTimeEnd: string): Promise<Doctor> {
+    const doctor = await this.findByUserId(userId);
+    if (!doctor) throw new NotFoundException('Doctor not found');
+
+    if (doctor.availableDays && doctor.availableDays.length > 0) {
+      throw new BadRequestException('Your availability has already been set and cannot be changed.');
+    }
+
+    doctor.availableDays = availableDays;
+    doctor.availableTimeStart = availableTimeStart;
+    doctor.availableTimeEnd = availableTimeEnd;
+
+    return this.doctorRepository.save(doctor);
   }
 }
