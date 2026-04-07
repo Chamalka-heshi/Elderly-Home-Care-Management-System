@@ -1,5 +1,4 @@
 /* eslint-disable prettier/prettier */
-// modules/doctors/entities/doctor.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Prescription } from '../../prescription/entities/prescription.entity';
+import { ChannelingSlot } from '../../channeling-slot/entities/channeling-slot.entity';
 
 @Entity('doctors')
 export class Doctor {
@@ -19,8 +19,6 @@ export class Doctor {
   @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
   @JoinColumn()
   user: User;
-
-  // ── Doctor-specific fields ───────────────────────────────────────────────────
 
   @Column()
   specialization: string;
@@ -49,14 +47,15 @@ export class Doctor {
   @Column({ nullable: true })
   availableTimeEnd: string;
 
-  // ── Prescriptions written by this doctor ─────────────────────────────────────
-  //
-  // Inverse side: Prescription.doctor (ManyToOne).
-  // Not loaded eagerly — query PrescriptionsService.findAll(doctorId) instead.
-
   @OneToMany(() => Prescription, (prescription) => prescription.doctor, {
     cascade: false,
     eager: false,
   })
   prescriptions: Prescription[];
+
+  @OneToMany(() => ChannelingSlot, (slot) => slot.doctor, {
+    cascade: false,
+    eager: false,
+  })
+  channelingSlots: ChannelingSlot[];
 }
