@@ -1,130 +1,201 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
-import FormModal, { type FieldConfig } from "../../common/widgets/FormModal";
 
-type Appt = {
-  id: string; patient: string; date: string; time: string;
-  type: string; location: string;
-  status: "Scheduled" | "Completed" | "Cancelled" | "No-Show";
-};
+//  NEW API IMPORTS 
+import { 
+  getMySlots, 
+  acceptChannelingSlot,
+  rejectChannelingSlot 
+} from "../../../../api/channeling/doctor-channeling.api";
 
-const INITIAL: Appt[] = [
-  { id: "1", patient: "John Silva",      date: "2026-02-15", time: "09:00", type: "Follow-up",       location: "Room 3",      status: "Scheduled" },
-  { id: "2", patient: "Nimal Gunaratne", date: "2026-02-16", time: "10:30", type: "Cardiac Review",  location: "Room 1",      status: "Scheduled" },
-  { id: "3", patient: "Sunil Bandara",   date: "2026-02-14", time: "08:00", type: "Monthly Check",   location: "Room 2",      status: "Completed" },
-  { id: "4", patient: "Mary Perera",     date: "2026-02-13", time: "14:00", type: "Intake",          location: "Room 4",      status: "Completed" },
-  { id: "5", patient: "Sandi Kumari",    date: "2026-02-12", time: "11:00", type: "Consultation",    location: "Room 3",      status: "Cancelled" },
-  { id: "6", patient: "Anula Wickrama",  date: "2026-02-17", time: "13:00", type: "Physio Review",   location: "Physio Unit", status: "Scheduled" },
-  { id: "7", patient: "Rajan Fernando",  date: "2026-02-11", time: "09:30", type: "Diabetes Check",  location: "Room 2",      status: "No-Show"   },
-];
+import { 
+  getMyDoctorProfile, 
+  setDoctorAvailability 
+} from "../../../../api/users/doctor-profile.api";
 
-const FIELDS: FieldConfig[] = [
-  { name: "patient",  label: "Patient",  required: true, options: [
-    { value: "John Silva", label: "John Silva" }, { value: "Nimal Gunaratne", label: "Nimal Gunaratne" },
-    { value: "Sunil Bandara", label: "Sunil Bandara" }, { value: "Anula Wickrama", label: "Anula Wickrama" },
-    { value: "Mary Perera", label: "Mary Perera" }, { value: "Rajan Fernando", label: "Rajan Fernando" },
-  ]},
-  { name: "date",     label: "Date",     required: true, type: "date" },
-  { name: "time",     label: "Time",     required: true, type: "time" },
-  { name: "type",     label: "Type",     required: true, options: [
-    { value: "Follow-up",    label: "Follow-up"    }, { value: "Consultation", label: "Consultation" },
-    { value: "Intake",       label: "Intake"       }, { value: "Review",       label: "Review"       },
-    { value: "Monthly Check",label: "Monthly Check"},
-  ]},
-  { name: "location", label: "Location", required: true, options: [
-    { value: "Room 1", label: "Room 1" }, { value: "Room 2", label: "Room 2" },
-    { value: "Room 3", label: "Room 3" }, { value: "Room 4", label: "Room 4" },
-    { value: "Physio Unit", label: "Physio Unit" },
-  ]},
-];
+import { 
+  type ChannelingSlot, 
+  fmt12, 
+  fmtDate 
+} from "../../../../api/channeling/channeling.types";
+// 
 
-const statusTone = (s: string) =>
-  s === "Scheduled" ? "blue"    as const :
-  s === "Completed" ? "emerald" as const :
-  s === "Cancelled" ? "red"     as const : "amber" as const;
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-const Appointments: React.FC = () => {
-  const [appts, setAppts] = useState<Appt[]>(INITIAL);
-  const [open, setOpen]   = useState(false);
+const ChannelingManager: React.FC = () => {
+  const [slots, setSlots] = useState<ChannelingSlot[]>([]);
+  const [doctorInfo, setDoctorInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [slotsData, profileData] = await Promise.all([ getMySlots(), getMyDoctorProfile() ]);
+      setSlots(slotsData);
+      setDoctorInfo(profileData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ULTIMATE AGGRESSIVE PARSER (Protects Doctor Dashboard from crashing)
+  const parsedAvailableDays = useMemo(() => {
+    if (!doctorInfo || !doctorInfo.availableDays) return [];
+    
+    let rawData: any = doctorInfo.availableDays;
+    
+    if (Array.isArray(rawData)) return rawData;
+
+    if (typeof rawData === 'string') {
+      try { rawData = JSON.parse(rawData); } catch(e) {}
+      try { if (typeof rawData === 'string') rawData = JSON.parse(rawData); } catch(e) {}
+
+      if (Array.isArray(rawData)) return rawData;
+
+      if (typeof rawData === 'string') {
+        return String(doctorInfo.availableDays)
+          .replace(/[\[\]"'\\]/g, '')
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
+      }
+    }
+    return [];
+  }, [doctorInfo]);
+
+  const hasSetAvailability = parsedAvailableDays.length > 0 || (doctorInfo && doctorInfo.availableTimeStart);
+
+  const handleSetAvailability = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    setAppts((a) => [{
-      id:       String(Date.now()),
-      patient:  fd.get("patient")  as string,
-      date:     fd.get("date")     as string,
-      time:     fd.get("time")     as string,
-      type:     fd.get("type")     as string,
-      location: fd.get("location") as string,
-      status: "Scheduled",
-    }, ...a]);
-    setOpen(false);
+    if (selectedDays.length === 0) return alert("Please select at least one day.");
+    
+    try {
+      const updatedProfile = await setDoctorAvailability({
+        availableDays: selectedDays,
+        availableTimeStart: startTime,
+        availableTimeEnd: endTime,
+      });
+      setDoctorInfo(updatedProfile);
+      alert("Availability successfully submitted to Admin.");
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
-  const counts = {
-    Scheduled: appts.filter((a) => a.status === "Scheduled").length,
-    Completed: appts.filter((a) => a.status === "Completed").length,
-    Cancelled: appts.filter((a) => a.status === "Cancelled").length,
-    "No-Show": appts.filter((a) => a.status === "No-Show").length,
+  const toggleDay = (day: string) => setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+
+  const handleAction = async (id: string, action: 'accept' | 'reject') => {
+    try {
+      const updatedSlot = action === 'accept' ? await acceptChannelingSlot(id) : await rejectChannelingSlot(id);
+      setSlots(prev => prev.map(s => s.id === id ? updatedSlot : s));
+    } catch (error: any) {
+      alert(`Failed to ${action} slot: ${error.message}`);
+    }
   };
+
+  if (loading) return <div className="p-8 text-center text-slate-500">Loading your schedule...</div>;
 
   return (
-    <>
-     
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {(Object.entries(counts) as [string, number][]).map(([label, count]) => (
-          <div key={label} className="rounded-2xl border border-slate-200/60 bg-white/70 p-4 text-center backdrop-blur-xl">
-            <p className="text-2xl font-extrabold text-slate-900">{count}</p>
-            <div className="mt-1"><Badge tone={statusTone(label)}>{label}</Badge></div>
-          </div>
-        ))}
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Channeling Schedule</h1>
+        <p className="text-sm text-slate-500">Manage your availability and approve admin-assigned slots.</p>
       </div>
 
-      <TableShell
-        title="Appointments"
-        subtitle="View channeling schedule and upcoming patient appointments."
-        right={
-          <button onClick={() => setOpen(true)}
-            className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
-            + New Appointment
-          </button>
-        }
-      >
+      {!hasSetAvailability ? (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+          <h2 className="text-lg font-bold text-blue-900 mb-2">Set Your Availability (One-Time Setup)</h2>
+          <p className="text-sm text-blue-700 mb-4">Indicate your preferred working days and times. The Admin will use this to assign your slots.</p>
+          
+          <form onSubmit={handleSetAvailability} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-blue-900 mb-2">Preferred Days</label>
+              <div className="flex flex-wrap gap-2">
+                {DAYS_OF_WEEK.map(day => (
+                  <button type="button" key={day} onClick={() => toggleDay(day)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+                      selectedDays.includes(day) ? "bg-blue-600 text-white shadow-md" : "bg-white text-blue-700 border border-blue-200"
+                    }`}>{day}</button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 max-w-md">
+              <div>
+                <label className="block text-xs font-semibold text-blue-900 mb-1">Start Time</label>
+                <input type="time" required value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full rounded-xl border-blue-200 p-2.5 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-blue-900 mb-1">End Time</label>
+                <input type="time" required value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full rounded-xl border-blue-200 p-2.5 text-sm" />
+              </div>
+            </div>
+
+            <button type="submit" className="rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700">
+              Submit Availability to Admin
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 flex justify-between items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Registered Availability</p>
+            <p className="text-sm font-medium text-slate-800 mt-1">
+              {parsedAvailableDays.length > 0 ? parsedAvailableDays.join(", ") : 'Any day'} &bull;{' '}
+              {doctorInfo.availableTimeStart ? fmt12(doctorInfo.availableTimeStart) : ''} to{' '}
+              {doctorInfo.availableTimeEnd ? fmt12(doctorInfo.availableTimeEnd) : ''}
+            </p>
+          </div>
+          <span className="text-xs text-slate-400 italic">Contact admin to change</span>
+        </div>
+      )}
+
+      <TableShell title="Assigned Slots" subtitle="Approve or reject slots created by the Admin.">
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
               <tr>
-                <th className="px-4 py-3">Patient</th>
                 <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Location</th>
+                <th className="px-4 py-3">Time Window</th>
+                <th className="px-4 py-3">Max Patients</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {appts.map((a) => (
-                <tr key={a.id} className="transition hover:bg-slate-50/60">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{a.patient}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.date}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.time}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.type}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.location}</td>
-                  <td className="px-4 py-3"><Badge tone={statusTone(a.status)}>{a.status}</Badge></td>
+              {slots.length === 0 ? (
+                <tr><td colSpan={5} className="p-6 text-center text-slate-500">No slots assigned yet.</td></tr>
+              ) : slots.map((s) => (
+                <tr key={s.id} className={`transition hover:bg-slate-50/60 ${s.status === 'pending' ? 'bg-amber-50/30' : ''}`}>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{fmtDate(s.date)}</td>
+                  <td className="px-4 py-3 text-slate-600">{fmt12(s.startTime)} - {fmt12(s.endTime)}</td>
+                  <td className="px-4 py-3 text-slate-600">{s.maxPatients}</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={s.status === 'pending' ? 'amber' : s.status === 'active' ? 'blue' : s.status === 'rejected' ? 'red' : 'slate'}>
+                      {s.status.toUpperCase()}
+                    </Badge>
+                  </td>
                   <td className="px-4 py-3 text-right">
-                    {a.status === "Scheduled" ? (
-                      <button
-                        onClick={() => setAppts((prev) => prev.map((x) => x.id === a.id ? { ...x, status: "Completed" } : x))}
-                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                      >
-                        Complete
-                      </button>
-                    ) : (
-                      <span className="text-xs text-slate-400">—</span>
+                    {s.status === 'pending' && (
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => handleAction(s.id, 'accept')} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700">
+                          Accept
+                        </button>
+                        <button onClick={() => handleAction(s.id, 'reject')} className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-200">
+                          Reject
+                        </button>
+                      </div>
                     )}
+                    {s.status !== 'pending' && <span className="text-xs text-slate-400">—</span>}
                   </td>
                 </tr>
               ))}
@@ -132,10 +203,8 @@ const Appointments: React.FC = () => {
           </table>
         </div>
       </TableShell>
-
-      <FormModal title="New Appointment" open={open} onClose={() => setOpen(false)} onSubmit={handleSubmit} fields={FIELDS} />
-    </>
+    </div>
   );
 };
 
-export default Appointments;
+export default ChannelingManager;
