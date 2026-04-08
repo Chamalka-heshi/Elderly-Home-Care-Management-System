@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom"; // <-- Added Router Navigation
 
 // ── NEW API IMPORTS ──────────────────────────────────────────────────────────
 import { getDashboardStats } from "../../../api/users/admin-dashboard.api";
@@ -73,7 +74,6 @@ import {
 import { DashboardAmbientBg } from "../common/ui";
 
 // ── Pages (admin-specific) 
-import AdminProfile       from "./pages/AdminProfile";
 import DashboardHome      from "./pages/DashboardHome";
 import AdminManagement    from "./pages/AdminManagement";
 import DoctorManagement   from "./pages/DoctorManagement";
@@ -85,7 +85,6 @@ import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
 
 // ── Menu items 
-
 const MENU_ITEMS: MenuItem[] = [
   { icon: IconLayoutDashboard, label: "Dashboard"           },
   { icon: IconShield,          label: "Admin Management"    },
@@ -99,7 +98,6 @@ const MENU_ITEMS: MenuItem[] = [
 ];
 
 // ── Form field configs 
-
 const ADMIN_FIELDS: FieldConfig[] = [
   { name: "fullName",      label: "Full Name",      required: true, placeholder: "Enter full name" },
   { name: "email",         label: "Email",          required: true, type: "email",    placeholder: "admin@carehome.com" },
@@ -142,17 +140,14 @@ const CAREGIVER_FIELDS: FieldConfig[] = [
   },
 ];
 
-// ── Toast type 
-
 interface Toast { id: number; kind: "success" | "error"; message: string; }
 
-// ── Component 
-
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate(); // <-- Setup Router Hook
+
   // ── UI state 
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showProfile,   setShowProfile]   = useState(false); // full-screen AdminProfile overlay
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
   // ── Modal state 
@@ -173,7 +168,6 @@ const AdminDashboard: React.FC = () => {
   const [modalLoading, setModalLoading] = useState(false);
 
   // ── Helpers 
-
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
     setToasts((t) => [...t, { id, kind, message }]);
@@ -181,7 +175,6 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   // ── Data loaders 
-
   const loadDashboard = useCallback(async () => {
     try {
       setPageLoading(true);
@@ -233,11 +226,9 @@ const AdminDashboard: React.FC = () => {
     else if (activeMenu === "Caregiver Management") loadCaregivers();
     else if (activeMenu === "Family Management")    loadFamilies();
     else if (activeMenu === "Patient Management")   loadPatients();
-    // Contact Messages loads itself internally
   }, [activeMenu]); 
 
-  // ── Form submit handlers ──────────────────────────────────────────────────
-
+  // ── Form submit handlers 
   const handleCreateAdmin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -334,14 +325,10 @@ const AdminDashboard: React.FC = () => {
   };
 
   // ── Render 
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-
-      {/* Fixed ambient gradient blobs */}
       <DashboardAmbientBg />
 
-      {/* Toast notifications */}
       <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2">
         {toasts.map((t) => (
           <div
@@ -357,7 +344,6 @@ const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Main layout: sidebar + content ── */}
       <div className="flex min-h-screen">
         <Sidebar
           items={MENU_ITEMS}
@@ -368,23 +354,19 @@ const AdminDashboard: React.FC = () => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Topbar — */}
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => setShowProfile(true)}
+            onProfileClick={() => navigate("/admin/profile")} 
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-
-            {/* Page-level loading spinner */}
             {pageLoading && (
               <div className="flex items-center justify-center py-24">
                 <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-emerald-500" />
               </div>
             )}
 
-            {/* Page content  */}
             {!pageLoading && activeMenu === "Dashboard" && dashboardStats && (
               <DashboardHome
                 stats={dashboardStats}
@@ -420,15 +402,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Full-screen AdminProfile overlay ──────────────────────────────────
-               */}
-      {showProfile && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-50">
-          <AdminProfile onBack={() => setShowProfile(false)} />
-        </div>
-      )}
-
-      {/* ── Create-user modals ── */}
       <FormModal title="Add New Admin"     open={showAddAdmin}     loading={modalLoading} onClose={() => setShowAddAdmin(false)}     onSubmit={handleCreateAdmin}    fields={ADMIN_FIELDS} />
       <FormModal title="Add New Doctor"    open={showAddDoctor}    loading={modalLoading} onClose={() => setShowAddDoctor(false)}    onSubmit={handleCreateDoctor}   fields={DOCTOR_FIELDS} />
       <FormModal title="Add New Caregiver" open={showAddCaregiver} loading={modalLoading} onClose={() => setShowAddCaregiver(false)} onSubmit={handleCreateCaregiver} fields={CAREGIVER_FIELDS} />
