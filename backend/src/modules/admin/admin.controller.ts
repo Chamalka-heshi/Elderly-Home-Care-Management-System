@@ -138,25 +138,6 @@ export class AdminController {
     };
   }
 
-  @Patch('doctors/:id')
-  async updateDoctor(
-    @Param('id') id: string,
-    @Body() updateData: Partial<CreateDoctorDto>,
-  ) {
-    const doctor = await this.doctorsService.update(id, updateData);
-
-    return {
-      message: 'Doctor updated successfully',
-      doctor: {
-        id: doctor.id,
-        fullName: doctor.user.fullName,
-        specialization: doctor.specialization,
-        licenseNumber: doctor.licenseNumber,
-        hospitalAffiliation: doctor.hospitalAffiliation,
-      },
-    };
-  }
-
   @Delete('doctors/:id/deactivate')
   @HttpCode(HttpStatus.OK)
   async deactivateDoctor(@Param('id') id: string) {
@@ -226,22 +207,6 @@ export class AdminController {
     };
   }
 
-  @Patch('caregivers/:id')
-  async updateCaregiver(
-    @Param('id') id: string,
-    @Body() updateData: Partial<CreateCaregiverDto>,
-  ) {
-    const caregiver = await this.caregiversService.update(id, updateData);
-
-    return {
-      message: 'Caregiver updated successfully',
-      caregiver: {
-        id: caregiver.id,
-        fullName: caregiver.user.fullName,
-        contactNumber: caregiver.user.contactNumber,
-      },
-    };
-  }
 
   @Delete('caregivers/:id/deactivate')
   @HttpCode(HttpStatus.OK)
