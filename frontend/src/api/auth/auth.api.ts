@@ -17,6 +17,37 @@ export interface AuthResponse {
   isNewUser?: boolean; 
 }
 
+// ── Profile Update Interfaces (Mapped from Backend DTOs) ───────────────
+
+export interface UpdateBaseProfileRequest {
+  fullName?: string;
+  contactNumber?: string;
+}
+
+export interface UpdateAdminProfileRequest extends UpdateBaseProfileRequest {
+  
+}
+
+export interface UpdateFamilyProfileRequest extends UpdateBaseProfileRequest {
+  
+}
+
+export interface UpdateDoctorProfileRequest extends UpdateBaseProfileRequest {
+  specialization?: string;
+  licenseNumber?: string;
+  qualification?: string;
+  experienceYears?: number;
+}
+
+export interface UpdateCaregiverProfileRequest extends UpdateBaseProfileRequest {
+ 
+}
+
+export interface ChangePasswordRequest {
+  currentPassword:  string;
+  newPassword:      string;
+}
+
 const storeSession = (token: string, user: User) => {
   localStorage.setItem('token', token);
   localStorage.setItem('user', JSON.stringify(user));
@@ -44,6 +75,44 @@ export const googleAuth = async (): Promise<AuthResponse> => {
 
 export const getProfile = () => apiFetch<User>('/auth/profile');
 
+/**
+ * Updates Admin profile fields
+ * Note: If your backend uses a distinct route (e.g., '/admin/profile'), update the URL below.
+ */
+export const updateAdminProfile = (data: UpdateAdminProfileRequest) =>
+  apiFetch<User>('/admin/profile', {
+    method: 'PATCH', 
+    body: JSON.stringify(data),
+  });
+
+/**
+ * Updates Family profile fields
+ * Note: If your backend uses a distinct route (e.g., '/family/profile'), update the URL below.
+ */
+export const updateFamilyProfile = (data: UpdateFamilyProfileRequest) =>
+  apiFetch<User>('/family/profile', {
+    method: 'PATCH', 
+    body: JSON.stringify(data),
+  });
+
+/**
+ * Updates specific Doctor profile fields
+ */
+export const updateDoctorProfile = (data: UpdateDoctorProfileRequest) =>
+  apiFetch<User>('/doctors/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+/**
+ * Updates specific Caregiver profile fields
+ */
+export const updateCaregiverProfile = (data: UpdateCaregiverProfileRequest) =>
+  apiFetch<User>('/caregivers/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
 export const deleteAccount = () => 
   apiFetch<{message: string}>('/auth/delete-account', { method: 'DELETE' }).then(res => {
     localStorage.removeItem('token'); 
@@ -66,6 +135,15 @@ export const getStoredUser = (): User | null => {
     return null; 
   } 
 };
+
+/**
+ * Sends a request to the backend to update the logged-in user's password.
+ */
+export const changePasswordApi = (data: ChangePasswordRequest) =>
+  apiFetch<{ message: string }>('/auth/change-password', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 
 export const getStoredToken = () => localStorage.getItem('token');
 export const isAuthenticated = () => !!getStoredToken();
