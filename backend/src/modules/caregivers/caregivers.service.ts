@@ -85,23 +85,6 @@ export class CaregiversService {
     });
   }
 
-  async update(id: string, updateData: Partial<CreateCaregiverDto>): Promise<Caregiver> {
-    const caregiver = await this.findOne(id);
-
-    // Common fields — update on the User record (cascade saves automatically)
-    if (updateData.fullName) caregiver.user.fullName = updateData.fullName;
-    if (updateData.contactNumber) caregiver.user.contactNumber = updateData.contactNumber;
-
-    // Caregiver-specific fields
-    if (updateData.qualification) caregiver.qualification = updateData.qualification;
-    if (updateData.yearsOfExperience !== undefined) caregiver.experienceYears = updateData.yearsOfExperience;
-    if (updateData.certifications) caregiver.specializations = updateData.certifications;
-    if (updateData.address) caregiver.address = updateData.address;
-    if (updateData.availableShifts) caregiver.availableShifts = updateData.availableShifts;
-
-    return this.caregiverRepository.save(caregiver);
-  }
-
   async deactivate(id: string): Promise<void> {
     const caregiver = await this.findOne(id);
     await this.usersService.deactivateUser(caregiver.user.id);
