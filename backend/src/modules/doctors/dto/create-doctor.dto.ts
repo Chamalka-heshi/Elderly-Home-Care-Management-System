@@ -44,7 +44,7 @@ export class CreateDoctorDto {
   @IsNotEmpty()
   @IsNumber()
   @Min(0)
-  yearsOfExperience: number;
+  experienceYears: number;
 
   @IsOptional()
   @IsString()
