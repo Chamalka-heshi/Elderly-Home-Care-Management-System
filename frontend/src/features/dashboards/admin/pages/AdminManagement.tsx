@@ -1,16 +1,9 @@
 import React from "react";
-// ── NEW API IMPORT ──
 import type { BaseUser as Admin } from "../../../../api/users/user.types";
 
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
-
-const ShieldIcon = ({ className = "h-4 w-4" }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6l8-4z" />
-  </svg>
-);
+import { IconShield } from "../../common/icons";
 
 interface Props {
   admins: Admin[];
@@ -25,7 +18,7 @@ const AdminManagement: React.FC<Props> = ({ admins, loading, onAddAdmin }) => (
     right={
       <button onClick={onAddAdmin}
         className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
-        <ShieldIcon /> + Add Admin
+        <IconShield className="h-4 w-4" /> + Add Admin
       </button>
     }
   >
@@ -47,7 +40,6 @@ const AdminManagement: React.FC<Props> = ({ admins, loading, onAddAdmin }) => (
           </thead>
           <tbody className="divide-y divide-slate-100">
             {admins.map((a) => {
-              // Safely extract fields whether they are flattened or nested in a 'user' object
               const fullName = (a as any).user?.fullName || a.fullName;
               const email = (a as any).user?.email || a.email;
               const isActive = (a as any).user?.isActive ?? a.isActive;
