@@ -14,7 +14,7 @@ import { Patient } from '../patients/entities/patient.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { Caregiver } from '../caregivers/entities/caregiver.entity';
-import { UpdateAdminProfileDto } from './dto/update-admin-profile';
+import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 
 
 @Injectable()

@@ -25,15 +25,27 @@ import { PatientsModule } from '../patients/patients.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret:
-          configService.get<string>('JWT_SECRET') ||
-          'your-secret-key-change-in-production',
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRATION') || '7d',
-        },
-      }),
       inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        const expiresIn = configService.get<string>('JWT_EXPIRATION');
+
+        if (!secret) {
+          throw new Error(
+            'JWT_SECRET is not defined.',
+          );
+        }
+        if (!expiresIn) {
+          throw new Error(
+            'JWT_EXPIRATION is not defined.',
+          );
+        }
+
+        return {
+          secret,
+          signOptions: { expiresIn },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

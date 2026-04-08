@@ -318,15 +318,10 @@ export class AuthService {
   }
 
   // ── POST /api/auth/firebase ───────────────────────────────────────────────
-  // Handles Google sign-in via Firebase.
-  // Firebase verifies OAuth on the frontend; we verify the ID token here
-  // and issue our own JWT.
-
   async firebaseAuth(
     idToken: string,
   ): Promise<{ token: string; user: any; isNewUser: boolean }> {
 
-    // 1. Verify the Firebase ID token with the Admin SDK.
     let decodedToken: Awaited<ReturnType<FirebaseAdminService['verifyIdToken']>>;
     try {
       decodedToken = await this.firebaseAdmin.verifyIdToken(idToken);
@@ -336,7 +331,6 @@ export class AuthService {
       );
     }
 
-    // 2. Extract user info from the verified token.
     const { email, name, picture, uid } = decodedToken;
 
     if (!email) {
@@ -346,17 +340,10 @@ export class AuthService {
       );
     }
 
-    // 3. Find existing user or create a new one.
     let user = await this.userRepository.findOne({ where: { email } });
-    // if(user){
-    //     let userfamily = await this.familyService.findByUserId(user.id);
-    // }
-    
     let isNewUser = false;
 
     if (!user) {
-      // First sign-in — create a FAMILY account automatically.
-      // Social-login users never use a password, so store an un-guessable placeholder.
       user = this.userRepository.create({
         email,
         fullName:      name ?? email.split('@')[0],
@@ -368,20 +355,18 @@ export class AuthService {
       });
 
       user = await this.userRepository.save(user);
-      let fuser = this.familyService.create({ user });
+      
+      // Ensures profile is created before returning
+      await this.familyService.create({ user });
+      
       isNewUser = true;
 
     } else if (!user.firebaseUid) {
-      // Existing email/password account — link Firebase UID to it.
       user.firebaseUid = uid;
       if (!user.avatarUrl && picture) user.avatarUrl = picture;
       await this.userRepository.save(user);
     }
-    // else if (!userfamily) {
-    //   await this.familyService.create({ user });  
-    // }  
 
-    // 4. Issue our own JWT (same structure as regular login).
     const token = this.generateToken(user.id, user.email, user.role);
 
     return {
@@ -397,17 +382,26 @@ export class AuthService {
     };
   }
 
-  /**
-   * Generate JWT Token
-   */
   private generateToken(userId: string, email: string, role: UserRole): string {
     return this.jwtService.sign({ sub: userId, email, role });
   }
 
-  /**
-   * Validate User (used by JWT Strategy)
-   */
   async validateUser(userId: string) {
     return this.usersService.findById(userId);
   }
+
+  async changePassword(userId: string, currentPw: string, newPw: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isMatch = await this.usersService.validatePassword(currentPw, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    return this.usersService.updatePassword(userId, newPw);
+  }
 }
+

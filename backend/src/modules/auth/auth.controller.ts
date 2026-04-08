@@ -10,6 +10,7 @@ import {
   Request,
   Logger,
   UnauthorizedException,
+  Patch,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { FamilySignupDto } from './dto/signup.dto';
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 interface JwtUser {
   sub?: string;
@@ -54,9 +56,6 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  // ── POST /api/auth/firebase ───────────────────────────────────────────────
-  // Google sign-in via Firebase.
-  // Firebase handles OAuth on the frontend; we verify the ID token here.
   @Post('firebase')
   @HttpCode(HttpStatus.OK)
   async firebaseAuth(@Body() dto: FirebaseAuthDto) {
@@ -166,4 +165,39 @@ export class AuthController {
     const userId = req.user.sub ?? req.user.userId ?? req.user.id;
     return this.authService.createPatient(dto, userId);
   }
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Request() req: { user: JwtUser },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication failed');
+    }
+
+    // 1. Verify that the user exists
+    const user = await this.authService.validateUser(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // 2. Validate the current password
+    const isMatch = await this.authService.login({
+      email: user.email,
+      password: dto.currentPassword,
+    });
+
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // 3. Perform the update
+    await this.authService.changePassword(userId, dto.currentPassword, dto.newPassword);
+    
+    return { message: 'Password updated successfully' };
+  }
 }
+
