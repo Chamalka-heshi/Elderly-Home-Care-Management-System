@@ -1,27 +1,7 @@
-
-
 import React from "react";
 import { useAuth } from "../../../../auth/AuthContext";
 import type { MenuLabel } from "./Sidebar";
-
-const MenuIcon = () => (
-  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-  </svg>
-);
-
-const BellIcon = () => (
-  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-  </svg>
-);
-
-const ChevronDownIcon = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-  </svg>
-);
+import { IconMenu, IconBell, IconChevronDown } from "../../common/icons";
 
 interface Props {
   activeMenu: MenuLabel;
@@ -32,11 +12,11 @@ interface Props {
 const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }) => {
   const { user } = useAuth();
 
-  const initials = user?.full_name
-    ? user.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+  const initials = user?.fullName
+    ? user.fullName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "A";
 
-  const displayName = user?.full_name ?? "Admin User";
+  const displayName = user?.fullName ?? "Admin User";
   const displayRole =
     user?.role === "admin"     ? "Administrator" :
     user?.role === "doctor"    ? "Doctor"        :
@@ -46,14 +26,14 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
     <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
 
-        {}
+        {/* Left */}
         <div className="flex items-center gap-3">
           <button
             className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 transition lg:hidden"
             onClick={onToggleSidebar}
             aria-label="Toggle sidebar"
           >
-            <MenuIcon />
+            <IconMenu className="h-6 w-6" />
           </button>
           <div>
             <h1 className="text-lg font-bold text-slate-900 md:text-xl">{activeMenu}</h1>
@@ -70,7 +50,7 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
             className="relative rounded-xl p-2.5 text-slate-600 hover:bg-slate-100 transition"
             aria-label="Notifications"
           >
-            <BellIcon />
+            <IconBell className="h-5 w-5" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
           </button>
 
@@ -102,7 +82,7 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
 
             {/* Chevron */}
             <span className="hidden sm:block text-slate-400 transition group-hover:text-emerald-500">
-              <ChevronDownIcon />
+              <IconChevronDown className="h-4 w-4" />
             </span>
           </button>
         </div>
