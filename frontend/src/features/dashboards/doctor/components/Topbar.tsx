@@ -30,11 +30,11 @@ interface Props {
 const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }) => {
   const { user } = useAuth();
 
-  const initials = user?.full_name
-    ? user.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+  const initials = user?.fullName
+    ? user.fullName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "D";
 
-  const displayName = user?.full_name ?? "Doctor User";
+  const displayName = user?.fullName ?? "Doctor User";
   const displayRole =
     user?.role === "doctor"    ? "Doctor"          :
     user?.role === "admin"     ? "Administrator"   :

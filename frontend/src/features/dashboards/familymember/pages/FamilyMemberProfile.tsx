@@ -39,7 +39,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Editable fields
-  const [fullName,       setFullName]       = useState(user?.full_name     ?? "");
+  const [fullName,       setFullName]       = useState(user?.fullName     ?? "");
   const [contactNumber,  setContactNumber]  = useState(user?.contactNumber ?? "");
   const [relationship,   setRelationship]   = useState("Son");
   const [emergencyContact, setEmergencyContact] = useState("+94 77 999 8888");
@@ -59,13 +59,13 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
   }, []);
 
   const initials = useMemo(() => {
-    const name  = user?.full_name ?? "Family Member";
+    const name  = user?.fullName ?? "Family Member";
     const parts = name.trim().split(" ").filter(Boolean);
     return (
       (parts[0]?.[0] ?? "F") +
       (parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "")
     ).toUpperCase();
-  }, [user?.full_name]);
+  }, [user?.fullName]);
 
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) { addToast("error", "Full name cannot be empty."); return; }
@@ -125,7 +125,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">{user?.full_name ?? "Family-member User"}</p>
+              <p className="text-sm font-semibold text-slate-900">{user?.fullName ?? "Family-member User"}</p>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <IconUsers className="h-3 w-3" />
                 Family Member
@@ -194,7 +194,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
                     <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">{user?.full_name ?? "Family-member User"}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{user?.fullName ?? "Family-member User"}</h3>
                     <p className="text-sm text-slate-500">{user?.email}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <Pill tone="emerald">Family Member</Pill>

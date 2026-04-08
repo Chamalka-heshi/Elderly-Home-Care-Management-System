@@ -30,7 +30,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Editable fields
-  const [fullName,        setFullName]        = useState(user?.full_name     ?? "");
+  const [fullName,        setFullName]        = useState(user?.fullName     ?? "");
   const [contactNumber,   setContactNumber]   = useState(user?.contactNumber ?? "");
   const [specialization,  setSpecialization]  = useState("Elderly & Dementia Care");
   const [shiftPreference, setShiftPreference] = useState("Morning");
@@ -51,13 +51,13 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
   }, []);
 
   const initials = useMemo(() => {
-    const name  = user?.full_name ?? "Caregiver User";
+    const name  = user?.fullName ?? "Caregiver User";
     const parts = name.trim().split(" ").filter(Boolean);
     return (
       (parts[0]?.[0] ?? "C") +
       (parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "")
     ).toUpperCase();
-  }, [user?.full_name]);
+  }, [user?.fullName]);
 
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) { addToast("error", "Full name cannot be empty."); return; }
@@ -107,7 +107,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
               <span className="text-sm font-bold">{initials}</span>
             </div>
             <div>
-              <p className="text-base font-bold text-slate-900">{user?.full_name ?? "Caregiver User"}</p>
+              <p className="text-base font-bold text-slate-900">{user?.fullName ?? "Caregiver User"}</p>
               <p className="text-xs text-slate-500">{user?.email}</p>
             </div>
           </div>
@@ -173,7 +173,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
                     <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">{user?.full_name ?? "Caregiver User"}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{user?.fullName ?? "Caregiver User"}</h3>
                     <p className="text-sm text-slate-500">{user?.email}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <Pill tone="emerald">Caregiver</Pill>

@@ -5,7 +5,7 @@ export type UserRole = 'admin' | 'doctor' | 'caregiver' | 'family';
 
 export interface User {
   id: string;
-  full_name: string;
+  fullName: string;
   email: string;
   role: UserRole;
   contactNumber?: string;
