@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Doctor } from './entities/doctor.entity';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
+import { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto'; 
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 
@@ -40,7 +41,7 @@ export class DoctorsService {
       specialization: doctorData.specialization,
       licenseNumber: doctorData.licenseNumber,
       qualification: doctorData.qualification || 'MBBS',
-      experienceYears: doctorData.yearsOfExperience || 0,
+      experienceYears: doctorData.experienceYears,
       hospitalAffiliation: doctorData.hospitalAffiliation,
       consultationFee: doctorData.consultationFee,
       availableDays: doctorData.availableDays,
@@ -86,22 +87,38 @@ export class DoctorsService {
     });
   }
 
-  async update(id: string, updateData: Partial<CreateDoctorDto>): Promise<Doctor> {
-    const doctor = await this.findOne(id);
+  // ── NEW: Profile Update Logic for the Logged-in Doctor ──
+  async updateProfileByUserId(userId: string, updateData: UpdateDoctorProfileDto) {
+    const doctor = await this.findByUserId(userId);
+    
+    if (!doctor) {
+      throw new NotFoundException('Doctor profile not found');
+    }
 
+    // 1. Update Base User Data
     if (updateData.fullName) doctor.user.fullName = updateData.fullName;
     if (updateData.contactNumber) doctor.user.contactNumber = updateData.contactNumber;
 
+    // 2. Update Doctor Professional Data
     if (updateData.specialization) doctor.specialization = updateData.specialization;
     if (updateData.licenseNumber) doctor.licenseNumber = updateData.licenseNumber;
-    if (updateData.yearsOfExperience !== undefined) doctor.experienceYears = updateData.yearsOfExperience;
-    if (updateData.hospitalAffiliation) doctor.hospitalAffiliation = updateData.hospitalAffiliation;
-    if (updateData.consultationFee !== undefined) doctor.consultationFee = updateData.consultationFee;
-    if (updateData.availableDays) doctor.availableDays = updateData.availableDays;
-    if (updateData.availableTimeStart) doctor.availableTimeStart = updateData.availableTimeStart;
-    if (updateData.availableTimeEnd) doctor.availableTimeEnd = updateData.availableTimeEnd;
+    if (updateData.qualification !== undefined) doctor.qualification = updateData.qualification;
+    
+    // Note: DTO uses yearsOfExperience, Entity uses experienceYears
+    if (updateData.experienceYears !== undefined) doctor.experienceYears = updateData.experienceYears;
 
-    return this.doctorRepository.save(doctor);
+    // Save cascades to the User entity automatically based on your existing setup
+    const updatedDoctor = await this.doctorRepository.save(doctor);
+
+    // 3. Return the exact shape the Frontend `User` context expects
+    return {
+      id: updatedDoctor.user.id,
+      fullName: updatedDoctor.user.fullName,
+      email: updatedDoctor.user.email,
+      role: updatedDoctor.user.role,
+      contactNumber: updatedDoctor.user.contactNumber,
+      profile: updatedDoctor,
+    };
   }
 
   async deactivate(id: string): Promise<void> {
@@ -117,10 +134,6 @@ export class DoctorsService {
   async setAvailability(userId: string, availableDays: string[], availableTimeStart: string, availableTimeEnd: string): Promise<Doctor> {
     const doctor = await this.findByUserId(userId);
     if (!doctor) throw new NotFoundException('Doctor not found');
-
-    if (doctor.availableDays && doctor.availableDays.length > 0) {
-      throw new BadRequestException('Your availability has already been set and cannot be changed.');
-    }
 
     doctor.availableDays = availableDays;
     doctor.availableTimeStart = availableTimeStart;
