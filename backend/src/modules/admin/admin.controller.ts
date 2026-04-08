@@ -9,6 +9,7 @@ import {
   Delete,
   UseGuards,
   HttpCode,
+  Request,
   HttpStatus,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
@@ -21,6 +22,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { UpdateAdminProfileDto } from './dto/update-admin-profile';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -261,4 +263,17 @@ export class AdminController {
     await this.adminService.deletePatient(id);
     return { message: 'Patient deleted successfully' };
   }
+
+  // ── NEW: Comprehensive Profile Update ──
+    @Patch('profile')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @HttpCode(HttpStatus.OK)
+    async updateProfile(
+      @Request() req: any,
+      @Body() dto: UpdateAdminProfileDto,
+    ) {
+      const userId = req.user.sub ?? req.user.userId ?? req.user.id;
+      return this.adminService.updateProfileByUserId(userId, dto);
+    }
 }

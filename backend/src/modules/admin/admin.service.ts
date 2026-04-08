@@ -14,6 +14,8 @@ import { Patient } from '../patients/entities/patient.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { Caregiver } from '../caregivers/entities/caregiver.entity';
+import { UpdateAdminProfileDto } from './dto/update-admin-profile';
+
 
 @Injectable()
 export class AdminService {
@@ -280,4 +282,30 @@ export class AdminService {
 
     await this.patientRepository.remove(patient);
   }
+
+
+  async updateProfileByUserId(userId: string, updateData: UpdateAdminProfileDto) {
+      const admin = await this.findByUserId(userId);
+      
+      if (!admin) {
+        throw new NotFoundException('Admin profile not found');
+      }
+  
+      // 1. Update Base User Data
+      if (updateData.fullName) admin.user.fullName = updateData.fullName;
+      if (updateData.contactNumber) admin.user.contactNumber = updateData.contactNumber;
+  
+  
+      // Save cascades to the User entity automatically based on your existing setup
+      const updatedAdmin = await this.doctorRepository.save(admin);
+  
+      // 3. Return the exact shape the Frontend `User` context expects
+      return {
+        id: updatedAdmin.user.id,
+        fullName: updatedAdmin.user.fullName,
+        email: updatedAdmin.user.email,
+        role: updatedAdmin.user.role,
+        contactNumber: updatedAdmin.user.contactNumber
+      };
+    }
 }

@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { IsString, IsOptional, Matches } from 'class-validator';
 
-export class UpdateUserDto {
+export class UpdateAdminProfileDto {
   @IsOptional()
   @IsString()
   fullName?: string;
