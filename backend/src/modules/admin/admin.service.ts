@@ -310,6 +310,10 @@ export class AdminService {
     // Fetch updated user separately for the response
     const updatedUser = await this.usersService.findById(userId);
 
+    if (!updatedUser) {
+      throw new Error('User not found after update');
+    }
+
     return {
       id: updatedUser.id,
       fullName: updatedUser.fullName,

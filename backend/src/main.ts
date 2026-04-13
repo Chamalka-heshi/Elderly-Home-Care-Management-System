@@ -8,8 +8,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const cs = app.get(ConfigService);
 
-  const rawOrigin = cs.get<string>('app.cors.origin');
-  const allowedOrigins = rawOrigin.split(',').map((o) => o.trim());
+  const rawOrigin = cs.get<string>('app.cors.origin') ?? ''; 
+  const allowedOrigins = rawOrigin.split(',').map((o) => o.trim()).filter(Boolean); 
   const corsOrigin = allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
 
   app.enableCors({
@@ -19,7 +19,6 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ── Global validation ─────────────────────────────────────────────────────
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -28,10 +27,8 @@ async function bootstrap() {
     }),
   );
 
-  // ── Global exception filter ───────────────────────────────────────────────
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // ── API prefix ────────────────────────────────────────────────────────────
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3000;
