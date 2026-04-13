@@ -7,7 +7,6 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
   HttpCode,
   Request,
   HttpStatus,
@@ -18,14 +17,12 @@ import { CaregiversService } from '../caregivers/caregivers.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateDoctorDto } from '../doctors/dto/create-doctor.dto';
 import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 
+// JWT + RolesGuard are enforced globally via APP_GUARD in AppModule.
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class AdminController {
   constructor(
@@ -209,7 +206,6 @@ export class AdminController {
     };
   }
 
-
   @Delete('caregivers/:id/deactivate')
   @HttpCode(HttpStatus.OK)
   async deactivateCaregiver(@Param('id') id: string) {
@@ -264,16 +260,14 @@ export class AdminController {
     return { message: 'Patient deleted successfully' };
   }
 
-  // ── NEW: Comprehensive Profile Update ──
-    @Patch('profile')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
-    @HttpCode(HttpStatus.OK)
-    async updateProfile(
-      @Request() req: any,
-      @Body() dto: UpdateAdminProfileDto,
-    ) {
-      const userId = req.user.sub ?? req.user.userId ?? req.user.id;
-      return this.adminService.updateProfileByUserId(userId, dto);
-    }
+  // ============ ADMIN PROFILE ============
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @Request() req: any,
+    @Body() dto: UpdateAdminProfileDto,
+  ) {
+    const userId = req.user.sub;
+    return this.adminService.updateProfileByUserId(userId, dto);
+  }
 }

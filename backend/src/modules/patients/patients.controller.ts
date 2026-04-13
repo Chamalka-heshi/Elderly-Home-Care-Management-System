@@ -7,36 +7,31 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { GetUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { FamilyService } from '../family/family.service';
 
+// JWT + RolesGuard are enforced globally via APP_GUARD in AppModule.
 @Controller('patients')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class PatientsController {
   constructor(
     private readonly patientsService: PatientsService,
     private readonly familyService: FamilyService,
   ) {}
-
   @Post()
   @Roles(UserRole.FAMILY)
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @CurrentUser() user: any,
+    @GetUser() user: any,
     @Body() createPatientDto: CreatePatientDto,
   ) {
-    // Get family member ID from user
-    const familyMember = await this.familyService.findByUserId(user.id);
+    const familyMember = await this.familyService.findByUserId(user.sub);
 
     const patient = await this.patientsService.create(
       familyMember.id,
@@ -51,8 +46,8 @@ export class PatientsController {
 
   @Get('my-patients')
   @Roles(UserRole.FAMILY)
-  async findMyPatients(@CurrentUser() user: any) {
-    const familyMember = await this.familyService.findByUserId(user.id);
+  async findMyPatients(@GetUser() user: any) {
+    const familyMember = await this.familyService.findByUserId(user.sub);
     const patients = await this.patientsService.findAllByFamily(familyMember.id);
 
     return {
@@ -70,11 +65,11 @@ export class PatientsController {
   @Patch(':id')
   @Roles(UserRole.FAMILY)
   async update(
-    @CurrentUser() user: any,
+    @GetUser() user: any,
     @Param('id') id: string,
     @Body() updatePatientDto: Partial<CreatePatientDto>,
   ) {
-    const familyMember = await this.familyService.findByUserId(user.id);
+    const familyMember = await this.familyService.findByUserId(user.sub);
 
     const patient = await this.patientsService.update(
       id,
@@ -90,9 +85,9 @@ export class PatientsController {
 
   @Delete(':id')
   @Roles(UserRole.FAMILY)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@CurrentUser() user: any, @Param('id') id: string) {
-    const familyMember = await this.familyService.findByUserId(user.id);
+  @HttpCode(HttpStatus.OK)
+  async remove(@GetUser() user: any, @Param('id') id: string) {
+    const familyMember = await this.familyService.findByUserId(user.sub);
     await this.patientsService.delete(id, familyMember.id);
 
     return {

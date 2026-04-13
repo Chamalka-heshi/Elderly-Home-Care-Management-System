@@ -16,7 +16,7 @@ export class Doctor {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
+  @OneToOne(() => User, { cascade: true, eager: false, onDelete: 'CASCADE' })
   @JoinColumn()
   user: User;
 

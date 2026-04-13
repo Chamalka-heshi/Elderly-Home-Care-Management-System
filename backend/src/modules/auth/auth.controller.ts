@@ -6,7 +6,6 @@ import {
   Body,
   HttpCode,
   HttpStatus,
-  UseGuards,
   Request,
   Logger,
   UnauthorizedException,
@@ -20,18 +19,16 @@ import { CreateDoctorDto } from '../doctors/dto/create-doctor.dto';
 import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
 import { CreateAdminDto } from '../admin/dto/create-admin.dto';
 import { CreatePatientDto } from '../patients/dto/create-patient.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
 interface JwtUser {
-  sub?: string;
-  userId?: string;
-  id?: string;
-  email?: string;
-  role?: UserRole;
+  sub: string;
+  email: string;
+  role: UserRole;
+  contactNumber: string;
 }
 
 @Controller('auth')
@@ -41,21 +38,24 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   /* =========================================================
-     PUBLIC ROUTES
+     PUBLIC ROUTES — no JWT required
   ========================================================= */
 
+  @Public()
   @Post('family/signup')
   @HttpCode(HttpStatus.CREATED)
   async familySignup(@Body() dto: FamilySignupDto) {
     return this.authService.familySignup(dto);
   }
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
+  @Public()
   @Post('firebase')
   @HttpCode(HttpStatus.OK)
   async firebaseAuth(@Body() dto: FirebaseAuthDto) {
@@ -71,16 +71,15 @@ export class AuthController {
   }
 
   /* =========================================================
-     AUTHENTICATED ROUTES
+     AUTHENTICATED ROUTES — JWT enforced by global APP_GUARD
   ========================================================= */
 
   @Get('profile')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async getProfile(@Request() req: { user: JwtUser }) {
     this.logger.log(`Getting profile - req.user: ${JSON.stringify(req.user)}`);
 
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
+    const userId = req.user.sub;
     if (!userId) {
       this.logger.error('No user ID found in JWT token');
       throw new UnauthorizedException('Authentication failed');
@@ -90,14 +89,13 @@ export class AuthController {
   }
 
   @Delete('delete-account')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async deleteAccount(@Request() req: { user: JwtUser }) {
     this.logger.log(
       `Delete account - Full req.user: ${JSON.stringify(req.user)}`,
     );
 
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
+    const userId = req.user.sub;
     if (!userId) {
       this.logger.error('❌ No user ID found in JWT token');
       this.logger.error(`JWT Payload received: ${JSON.stringify(req.user)}`);
@@ -115,39 +113,30 @@ export class AuthController {
   ========================================================= */
 
   @Post('admin/create-doctor')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createDoctor(
     @Body() dto: CreateDoctorDto,
-    @Request() req: { user: JwtUser },
   ) {
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
-    return this.authService.createDoctor(dto, userId);
+    return this.authService.createDoctor(dto);
   }
 
   @Post('admin/create-caregiver')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createCaregiver(
     @Body() dto: CreateCaregiverDto,
-    @Request() req: { user: JwtUser },
   ) {
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
-    return this.authService.createCaregiver(dto, userId);
+    return this.authService.createCaregiver(dto);
   }
 
   @Post('admin/create-admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createAdmin(
     @Body() dto: CreateAdminDto,
-    @Request() req: { user: JwtUser },
   ) {
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
-    return this.authService.createAdmin(dto, userId);
+    return this.authService.createAdmin(dto);
   }
 
   /* =========================================================
@@ -155,49 +144,29 @@ export class AuthController {
   ========================================================= */
 
   @Post('family/create-patient')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.FAMILY)
   @HttpCode(HttpStatus.CREATED)
   async createPatient(
     @Body() dto: CreatePatientDto,
     @Request() req: { user: JwtUser },
   ) {
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
+    const userId = req.user.sub;
     return this.authService.createPatient(dto, userId);
   }
 
   @Patch('change-password')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async changePassword(
     @Request() req: { user: JwtUser },
     @Body() dto: ChangePasswordDto,
   ) {
-    const userId = req.user.sub ?? req.user.userId ?? req.user.id;
+    const userId = req.user.sub;
     if (!userId) {
       throw new UnauthorizedException('Authentication failed');
     }
 
-    // 1. Verify that the user exists
-    const user = await this.authService.validateUser(userId);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    // 2. Validate the current password
-    const isMatch = await this.authService.login({
-      email: user.email,
-      password: dto.currentPassword,
-    });
-
-    if (!isMatch) {
-      throw new UnauthorizedException('Current password is incorrect');
-    }
-
-    // 3. Perform the update
     await this.authService.changePassword(userId, dto.currentPassword, dto.newPassword);
-    
+
     return { message: 'Password updated successfully' };
   }
 }
-

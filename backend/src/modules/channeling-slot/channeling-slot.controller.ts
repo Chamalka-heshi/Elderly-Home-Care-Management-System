@@ -1,37 +1,41 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
-  UseGuards, ParseUUIDPipe, HttpCode, HttpStatus, Req
+  ParseUUIDPipe, HttpCode, HttpStatus, Req
 } from '@nestjs/common';
 import { ChannelingSlotService } from './channeling-slot.service';
 import { CreateChannelingSlotDto, UpdateChannelingSlotDto, QueryChannelingSlotsDto } from './dto/channeling-slot.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 
-@Controller('channeling-slots') 
-@UseGuards(JwtAuthGuard, RolesGuard)
+// JWT + RolesGuard are enforced globally via APP_GUARD in AppModule.
+@Controller('channeling-slots')
 export class ChannelingSlotController {
   constructor(private readonly service: ChannelingSlotService) {}
+
+  // ── Authenticated (any logged-in user) ────────────────────────────────────
 
   @Get('available')
   getAvailableSlots() { return this.service.getAvailableSlotsWithDoctors(); }
 
+  // ── Doctor routes ─────────────────────────────────────────────────────────
+
   @Get('my-slots')
   @Roles(UserRole.DOCTOR)
-  findMySlots(@Req() req: any) { return this.service.findSlotsByUserId(req.user.id); }
+  findMySlots(@Req() req: any) { return this.service.findSlotsByUserId(req.user.sub); }
 
   @Patch('my-slots/:id/accept')
   @Roles(UserRole.DOCTOR)
   acceptSlot(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
-    return this.service.acceptSlot(id, req.user.id);
+    return this.service.acceptSlot(id, req.user.sub);
   }
 
   @Patch('my-slots/:id/reject')
   @Roles(UserRole.DOCTOR)
   rejectSlot(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
-    return this.service.rejectSlot(id, req.user.id);
+    return this.service.rejectSlot(id, req.user.sub);
   }
+
+  // ── Admin routes ──────────────────────────────────────────────────────────
 
   @Post('admin')
   @Roles(UserRole.ADMIN)
@@ -41,13 +45,13 @@ export class ChannelingSlotController {
   @Roles(UserRole.ADMIN)
   findAll(@Query() query: QueryChannelingSlotsDto) { return this.service.findAll(query); }
 
-  @Get('admin/:id')
-  @Roles(UserRole.ADMIN)
-  findOne(@Param('id', ParseUUIDPipe) id: string) { return this.service.findOne(id); }
-
   @Get('admin/doctor/:doctorId/weekly')
   @Roles(UserRole.ADMIN)
   weeklySchedule(@Param('doctorId', ParseUUIDPipe) doctorId: string) { return this.service.getWeeklySchedule(doctorId); }
+
+  @Get('admin/:id')
+  @Roles(UserRole.ADMIN)
+  findOne(@Param('id', ParseUUIDPipe) id: string) { return this.service.findOne(id); }
 
   @Patch('admin/:id')
   @Roles(UserRole.ADMIN)
