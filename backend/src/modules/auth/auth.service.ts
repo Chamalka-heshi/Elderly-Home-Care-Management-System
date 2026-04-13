@@ -3,7 +3,6 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -14,6 +13,7 @@ import { UsersService } from '../users/users.service';
 import { FamilyService } from '../family/family.service';
 import { DoctorsService } from '../doctors/doctors.service';
 import { CaregiversService } from '../caregivers/caregivers.service';
+import { AdminService } from '../admin/admin.service';
 import { PatientsService } from '../patients/patients.service';
 import { FamilySignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -36,6 +36,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly firebaseAdmin: FirebaseAdminService,
+    private readonly adminService: AdminService,  
   ) {}
 
   /**
@@ -60,7 +61,7 @@ export class AuthService {
 
     await this.familyService.create({ user });
 
-    const token = this.generateToken(user.id, user.email, user.role);
+    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
 
     return {
       message: 'Family member registered successfully',
@@ -78,12 +79,7 @@ export class AuthService {
   /**
    * ADMIN ONLY: Create Doctor Account
    */
-  async createDoctor(createDoctorDto: CreateDoctorDto, adminUserId: string) {
-    const admin = await this.usersService.findById(adminUserId);
-    if (!admin || admin.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can create doctor accounts');
-    }
-
+  async createDoctor(createDoctorDto: CreateDoctorDto) {
     const existingUser = await this.usersService.findByEmail(createDoctorDto.email);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
@@ -110,13 +106,7 @@ export class AuthService {
    */
   async createCaregiver(
     createCaregiverDto: CreateCaregiverDto,
-    adminUserId: string,
   ) {
-    const admin = await this.usersService.findById(adminUserId);
-    if (!admin || admin.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can create caregiver accounts');
-    }
-
     const existingUser = await this.usersService.findByEmail(createCaregiverDto.email);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
@@ -141,13 +131,7 @@ export class AuthService {
    */
   async createAdmin(
     createAdminDto: CreateAdminDto,
-    currentAdminUserId: string,
   ) {
-    const admin = await this.usersService.findById(currentAdminUserId);
-    if (!admin || admin.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can create admin accounts');
-    }
-
     const { email, password, fullName, contactNumber } = createAdminDto;
 
     const existingUser = await this.usersService.findByEmail(email);
@@ -182,13 +166,6 @@ export class AuthService {
     createPatientDto: CreatePatientDto,
     familyUserId: string,
   ) {
-    const familyUser = await this.usersService.findById(familyUserId);
-    if (!familyUser || familyUser.role !== UserRole.FAMILY) {
-      throw new ForbiddenException(
-        'Only family members can create patient accounts',
-      );
-    }
-
     const familyMember = await this.familyService.findByUserId(familyUserId);
     if (!familyMember) {
       throw new NotFoundException('Family member profile not found');
@@ -234,33 +211,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    let profileData = null;
-
-    switch (user.role) {
-      case UserRole.FAMILY:
-        profileData = await this.familyService.findByUserId(user.id);
-        break;
-      case UserRole.DOCTOR:
-        profileData = await this.doctorsService.findByUserId(user.id);
-        break;
-      case UserRole.CAREGIVER:
-        profileData = await this.caregiversService.findByUserId(user.id);
-        break;
-      case UserRole.ADMIN:
-        break;
-    }
-
-    const token = this.generateToken(user.id, user.email, user.role);
+    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
 
     return {
       message: 'Login successful',
       user: {
-        id: user.id,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
         contactNumber: user.contactNumber,
-        profile: profileData,
       },
       token,
     };
@@ -285,10 +244,10 @@ export class AuthService {
         profileData = await this.caregiversService.findByUserId(user.id);
         break;
       case UserRole.ADMIN:
+        profileData = await this.adminService.findByUserId(user.id);
         break;
     }
-
-    return {
+    const data = {
       id: user.id,
       fullName: user.fullName,
       email: user.email,
@@ -296,6 +255,8 @@ export class AuthService {
       contactNumber: user.contactNumber,
       profile: profileData,
     };
+    return data ;
+
   }
 
   /**
@@ -343,6 +304,11 @@ export class AuthService {
     let user = await this.userRepository.findOne({ where: { email } });
     let isNewUser = false;
 
+    // Existing account — guard against deactivated users the same way login() does
+    if (user && !user.isActive) {
+      throw new UnauthorizedException('This account has been deactivated');
+    }
+
     if (!user) {
       user = this.userRepository.create({
         email,
@@ -367,7 +333,7 @@ export class AuthService {
       await this.userRepository.save(user);
     }
 
-    const token = this.generateToken(user.id, user.email, user.role);
+    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
 
     return {
       token,
@@ -382,26 +348,30 @@ export class AuthService {
     };
   }
 
-  private generateToken(userId: string, email: string, role: UserRole): string {
-    return this.jwtService.sign({ sub: userId, email, role });
+  private generateToken(
+    userId: string,
+    email: string,
+    role: UserRole,
+    contactNumber: string,
+  ): string {
+    // JwtModule is configured with the secret via JwtConfigModule.
+    // No need to pass { secret } here — sign() uses the module-level config.
+    return this.jwtService.sign({ sub: userId, email, role, contactNumber });
   }
 
-  async validateUser(userId: string) {
-    return this.usersService.findById(userId);
-  }
-
-  async changePassword(userId: string, currentPw: string, newPw: string) {
+  async changePassword(userId: string, currentPw: string, newPw: string): Promise<void> {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
+    // Single bcrypt validation — no need to call login() separately.
     const isMatch = await this.usersService.validatePassword(currentPw, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    return this.usersService.updatePassword(userId, newPw);
+    await this.usersService.updatePassword(userId, newPw);
   }
 }
 
