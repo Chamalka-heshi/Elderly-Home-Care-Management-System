@@ -79,7 +79,6 @@ export class AdminService {
   async findByUserId(userId: string): Promise<Admin | null> {
     return this.adminRepository.findOne({
       where: { user: { id: userId } },
-      relations: ['user'],
     });
   }
 
@@ -283,29 +282,40 @@ export class AdminService {
     await this.patientRepository.remove(patient);
   }
 
+  async findProfileByUserId(userId: string) {
+    const admin = await this.findByUserId(userId);
+    if (!admin) return null;
+
+    return admin;
+  }
+
 
   async updateProfileByUserId(userId: string, updateData: UpdateAdminProfileDto) {
-      const admin = await this.findByUserId(userId);
-      
-      if (!admin) {
-        throw new NotFoundException('Admin profile not found');
-      }
-  
-      // 1. Update Base User Data
-      if (updateData.fullName) admin.user.fullName = updateData.fullName;
-      if (updateData.contactNumber) admin.user.contactNumber = updateData.contactNumber;
-  
-  
-      // Save cascades to the User entity automatically based on your existing setup
-      const updatedAdmin = await this.doctorRepository.save(admin);
-  
-      // 3. Return the exact shape the Frontend `User` context expects
-      return {
-        id: updatedAdmin.user.id,
-        fullName: updatedAdmin.user.fullName,
-        email: updatedAdmin.user.email,
-        role: updatedAdmin.user.role,
-        contactNumber: updatedAdmin.user.contactNumber
-      };
+    const admin = await this.adminRepository.findOne({
+      where: { user: { id: userId } },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin profile not found');
     }
+
+    // Update user fields directly via UsersService — no relation loading needed
+    if (updateData.fullName || updateData.contactNumber) {
+      await this.usersService.update(userId, {
+        ...(updateData.fullName && { fullName: updateData.fullName }),
+        ...(updateData.contactNumber && { contactNumber: updateData.contactNumber }),
+      });
+    }
+
+    // Fetch updated user separately for the response
+    const updatedUser = await this.usersService.findById(userId);
+
+    return {
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      contactNumber: updatedUser.contactNumber,
+    };
+  }
 }

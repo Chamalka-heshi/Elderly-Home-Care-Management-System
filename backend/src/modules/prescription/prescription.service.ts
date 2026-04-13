@@ -32,10 +32,14 @@ export class PrescriptionService {
   // ── helper: resolve doctors.id from users.id ────────────────────────────────
 
   private async resolveDoctorId(userId: string): Promise<string> {
-  const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
-  if (!doctor) throw new ForbiddenException('No doctor profile found for this user.');
-  return doctor.id;
-}
+    if (!userId) throw new ForbiddenException('User ID could not be resolved from token.');
+    const doctor = await this.doctorRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+    if (!doctor) throw new ForbiddenException('No doctor profile found for this user.');
+    return doctor.id;
+  }
 
   // ── Create ──────────────────────────────────────────────────────────────────
 

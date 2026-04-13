@@ -83,40 +83,48 @@ export class DoctorsService {
   async findByUserId(userId: string): Promise<Doctor | null> {
     return this.doctorRepository.findOne({
       where: { user: { id: userId } },
-      relations: ['user'],
     });
   }
 
-  // ── NEW: Profile Update Logic for the Logged-in Doctor ──
+  async findProfileByUserId(userId: string) {
+    const doctor = await this.findByUserId(userId);
+    if (!doctor) return null;
+
+    return doctor;
+  }
+
   async updateProfileByUserId(userId: string, updateData: UpdateDoctorProfileDto) {
     const doctor = await this.findByUserId(userId);
-    
+
     if (!doctor) {
       throw new NotFoundException('Doctor profile not found');
     }
 
-    // 1. Update Base User Data
-    if (updateData.fullName) doctor.user.fullName = updateData.fullName;
-    if (updateData.contactNumber) doctor.user.contactNumber = updateData.contactNumber;
+    // 1. Update base user fields directly via UsersService
+    if (updateData.fullName || updateData.contactNumber) {
+      await this.usersService.update(userId, {
+        ...(updateData.fullName && { fullName: updateData.fullName }),
+        ...(updateData.contactNumber && { contactNumber: updateData.contactNumber }),
+      });
+    }
 
-    // 2. Update Doctor Professional Data
+    // 2. Update doctor-specific fields
     if (updateData.specialization) doctor.specialization = updateData.specialization;
     if (updateData.licenseNumber) doctor.licenseNumber = updateData.licenseNumber;
     if (updateData.qualification !== undefined) doctor.qualification = updateData.qualification;
-    
-    // Note: DTO uses yearsOfExperience, Entity uses experienceYears
     if (updateData.experienceYears !== undefined) doctor.experienceYears = updateData.experienceYears;
 
-    // Save cascades to the User entity automatically based on your existing setup
     const updatedDoctor = await this.doctorRepository.save(doctor);
 
-    // 3. Return the exact shape the Frontend `User` context expects
+    // 3. Fetch updated user separately for the response
+    const updatedUser = await this.usersService.findById(userId);
+
     return {
-      id: updatedDoctor.user.id,
-      fullName: updatedDoctor.user.fullName,
-      email: updatedDoctor.user.email,
-      role: updatedDoctor.user.role,
-      contactNumber: updatedDoctor.user.contactNumber,
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      contactNumber: updatedUser.contactNumber,
       profile: updatedDoctor,
     };
   }

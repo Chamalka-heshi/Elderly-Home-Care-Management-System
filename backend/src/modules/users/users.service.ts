@@ -79,4 +79,8 @@ export class UsersService {
     user.password = hashedPassword;
     await this.userRepository.save(user);
   }
+
+  async update(userId: string, data: Partial<{ fullName: string; contactNumber: string }>) {
+    await this.userRepository.update(userId, data);
+}
 }
