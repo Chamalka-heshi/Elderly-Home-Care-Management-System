@@ -1,5 +1,5 @@
 import React from "react";
-import type { BaseUser as Admin } from "../../../../api/users/user.types";
+import type { Admin } from "../../../../api/users/user.types";
 
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
@@ -12,6 +12,7 @@ interface Props {
 }
 
 const AdminManagement: React.FC<Props> = ({ admins, loading, onAddAdmin }) => (
+
   <TableShell
     title="Admin Accounts"
     subtitle="Manage all system administrators and their permissions."
