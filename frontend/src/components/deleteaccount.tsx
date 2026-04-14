@@ -27,10 +27,6 @@ const DeleteAccountButton: React.FC = () => {
       
       setUser(null);
       setSuccess('Account deleted successfully.');
-      
-      // Clear session just in case
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
 
       setTimeout(() => navigate('/signup'), 1500);
     } catch (err: unknown) {
