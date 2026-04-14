@@ -59,9 +59,6 @@ export class AdminController {
       ...createAdminDto,
       password: tempPassword,
     });
-    //admin.id - admin in
-    //admin.user.id - user id
-    // Force password change on first login
     await this.usersService.setMustChangePassword(admin.user.id, true);
 
     // Email credentials (non-blocking)

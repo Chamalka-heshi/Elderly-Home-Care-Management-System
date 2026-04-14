@@ -35,8 +35,8 @@ export class AdminService {
 
   // ==================== ADMIN MANAGEMENT ====================
 
-  async create(createAdminDto: CreateAdminDto): Promise<Admin> {
-    const { email, password, fullName, contactNumber } = createAdminDto;
+  async create(createAdminDto: CreateAdminDto & { password: string }): Promise<Admin> {
+    const { email, password, fullName, contactNumber } = createAdminDto as CreateAdminDto & { password: string };
 
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
