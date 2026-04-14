@@ -14,6 +14,8 @@ import {
 import { AdminService } from './admin.service';
 import { DoctorsService } from '../doctors/doctors.service';
 import { CaregiversService } from '../caregivers/caregivers.service';
+import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateDoctorDto } from '../doctors/dto/create-doctor.dto';
 import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
@@ -29,7 +31,15 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly doctorsService: DoctorsService,
     private readonly caregiversService: CaregiversService,
+    private readonly usersService: UsersService,
+    private readonly mailService: MailService,
   ) {}
+
+  // ─── Helper ───────────────────────────────────────────────────────────────
+  /** Temporary password = fixed prefix + contact number */
+  private buildTempPassword(contactNumber: string): string {
+    return `CareHome@${contactNumber}`;
+  }
 
   // ============ DASHBOARD STATISTICS ============
   @Get('dashboard/stats')
@@ -38,13 +48,32 @@ export class AdminController {
   }
 
   // ============ ADMIN MANAGEMENT ============
+
   @Post('admins')
   @HttpCode(HttpStatus.CREATED)
   async createAdmin(@Body() createAdminDto: CreateAdminDto) {
-    const admin = await this.adminService.create(createAdminDto);
+    const tempPassword = this.buildTempPassword(createAdminDto.contactNumber);
+
+    // create() expects the DTO + an injected password
+    const admin = await this.adminService.create({
+      ...createAdminDto,
+      password: tempPassword,
+    });
+    //admin.id - admin in
+    //admin.user.id - user id
+    // Force password change on first login
+    await this.usersService.setMustChangePassword(admin.user.id, true);
+
+    // Email credentials (non-blocking)
+    await this.mailService.sendAccountCredentials(
+      createAdminDto.email,
+      createAdminDto.fullName,
+      'Admin',
+      createAdminDto.contactNumber,
+    );
 
     return {
-      message: 'Admin created successfully',
+      message: `Admin created. Login credentials have been sent to ${createAdminDto.email}`,
       admin: {
         id: admin.id,
         fullName: admin.user.fullName,
@@ -74,13 +103,28 @@ export class AdminController {
   }
 
   // ============ DOCTOR MANAGEMENT ============
+
   @Post('doctors')
   @HttpCode(HttpStatus.CREATED)
   async createDoctor(@Body() createDoctorDto: CreateDoctorDto) {
-    const doctor = await this.doctorsService.create(createDoctorDto);
+    const tempPassword = this.buildTempPassword(createDoctorDto.contactNumber!);
+
+    const doctor = await this.doctorsService.create({
+      ...createDoctorDto,
+      password: tempPassword,
+    });
+
+    await this.usersService.setMustChangePassword(doctor.user.id, true);
+
+    await this.mailService.sendAccountCredentials(
+      createDoctorDto.email,
+      createDoctorDto.fullName,
+      'Doctor',
+      createDoctorDto.contactNumber!,
+    );
 
     return {
-      message: 'Doctor created successfully',
+      message: `Doctor created. Login credentials have been sent to ${createDoctorDto.email}`,
       doctor: {
         id: doctor.id,
         fullName: doctor.user.fullName,
@@ -151,13 +195,28 @@ export class AdminController {
   }
 
   // ============ CAREGIVER MANAGEMENT ============
+
   @Post('caregivers')
   @HttpCode(HttpStatus.CREATED)
   async createCaregiver(@Body() createCaregiverDto: CreateCaregiverDto) {
-    const caregiver = await this.caregiversService.create(createCaregiverDto);
+    const tempPassword = this.buildTempPassword(createCaregiverDto.contactNumber!);
+
+    const caregiver = await this.caregiversService.create({
+      ...createCaregiverDto,
+      password: tempPassword,
+    });
+
+    await this.usersService.setMustChangePassword(caregiver.user.id, true);
+
+    await this.mailService.sendAccountCredentials(
+      createCaregiverDto.email,
+      createCaregiverDto.fullName,
+      'Caregiver',
+      createCaregiverDto.contactNumber!,
+    );
 
     return {
-      message: 'Caregiver created successfully',
+      message: `Caregiver created. Login credentials have been sent to ${createCaregiverDto.email}`,
       caregiver: {
         id: caregiver.id,
         fullName: caregiver.user.fullName,
