@@ -178,18 +178,7 @@ export class AuthService {
   // Delete Account (soft delete / deactivate)
   // ──────────────────────────────────────────────────────────────────────────
   async deleteAccount(userId: string) {
-    if (!userId) {
-      throw new BadRequestException('User ID is required');
-    }
-
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    user.isActive = false;
-    await this.userRepository.save(user);
-
+    await this.usersService.deactivateUser(userId);   
     return { message: 'Account deleted successfully' };
   }
 
