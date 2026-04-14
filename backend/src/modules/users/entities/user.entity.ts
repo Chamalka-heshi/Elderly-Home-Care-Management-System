@@ -38,6 +38,10 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+
+  @Column({ name: 'must_change_password', default: false })
+  mustChangePassword: boolean;
+
   // ── Firebase / OAuth fields ───────────────────────────────────────────────
 
   /**
