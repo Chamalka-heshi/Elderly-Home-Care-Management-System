@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Injectable,
   NotFoundException,
@@ -7,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as nodemailer from 'nodemailer';
 import { ContactMessage } from './entities/contact-message.entity';
 import { ContactInfo } from './entities/contact-info.entity';
 import {
@@ -130,20 +128,9 @@ export class ContactService {
     return { message: 'Message deleted.' };
   }
 
-  // ── Private: build & send reply email ─────────────────────────────────────
+  // ── Private: build & send reply email via MailService ─────────────────────
 
   private async sendReplyEmail(msg: ContactMessage): Promise<void> {
-    // Create transporter lazily so env vars are guaranteed to be loaded
-    const transporter = nodemailer.createTransport({
-      host:   process.env.SMTP_HOST ?? 'smtp.gmail.com',
-      port:   parseInt(process.env.SMTP_PORT ?? '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
     const info       = await this.getInfo();
     const systemName = process.env.SYSTEM_NAME ?? 'Care Home Management System';
     const fromEmail  = process.env.SMTP_USER ?? info.email ?? 'noreply@carehome.lk';
@@ -157,7 +144,7 @@ export class ContactService {
       systemEmail:   info.email        ?? fromEmail,
     });
 
-    await transporter.sendMail({
+    await this.mailService.sendMail({
       from:    `"${systemName}" <${fromEmail}>`,
       to:      `"${msg.fullName}" <${msg.email}>`,
       subject: `Re: Your enquiry — ${systemName}`,
@@ -166,6 +153,4 @@ export class ContactService {
 
     this.logger.log(`Reply email sent to ${msg.email}`);
   }
-
-  
 }

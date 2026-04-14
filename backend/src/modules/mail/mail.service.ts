@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
@@ -18,6 +17,15 @@ export class MailService {
         pass: this.configService.get<string>('SMTP_PASS'),
       },
     });
+  }
+
+  /**
+   * Generic mail sender — delegates to the shared transporter.
+   * Used by other services (e.g. ContactService) so they don't need to
+   * create their own nodemailer instance.
+   */
+  async sendMail(options: nodemailer.SendMailOptions): Promise<void> {
+    await this.transporter.sendMail(options);
   }
 
   /**
@@ -132,7 +140,6 @@ export class MailService {
       this.logger.error(`Failed to send credentials email to ${email}`, err);
     }
   }
-
 
   async buildReplyEmailHtml(opts: {
     recipientName: string;
