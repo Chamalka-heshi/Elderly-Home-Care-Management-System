@@ -82,5 +82,9 @@ export class UsersService {
 
   async update(userId: string, data: Partial<{ fullName: string; contactNumber: string }>) {
     await this.userRepository.update(userId, data);
-}
+  }
+
+  async setMustChangePassword(userId: string, value: boolean): Promise<void> {
+    await this.userRepository.update(userId, { mustChangePassword: value });
+  }
 }
