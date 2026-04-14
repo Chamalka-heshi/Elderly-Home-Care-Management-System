@@ -17,9 +17,6 @@ import { AdminService } from '../admin/admin.service';
 import { PatientsService } from '../patients/patients.service';
 import { FamilySignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { CreateDoctorDto } from '../doctors/dto/create-doctor.dto';
-import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
-import { CreateAdminDto } from '../admin/dto/create-admin.dto';
 import { CreatePatientDto } from '../patients/dto/create-patient.dto';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { FirebaseAdminService } from './firebase/firebase-admin.service';
@@ -36,13 +33,14 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly firebaseAdmin: FirebaseAdminService,
-    private readonly adminService: AdminService,  
+    private readonly adminService: AdminService,
   ) {}
 
-  /**
-   * PUBLIC: Family Member Signup
-   * Only role that can self-register
-   */
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PUBLIC: Family Member Signup
+  // Only role that can self-register
+  // ──────────────────────────────────────────────────────────────────────────
   async familySignup(signupDto: FamilySignupDto) {
     const { email, password, fullName, contactNumber } = signupDto;
 
@@ -71,101 +69,16 @@ export class AuthService {
         email: user.email,
         role: user.role,
         contactNumber: user.contactNumber,
+        mustChangePassword: false,
       },
       token,
     };
   }
 
-  /**
-   * ADMIN ONLY: Create Doctor Account
-   */
-  async createDoctor(createDoctorDto: CreateDoctorDto) {
-    const existingUser = await this.usersService.findByEmail(createDoctorDto.email);
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
-    }
-
-    const doctor = await this.doctorsService.create(createDoctorDto);
-
-    return {
-      message: 'Doctor account created successfully',
-      doctor: {
-        id: doctor.id,
-        fullName: doctor.user.fullName,
-        email: doctor.user.email,
-        role: doctor.user.role,
-        contactNumber: doctor.user.contactNumber,
-        specialization: doctor.specialization,
-        licenseNumber: doctor.licenseNumber,
-      },
-    };
-  }
-
-  /**
-   * ADMIN ONLY: Create Caregiver Account
-   */
-  async createCaregiver(
-    createCaregiverDto: CreateCaregiverDto,
-  ) {
-    const existingUser = await this.usersService.findByEmail(createCaregiverDto.email);
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
-    }
-
-    const caregiver = await this.caregiversService.create(createCaregiverDto);
-
-    return {
-      message: 'Caregiver account created successfully',
-      caregiver: {
-        id: caregiver.id,
-        fullName: caregiver.user.fullName,
-        email: caregiver.user.email,
-        role: caregiver.user.role,
-        contactNumber: caregiver.user.contactNumber,
-      },
-    };
-  }
-
-  /**
-   * ADMIN ONLY: Create Admin Account
-   */
-  async createAdmin(
-    createAdminDto: CreateAdminDto,
-  ) {
-    const { email, password, fullName, contactNumber } = createAdminDto;
-
-    const existingUser = await this.usersService.findByEmail(email);
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
-    }
-
-    const user = await this.usersService.create(
-      email,
-      password,
-      UserRole.ADMIN,
-      fullName,
-      contactNumber,
-    );
-
-    return {
-      message: 'Admin account created successfully',
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        contactNumber: user.contactNumber,
-      },
-    };
-  }
-
-  /**
-   * FAMILY ONLY: Create Patient Profile
-   */
-  async createPatient(
-    createPatientDto: CreatePatientDto,
-    familyUserId: string,
-  ) {
+  // ──────────────────────────────────────────────────────────────────────────
+  // FAMILY ONLY: Create Patient Profile
+  // ──────────────────────────────────────────────────────────────────────────
+  async createPatient(createPatientDto: CreatePatientDto, familyUserId: string) {
     const familyMember = await this.familyService.findByUserId(familyUserId);
     if (!familyMember) {
       throw new NotFoundException('Family member profile not found');
@@ -188,9 +101,9 @@ export class AuthService {
     };
   }
 
-  /**
-   * UNIVERSAL: Login (All Roles)
-   */
+  // ──────────────────────────────────────────────────────────────────────────
+  // UNIVERSAL: Login (All Roles)
+  // ──────────────────────────────────────────────────────────────────────────
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
@@ -220,6 +133,8 @@ export class AuthService {
         email: user.email,
         role: user.role,
         contactNumber: user.contactNumber,
+        // Frontend uses this flag to redirect to the forced password-change page
+        mustChangePassword: user.mustChangePassword,
       },
       token,
     };
@@ -247,21 +162,21 @@ export class AuthService {
         profileData = await this.adminService.findByUserId(user.id);
         break;
     }
-    const data = {
+
+    return {
       id: user.id,
       fullName: user.fullName,
       email: user.email,
       role: user.role,
       contactNumber: user.contactNumber,
+      mustChangePassword: user.mustChangePassword,
       profile: profileData,
     };
-    return data ;
-
   }
 
-  /**
-   * Delete Account (soft delete / deactivate)
-   */
+  // ──────────────────────────────────────────────────────────────────────────
+  // Delete Account (soft delete / deactivate)
+  // ──────────────────────────────────────────────────────────────────────────
   async deleteAccount(userId: string) {
     if (!userId) {
       throw new BadRequestException('User ID is required');
@@ -278,7 +193,9 @@ export class AuthService {
     return { message: 'Account deleted successfully' };
   }
 
-  // ── POST /api/auth/firebase ───────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // Firebase / Google OAuth
+  // ──────────────────────────────────────────────────────────────────────────
   async firebaseAuth(
     idToken: string,
   ): Promise<{ token: string; user: any; isNewUser: boolean }> {
@@ -304,7 +221,6 @@ export class AuthService {
     let user = await this.userRepository.findOne({ where: { email } });
     let isNewUser = false;
 
-    // Existing account — guard against deactivated users the same way login() does
     if (user && !user.isActive) {
       throw new UnauthorizedException('This account has been deactivated');
     }
@@ -318,13 +234,11 @@ export class AuthService {
         contactNumber: '',
         firebaseUid:   uid,
         avatarUrl:     picture ?? null,
+        mustChangePassword: false,
       });
 
       user = await this.userRepository.save(user);
-      
-      // Ensures profile is created before returning
       await this.familyService.create({ user });
-      
       isNewUser = true;
 
     } else if (!user.firebaseUid) {
@@ -338,25 +252,15 @@ export class AuthService {
     return {
       token,
       user: {
-        id:            user.id,
-        fullName:      user.fullName,
-        email:         user.email,
-        role:          user.role,
-        contactNumber: user.contactNumber,
+        id:                user.id,
+        fullName:          user.fullName,
+        email:             user.email,
+        role:              user.role,
+        contactNumber:     user.contactNumber,
+        mustChangePassword: user.mustChangePassword,
       },
       isNewUser,
     };
-  }
-
-  private generateToken(
-    userId: string,
-    email: string,
-    role: UserRole,
-    contactNumber: string,
-  ): string {
-    // JwtModule is configured with the secret via JwtConfigModule.
-    // No need to pass { secret } here — sign() uses the module-level config.
-    return this.jwtService.sign({ sub: userId, email, role, contactNumber });
   }
 
   async changePassword(userId: string, currentPw: string, newPw: string): Promise<void> {
@@ -365,13 +269,24 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // Single bcrypt validation — no need to call login() separately.
     const isMatch = await this.usersService.validatePassword(currentPw, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
     await this.usersService.updatePassword(userId, newPw);
+
+    // Clear the forced-change flag now that they have set their own password
+    await this.usersService.setMustChangePassword(userId, false);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  private generateToken(
+    userId: string,
+    email: string,
+    role: UserRole,
+    contactNumber: string,
+  ): string {
+    return this.jwtService.sign({ sub: userId, email, role, contactNumber });
   }
 }
-

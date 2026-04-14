@@ -94,10 +94,9 @@ export class AuthController {
     this.logger.log(
       `Delete account - Full req.user: ${JSON.stringify(req.user)}`,
     );
-
     const userId = req.user.sub;
     if (!userId) {
-      this.logger.error('❌ No user ID found in JWT token');
+      this.logger.error('No user ID found in JWT token');
       this.logger.error(`JWT Payload received: ${JSON.stringify(req.user)}`);
       throw new UnauthorizedException(
         'Authentication failed - no user ID in token',
@@ -107,38 +106,6 @@ export class AuthController {
     this.logger.log(`✅ Deleting account for userId: ${userId}`);
     return this.authService.deleteAccount(userId);
   }
-
-  /* =========================================================
-     ADMIN ONLY ROUTES
-  ========================================================= */
-
-  @Post('admin/create-doctor')
-  @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.CREATED)
-  async createDoctor(
-    @Body() dto: CreateDoctorDto,
-  ) {
-    return this.authService.createDoctor(dto);
-  }
-
-  @Post('admin/create-caregiver')
-  @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.CREATED)
-  async createCaregiver(
-    @Body() dto: CreateCaregiverDto,
-  ) {
-    return this.authService.createCaregiver(dto);
-  }
-
-  @Post('admin/create-admin')
-  @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.CREATED)
-  async createAdmin(
-    @Body() dto: CreateAdminDto,
-  ) {
-    return this.authService.createAdmin(dto);
-  }
-
   /* =========================================================
      FAMILY ONLY ROUTES
   ========================================================= */
