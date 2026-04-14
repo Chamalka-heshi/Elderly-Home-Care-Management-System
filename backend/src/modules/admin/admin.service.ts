@@ -63,10 +63,33 @@ export class AdminService {
     });
   }
 
-  async findOne(id: string): Promise<Admin> {
+  async findByUserId(id: string): Promise<Admin> {
+    // Step 1: resolve admin id from user id
+    const adminRef = await this.adminRepository.findOne({
+      where: { user: { id } },
+      select: { id: true },
+    });
+
+    if (!adminRef) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    // Step 2: fetch full admin by its own primary key with only safe user fields
     const admin = await this.adminRepository.findOne({
-      where: { id },
+      where: { id: adminRef.id },
       relations: ['user'],
+      select: {
+        id: true,
+        user: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          contactNumber: true,
+          isActive: true,
+          createdAt: true,
+        },
+      },
     });
 
     if (!admin) {
@@ -76,19 +99,12 @@ export class AdminService {
     return admin;
   }
 
-  async findByUserId(userId: string): Promise<Admin | null> {
-    return this.adminRepository.findOne({
-      where: { user: { id: userId } },
-    });
-  }
-
   async update(id: string, updateData: Partial<CreateAdminDto>): Promise<Admin> {
-    const admin = await this.findOne(id);
+    const admin = await this.findByUserId(id);
 
     // Common fields live on the User record
     if (updateData.fullName) admin.user.fullName = updateData.fullName;
     if (updateData.contactNumber) admin.user.contactNumber = updateData.contactNumber;
-
     return this.adminRepository.save(admin); // cascade saves user
   }
 
@@ -96,12 +112,12 @@ export class AdminService {
    * Deactivate is handled entirely via User.isActive — single source of truth.
    */
   async deactivate(id: string): Promise<void> {
-    const admin = await this.findOne(id);
+    const admin = await this.findByUserId(id);
     await this.usersService.deactivateUser(admin.user.id);
   }
 
   async activate(id: string): Promise<void> {
-    const admin = await this.findOne(id);
+    const admin = await this.findByUserId(id);
     await this.usersService.activateUser(admin.user.id);
   }
 
@@ -281,14 +297,6 @@ export class AdminService {
 
     await this.patientRepository.remove(patient);
   }
-
-  async findProfileByUserId(userId: string) {
-    const admin = await this.findByUserId(userId);
-    if (!admin) return null;
-
-    return admin;
-  }
-
 
   async updateProfileByUserId(userId: string, updateData: UpdateAdminProfileDto) {
     const admin = await this.adminRepository.findOne({

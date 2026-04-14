@@ -87,6 +87,25 @@ export class CaregiversService {
     return this.caregiverRepository.findOne({
       where: { user: { id: userId } },
       relations: ['user'],
+      select: {
+        id: true,
+        nic: true,
+        address: true,
+        qualification: true,
+        experienceYears: true,
+        specializations: true,
+        emergencyContact: true,
+        availableShifts: true,
+        user: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          contactNumber: true,
+          isActive: true,
+          createdAt: true,
+        },
+      },
     });
   }
 

@@ -148,18 +148,26 @@ export class AuthService {
 
     let profileData = null;
 
+    // Helper — strips the nested `user` relation from any profile entity
+    // to avoid duplicating user fields that are already returned at the top level
+    const stripUser = (entity: any) => {
+      if (!entity) return null;
+      const { user: _, ...rest } = entity;
+      return rest;
+    };
+
     switch (user.role) {
       case UserRole.FAMILY:
-        profileData = await this.familyService.findByUserId(user.id);
+        profileData = stripUser(await this.familyService.findByUserId(user.id));
         break;
       case UserRole.DOCTOR:
-        profileData = await this.doctorsService.findByUserId(user.id);
+        profileData = stripUser(await this.doctorsService.findByUserId(user.id));
         break;
       case UserRole.CAREGIVER:
-        profileData = await this.caregiversService.findByUserId(user.id);
+        profileData = stripUser(await this.caregiversService.findByUserId(user.id));
         break;
       case UserRole.ADMIN:
-        profileData = await this.adminService.findByUserId(user.id);
+        profileData = stripUser(await this.adminService.findByUserId(user.id));
         break;
     }
 

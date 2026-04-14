@@ -27,6 +27,18 @@ export class FamilyService {
     return this.familyRepository.findOne({
       where: { user: { id: userId } },
       relations: ['user', 'patients'],
+      select: {
+        id: true,
+        user: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          contactNumber: true,
+          isActive: true,
+          createdAt: true,
+        },
+      },
     });
   }
 
