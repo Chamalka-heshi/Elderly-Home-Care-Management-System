@@ -27,6 +27,7 @@ import {
 } from "../../common/ui";
 import PasswordTab from "../../common/PasswordTab";
 import DangerZoneTab from "../../common/DangerZoneTab";
+import DeleteAccountButton from "../../../../components/deleteaccount";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type TabKey = "profile" | "password" | "danger";
@@ -473,17 +474,9 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
         {/* ── Danger Zone Tab ── */}
         {tab === "danger" && (
           <DangerZoneTab
-            deactivateNote="Temporarily disable your admin access. A super-admin can reactivate it."
             deleteNote="Permanently delete your admin account and all associated data. This cannot be undone."
-            footerNote="As an administrator, destructive account actions require confirmation from a super-admin or the system owner."
-            footerIcon={IconShield}
-            onDeactivate={() =>
-              addToast("error", "Deactivation requires super-admin approval.")
-            }
-            onDelete={() =>
-              addToast("error", "Account deletion requires super-admin confirmation.")
-            }
-          />
+            deleteButton={<DeleteAccountButton />}
+          />   
         )}
       </main>
     </div>
