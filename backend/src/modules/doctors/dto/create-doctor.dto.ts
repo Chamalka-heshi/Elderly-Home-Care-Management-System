@@ -3,12 +3,11 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
-  MinLength,
-  Matches,
   IsNumber,
   IsOptional,
   IsArray,
   Min,
+  Matches,
 } from 'class-validator';
 
 export class CreateDoctorDto {
@@ -20,14 +19,14 @@ export class CreateDoctorDto {
   @IsNotEmpty()
   email: string;
 
+  /**
+   * Contact number is required — it forms the user's temporary password:
+   * CareHome@<contactNumber>. It is emailed to them on account creation.
+   */
   @IsNotEmpty()
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message:
-      'Password must contain uppercase, lowercase, number and special character',
-  })
-  password: string;
+  @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
+  contactNumber: string;
 
   @IsNotEmpty()
   @IsString()
@@ -45,11 +44,6 @@ export class CreateDoctorDto {
   @IsNumber()
   @Min(0)
   experienceYears: number;
-
-  @IsOptional()
-  @IsString()
-  @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
-  contactNumber?: string;
 
   // Renamed from 'department' to match the entity field
   @IsOptional()
@@ -78,4 +72,8 @@ export class CreateDoctorDto {
     message: 'Available time end must be in HH:MM format',
   })
   availableTimeEnd?: string;
+
+  // Internal — set by auth.service before calling doctorsService.create().
+  // Never accepted from the HTTP request body.
+  password?: string;
 }

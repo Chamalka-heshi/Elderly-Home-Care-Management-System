@@ -50,5 +50,16 @@ export const appConfig = registerAs('app', () => {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     },
+
+    /** Nodemailer — SMTP credentials for sending account-creation emails */
+    mail: {
+      host:    process.env.SMTP_HOST    || 'smtp.gmail.com',
+      port:    parseInt(process.env.SMTP_PORT ?? '587', 10),
+      secure:  process.env.SMTP_SECURE  === 'true',
+      user:    process.env.SMTP_USER    || '',
+      pass:    process.env.SMTP_PASS    || '',
+      from:    process.env.MAIL_FROM    || 'Care Home <noreply@carehome.com>',
+      appUrl:  process.env.APP_URL      || 'http://localhost:5173',
+    },
   };
 });

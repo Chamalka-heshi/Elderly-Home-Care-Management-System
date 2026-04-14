@@ -27,6 +27,11 @@ export class CaregiversService {
       throw new BadRequestException('Email already registered');
     }
 
+    // password is injected by auth.service (auto-generated); never comes from the request body
+    if (!password) {
+      throw new BadRequestException('Password is required for account creation');
+    }
+
     // fullName and contactNumber are stored on the User record
     const user = await this.usersService.create(
       email,

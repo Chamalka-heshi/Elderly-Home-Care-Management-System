@@ -3,12 +3,11 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
-  MinLength,
-  Matches,
   IsNumber,
   IsOptional,
   IsArray,
   Min,
+  Matches,
 } from 'class-validator';
 
 export class CreateCaregiverDto {
@@ -20,27 +19,21 @@ export class CreateCaregiverDto {
   @IsNotEmpty()
   email: string;
 
+  /**
+   * Contact number is required — it forms the user's temporary password:
+   * CareHome@<contactNumber>. It is emailed to them on account creation.
+   */
   @IsNotEmpty()
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message:
-      'Password must contain uppercase, lowercase, number and special character',
-  })
-  password: string;
+  @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
+  contactNumber: string;
 
   @IsOptional()
   @IsString()
   @Matches(/^[0-9]{9}[vVxX]$|^[0-9]{12}$/, {
-    message:
-      'NIC must be valid Sri Lankan format (9 digits + V/X or 12 digits)',
+    message: 'NIC must be valid Sri Lankan format (9 digits + V/X or 12 digits)',
   })
   nic?: string;
-
-  @IsOptional()
-  @IsString()
-  @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
-  contactNumber?: string;
 
   @IsOptional()
   @IsString()
@@ -77,5 +70,8 @@ export class CreateCaregiverDto {
   @IsOptional()
   @IsArray()
   availableShifts?: string[];
-}
 
+  // Internal — set by auth.service before calling caregiversService.create().
+  // Never accepted from the HTTP request body.
+  password?: string;
+}
