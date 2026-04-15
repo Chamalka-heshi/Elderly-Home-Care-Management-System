@@ -68,7 +68,12 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  const handleSuccess = (role: string) => {
+  const handleSuccess = (role: string, mustChangePassword?: boolean) => {
+    if (mustChangePassword) {
+      onSuccessClose();
+      navigate('/change-password', { replace: true });
+      return;
+    }
     onSuccessClose();
     navigate(`/${role}`, { replace: true });
   };
@@ -101,7 +106,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       }
 
       setUser(res.user);
-      handleSuccess(res.user.role);
+      handleSuccess(res.user.role, res.user.mustChangePassword);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
       setPassword("");
@@ -118,7 +123,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
     try {
       const res = await googleAuth();
       setUser(res.user);
-      handleSuccess(res.user.role);
+      handleSuccess(res.user.role, res.user.mustChangePassword);
     } catch (err: any) {
       const code: string = err?.code ?? "";
       setError(code ? friendlyFirebaseError(code) : (err?.message ?? "Google sign-in failed"));
