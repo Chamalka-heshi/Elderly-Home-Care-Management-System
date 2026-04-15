@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import LoginCard from "../../features/auth/Login/LoginCard";
 import SignupCard from "../../features/auth/Signin/Signupcard";
+import ForgotPasswordCard from "../../features/auth/ForgotPassword/ForgotPassword";
 import AuthModal, { type AuthMode } from "../auth/AuthModal";
 import "./navbar.css";
 
@@ -224,7 +225,13 @@ const Navbar: React.FC = () => {
 
       <AuthModal open={authOpen} onClose={closeAuth} mode={authMode} onSwitchMode={setAuthMode}>
         {authMode === "login" ? (
-          <LoginCard onGoSignup={() => setAuthMode("signup")} onSuccessClose={closeAuth} />
+          <LoginCard
+            onGoSignup={() => setAuthMode("signup")}
+            onSuccessClose={closeAuth}
+            onForgotPassword={() => setAuthMode("forgot")}
+          />
+        ) : authMode === "forgot" ? (
+          <ForgotPasswordCard onGoLogin={() => setAuthMode("login")} />
         ) : (
           <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
         )}
