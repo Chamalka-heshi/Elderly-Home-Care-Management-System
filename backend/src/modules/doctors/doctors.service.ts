@@ -61,6 +61,11 @@ export class DoctorsService {
       throw new BadRequestException('Email already registered');
     }
 
+    // password is injected by auth.service (auto-generated); never comes from the request body
+    if (!password) {
+      throw new BadRequestException('Password is required for account creation');
+    }
+
     const user = await this.usersService.create(
       email,
       password,
@@ -115,15 +120,48 @@ export class DoctorsService {
     return doctor;
   }
 
-  async findByUserId(userId: string): Promise<Doctor | null> {
-    return this.doctorRepository.findOne({
+  async findByUserId(userId: string): Promise<Doctor> {
+    // Step 1: resolve doctor id from user id
+    const doctorRef = await this.doctorRepository.findOne({
       where: { user: { id: userId } },
+      select: { id: true },
     });
-  }
 
-  async findProfileByUserId(userId: string) {
-    const doctor = await this.findByUserId(userId);
-    if (!doctor) return null;
+    if (!doctorRef) {
+      throw new NotFoundException('Doctor not found');
+    }
+
+    // Step 2: fetch full doctor by its own primary key with only safe user fields
+    const doctor = await this.doctorRepository.findOne({
+      where: { id: doctorRef.id },
+      relations: ['user'],
+      select: {
+        id: true,
+        specialization: true,
+        licenseNumber: true,
+        qualification: true,
+        experienceYears: true,
+        hospitalAffiliation: true,
+        consultationFee: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
+        user: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          contactNumber: true,
+          isActive: true,
+          createdAt: true,
+        },
+      },
+    });
+
+    if (!doctor) {
+      throw new NotFoundException('Doctor not found');
+    }
+
     return doctor;
   }
 
