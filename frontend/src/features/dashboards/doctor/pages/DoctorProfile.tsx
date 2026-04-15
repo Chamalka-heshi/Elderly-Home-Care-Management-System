@@ -6,6 +6,8 @@ import {
   changePasswordApi,
 } from "../../../../api/auth/auth.api";
 
+import DeleteAccountButton from "../../../../components/deleteaccount";
+
 // ── Shared components ──────────────────────────────────────────────────────
 import {
   IconMail,
@@ -47,9 +49,9 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
 
   // ── Profile fetch state ───────────────────────────────────────────────
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileError, setProfileError]     = useState<string | null>(null);
 
-  // ── Editable profile fields (always start empty — filled by API) ──────
+  // ── Editable profile fields ───────────────────────────────────────────
   const [fullName, setFullName]             = useState("");
   const [contactNumber, setContactNumber]   = useState("");
   const [specialization, setSpecialization] = useState("");
@@ -74,48 +76,38 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
 
         const freshUser = await getProfile();
 
-        // Sync AuthContext with latest server data
         setUser(freshUser);
-
-        // Sync localStorage so page refreshes are consistent
         localStorage.setItem("user", JSON.stringify(freshUser));
 
-        // Safely read the nested doctor profile object
         const doctorProfile = (freshUser as any)?.profile ?? {};
 
-        // Pre-fill ALL editable fields from the fresh API response
         setFullName(freshUser.fullName ?? "");
         setContactNumber(freshUser.contactNumber ?? "");
         setSpecialization(doctorProfile.specialization ?? "");
         setLicenseNumber(doctorProfile.licenseNumber ?? "");
         setYearsExp(doctorProfile.experienceYears ?? 0);
       } catch (err: any) {
-        setProfileError(
-          err.message || "Failed to load profile. Please try again."
-        );
+        setProfileError(err.message || "Failed to load profile. Please try again.");
       } finally {
         setProfileLoading(false);
       }
     };
 
     fetchProfile();
-  }, []); // Runs once on mount
+  }, []);
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const addToast = useCallback(
     (kind: "success" | "error", message: string) => {
       const id = Date.now();
       setToasts((t) => [...t, { id, kind, message }]);
-      setTimeout(
-        () => setToasts((t) => t.filter((x) => x.id !== id)),
-        4500
-      );
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500);
     },
     []
   );
 
   const initials = useMemo(() => {
-    const name = user?.fullName ?? "Doctor";
+    const name  = user?.fullName ?? "Doctor";
     const parts = name.trim().split(" ").filter(Boolean);
     return (
       (parts[0]?.[0] ?? "D") +
@@ -131,7 +123,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     label: string;
     icon: React.FC<{ className?: string }>;
   }[] = [
-    { key: "profile", label: "Profile", icon: IconUser },
+    { key: "profile",  label: "Profile",     icon: IconUser  },
     {
       key: "password",
       label: "Password",
@@ -148,11 +140,10 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
         </svg>
       ),
     },
-    { key: "danger", label: "Danger Zone", icon: IconAlert },
+    { key: "danger",   label: "Danger Zone", icon: IconAlert },
   ];
 
   // ── API Handlers ──────────────────────────────────────────────────────
-
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) {
       addToast("error", "Full name cannot be empty.");
@@ -168,7 +159,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
         experienceYears: Number(yearsExp),
       });
 
-      // Merge updated fields back into AuthContext and localStorage
       if (user) {
         const newUserState = { ...user, ...updatedUser };
         setUser(newUserState);
@@ -186,7 +176,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Full validation — matches AdminProfile standard
     if (!currentPw) {
       addToast("error", "Enter your current password.");
       return;
@@ -204,7 +193,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
       setPwLoading(true);
       const response = await changePasswordApi({
         currentPassword: currentPw,
-        newPassword: newPw,
+        newPassword:     newPw,
       });
       addToast("success", response.message || "Password changed successfully.");
       setCurrentPw("");
@@ -223,19 +212,9 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
       <div className="min-h-screen bg-slate-50 grid place-items-center">
         <AmbientBg />
         <div className="flex flex-col items-center gap-3 text-slate-500">
-          <svg
-            className="h-8 w-8 animate-spin text-emerald-600"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <circle
-              className="opacity-25" cx="12" cy="12" r="10"
-              stroke="currentColor" strokeWidth="4"
-            />
-            <path
-              className="opacity-75" fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
+          <svg className="h-8 w-8 animate-spin text-emerald-600" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
           <p className="text-sm font-medium">Loading your profile…</p>
         </div>
@@ -283,9 +262,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">
-                {user?.fullName ?? "Doctor"}
-              </p>
+              <p className="text-sm font-semibold text-slate-900">{user?.fullName ?? "Doctor"}</p>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <IconShield className="h-3 w-3" />
                 {roleLabel}
@@ -320,7 +297,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
             {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => setTab(key)}  // ✅ type-safe — key is already TabKey
+                onClick={() => setTab(key)}
                 type="button"
                 className={[
                   "flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition",
@@ -356,15 +333,11 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
                     <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {user?.fullName ?? "Doctor"}
-                    </h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{user?.fullName ?? "Doctor"}</h3>
                     <p className="text-sm text-slate-500">{user?.email}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <Pill tone="emerald">Doctor</Pill>
-                      <span className="text-xs text-slate-400">
-                        ID: {user?.id?.slice(0, 12)}…
-                      </span>
+                      <span className="text-xs text-slate-400">ID: {user?.id?.slice(0, 12)}…</span>
                     </div>
                   </div>
                 </div>
@@ -398,9 +371,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
                     </span>
                   </FieldLabel>
                   <GlassInput value={user?.email ?? ""} disabled />
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Email address cannot be changed here.
-                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">Email address cannot be changed here.</p>
                 </div>
 
                 <div>
@@ -448,34 +419,17 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
             </SectionCard>
 
             {/* Account Summary */}
-            <SectionCard
-              title="Account Summary"
-              subtitle="Read-only overview of your account."
-            >
+            <SectionCard title="Account Summary" subtitle="Read-only overview of your account.">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  {
-                    label: "User ID",
-                    value: user?.id ? user.id.slice(0, 16) + "…" : "—",
-                    mono: true,
-                  },
+                  { label: "User ID",        value: user?.id ? user.id.slice(0, 16) + "…" : "—", mono: true },
                   { label: "Role",           value: user?.role ?? "doctor" },
                   { label: "Specialization", value: specialization || "—"  },
                   { label: "Status",         value: "Active"                },
                 ].map(({ label, value, mono }) => (
-                  <div
-                    key={label}
-                    className="rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-4"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      {label}
-                    </p>
-                    <p
-                      className={[
-                        "mt-1.5 text-sm font-semibold text-slate-800",
-                        mono ? "font-mono" : "",
-                      ].join(" ")}
-                    >
+                  <div key={label} className="rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                    <p className={["mt-1.5 text-sm font-semibold text-slate-800", mono ? "font-mono" : ""].join(" ")}>
                       {value}
                     </p>
                   </div>
@@ -502,18 +456,11 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
         {/* ── Danger Zone Tab ── */}
         {tab === "danger" && (
           <DangerZoneTab
-            deactivateNote="Temporarily deactivate your doctor access. An admin can reactivate it."
             deleteNote="Permanently delete your doctor account and all associated data. This cannot be undone."
-            footerNote="Destructive account actions require confirmation from an administrator."
-            footerIcon={IconShield}
-            onDeactivate={() =>
-              addToast("error", "Contact Admin to deactivate your account.")
-            }
-            onDelete={() =>
-              addToast("error", "Contact Admin to delete your account.")
-            }
+            deleteButton={<DeleteAccountButton />}
           />
         )}
+
       </main>
     </div>
   );
