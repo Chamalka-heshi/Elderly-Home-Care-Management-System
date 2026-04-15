@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-// --- NEW API IMPORTS ---
 import * as channelingApi from '../../../../api/channeling/admin-channeling.api';
 import type { ChannelingSlot, SlotStatus } from '../../../../api/channeling/channeling.types';
 import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen } from '../../../../api/channeling/channeling.types';
@@ -26,7 +25,7 @@ const fetchDoctorsBypass = async () => {
   });
   if (!res.ok) throw new Error('Failed to fetch raw doctors');
   const rawDoctors = await res.json();
-  
+
   return rawDoctors.map((doc: any) => ({
     id: doc.id,
     fullName: doc.user?.fullName || doc.fullName || 'Unknown Doctor',
@@ -35,12 +34,35 @@ const fetchDoctorsBypass = async () => {
     availableDays: doc.availableDays,
     availableTimeStart: doc.availableTimeStart,
     availableTimeEnd: doc.availableTimeEnd,
-    user: doc.user 
+    user: doc.user,
   }));
 };
 // ───────────────────────────────────────────────────────────────────────────
 
 const today = () => new Date().toISOString().split('T')[0];
+
+// ─── CORE FIX: Doctor name resolver ────────────────────────────────────────
+// Resolves doctor name from slot.doctor nested obj OR falls back to doctors[] lookup by doctorId
+function resolveDoctorName(slot: ChannelingSlot, doctors: any[]): string {
+  // Try deeply nested slot.doctor first
+  const fromSlot =
+    slot.doctor?.user?.fullName ||
+    (slot.doctor as any)?.fullName ||
+    (slot.doctor as any)?.user?.fullName;
+  if (fromSlot) return fromSlot;
+
+  // Fallback: look up from the separately-fetched doctors array
+  const found = doctors.find((d) => d.id === slot.doctorId);
+  return found?.fullName || 'Unknown Doctor';
+}
+
+function resolveDoctorSpecialization(slot: ChannelingSlot, doctors: any[]): string {
+  const fromSlot = slot.doctor?.specialization;
+  if (fromSlot) return fromSlot;
+  const found = doctors.find((d) => d.id === slot.doctorId);
+  return found?.specialization || '—';
+}
+// ───────────────────────────────────────────────────────────────────────────
 
 function statusBadge(slot: ChannelingSlot) {
   if (slot.status === 'cancelled')
@@ -99,10 +121,11 @@ const TIMES = Array.from({ length: 48 }, (_, i) => {
 const inputCls =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10';
 
+// ─── ADD SLOT MODAL ────────────────────────────────────────────────────────
 interface AddSlotModalProps {
   doctors: any[];
   onClose: () => void;
-  onCreated: () => void; // Changed to trigger full reload
+  onCreated: () => void;
   addToast: (kind: 'success' | 'error', msg: string) => void;
 }
 
@@ -117,23 +140,21 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const selectedDoc = useMemo(() => activeDoctors.find(d => d.id === doctorId), [activeDoctors, doctorId]);
+  const selectedDoc = useMemo(() => activeDoctors.find((d) => d.id === doctorId), [activeDoctors, doctorId]);
 
   const parsedAvailableDays = useMemo(() => {
     if (!selectedDoc || !selectedDoc.availableDays) return [];
     let rawData: any = selectedDoc.availableDays;
-    
     if (Array.isArray(rawData)) return rawData;
     if (typeof rawData === 'string') {
-      try { rawData = JSON.parse(rawData); } catch(e) {}
-      try { if (typeof rawData === 'string') rawData = JSON.parse(rawData); } catch(e) {}
+      try { rawData = JSON.parse(rawData); } catch (e) {}
+      try { if (typeof rawData === 'string') rawData = JSON.parse(rawData); } catch (e) {}
       if (Array.isArray(rawData)) return rawData;
-
       if (typeof rawData === 'string') {
         return String(selectedDoc.availableDays)
           .replace(/[\[\]"'\\]/g, '')
           .split(',')
-          .map(s => s.trim())
+          .map((s: string) => s.trim())
           .filter(Boolean);
       }
     }
@@ -141,7 +162,6 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   }, [selectedDoc]);
 
   const hasAvailability = parsedAvailableDays.length > 0 || (selectedDoc && selectedDoc.availableTimeStart);
-
   const validEndTimes = useMemo(() => TIMES.filter((t) => t > startTime), [startTime]);
 
   useEffect(() => {
@@ -216,9 +236,9 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
                 {hasAvailability ? (
                   <span>
                     <strong className="font-semibold text-blue-900 mr-1">Preferred:</strong>
-                    {parsedAvailableDays.length > 0 ? parsedAvailableDays.join(", ") : 'Any day'}
-                    {selectedDoc.availableTimeStart && selectedDoc.availableTimeEnd 
-                      ? ` (${fmt12(selectedDoc.availableTimeStart)} - ${fmt12(selectedDoc.availableTimeEnd)})` 
+                    {parsedAvailableDays.length > 0 ? parsedAvailableDays.join(', ') : 'Any day'}
+                    {selectedDoc.availableTimeStart && selectedDoc.availableTimeEnd
+                      ? ` (${fmt12(selectedDoc.availableTimeStart)} - ${fmt12(selectedDoc.availableTimeEnd)})`
                       : ''}
                   </span>
                 ) : (
@@ -286,20 +306,25 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   );
 };
 
+// ─── EDIT SLOT MODAL ───────────────────────────────────────────────────────
 interface EditSlotModalProps {
   slot: ChannelingSlot;
+  doctors: any[]; // ← ADDED: needed to resolve doctor name
   onClose: () => void;
-  onUpdated: () => void; // Changed to trigger full reload
+  onUpdated: () => void;
   addToast: (kind: 'success' | 'error', msg: string) => void;
 }
 
-const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, onClose, onUpdated, addToast }) => {
+const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, onUpdated, addToast }) => {
   const [startTime, setStartTime] = useState(slot.startTime);
   const [endTime, setEndTime] = useState(slot.endTime);
   const [maxPatients, setMaxPatients] = useState(slot.maxPatients);
   const [cutoff, setCutoff] = useState(slot.bookingCutoffMinutes);
   const [notes, setNotes] = useState(slot.notes ?? '');
   const [saving, setSaving] = useState(false);
+
+  // FIX: Use resolver so name always shows
+  const doctorName = resolveDoctorName(slot, doctors);
 
   const validEndTimes = useMemo(() => TIMES.filter((t) => t > startTime), [startTime]);
 
@@ -316,7 +341,6 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, onClose, onUpdated,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (endTime <= startTime) return addToast('error', 'End time must be after start time');
-    
     try {
       setSaving(true);
       await channelingApi.updateChannelingSlot(slot.id, {
@@ -336,10 +360,13 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, onClose, onUpdated,
       <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white"><IconEdit className="h-5 w-5" /></div>
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white">
+              <IconEdit className="h-5 w-5" />
+            </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Edit Channeling Slot</p>
-              <p className="text-xs text-slate-500">{slot.doctor?.user?.fullName || (slot.doctor as any)?.fullName} · {fmtDate(slot.date)}</p>
+              {/* FIX: doctorName resolved from lookup */}
+              <p className="text-xs text-slate-500">{doctorName} · {fmtDate(slot.date)}</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><IconX /></button>
@@ -365,7 +392,9 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, onClose, onUpdated,
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Booking Cutoff (min before start)</label>
               <input type="number" min={5} max={120} value={cutoff} onChange={(e) => setCutoff(Number(e.target.value))} className={inputCls} />
-              <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600"><IconClock className="h-3 w-3" /> Bookings close at {cutoffDisplay}</p>
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
+                <IconClock className="h-3 w-3" /> Bookings close at {cutoffDisplay}
+              </p>
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Max Patients</label>
@@ -391,31 +420,38 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, onClose, onUpdated,
   );
 };
 
+// ─── SLOT CARD ─────────────────────────────────────────────────────────────
 interface SlotCardProps {
   slot: ChannelingSlot;
+  doctors: any[]; // ← ADDED
   onEdit: (slot: ChannelingSlot) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-const SlotCard: React.FC<SlotCardProps> = ({ slot, onEdit, onCancel, onDelete }) => {
+const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, onDelete }) => {
   const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
   const isPast = slotEnd < new Date();
   const isCancelled = slot.status === 'cancelled';
   const isRejected = slot.status === 'rejected';
 
+  // FIX: Always resolved from doctors array as fallback
+  const doctorName = resolveDoctorName(slot, doctors);
+  const doctorSpec = resolveDoctorSpecialization(slot, doctors);
+
   return (
     <div className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md ${
-        isCancelled || isRejected ? 'border-red-100 opacity-70' : isPast ? 'border-slate-200 opacity-80' : 'border-slate-200 hover:-translate-y-0.5'
-      }`}>
+      isCancelled || isRejected ? 'border-red-100 opacity-70' : isPast ? 'border-slate-200 opacity-80' : 'border-slate-200 hover:-translate-y-0.5'
+    }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50">
             <IconStethoscope className="h-5 w-5 text-emerald-700" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-slate-800">{slot.doctor?.user?.fullName || (slot.doctor as any)?.fullName || '—'}</p>
-            <p className="truncate text-xs text-slate-500">{slot.doctor?.specialization ?? '—'}</p>
+            {/* FIX: doctorName always resolved */}
+            <p className="truncate text-sm font-bold text-slate-800">{doctorName}</p>
+            <p className="truncate text-xs text-slate-500">{doctorSpec}</p>
           </div>
         </div>
         {statusBadge(slot)}
@@ -462,6 +498,7 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, onEdit, onCancel, onDelete })
   );
 };
 
+// ─── WEEKLY STRIP ──────────────────────────────────────────────────────────
 interface WeeklyStripProps {
   slots: ChannelingSlot[];
   doctors: any[];
@@ -474,10 +511,9 @@ const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
     const d = new Date(); d.setDate(d.getDate() + i); return d.toISOString().split('T')[0];
   }), []);
 
-  // BUG FIX 1: Show PENDING slots in the Weekly view so admins know they assigned them!
-  const relevantSlots = useMemo(() => slots.filter((s) => 
-    (s.status === 'active' || s.status === 'pending') && 
-    days.includes(s.date) && 
+  const relevantSlots = useMemo(() => slots.filter((s) =>
+    (s.status === 'active' || s.status === 'pending') &&
+    days.includes(s.date) &&
     (selectedDoctorId ? s.doctorId === selectedDoctorId : true)
   ), [slots, days, selectedDoctorId]);
 
@@ -512,16 +548,22 @@ const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
                 <p className="text-xs font-bold">{new Date(day + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
               </div>
               <div className="space-y-0.5">
-                {daySlots.map((s) => (
-                  <div 
-                    key={s.id} 
-                    title={`${s.doctor?.user?.fullName || (s.doctor as any)?.fullName} · ${fmt12(s.startTime)}–${fmt12(s.endTime)}`} 
-                    className={`truncate rounded-lg px-1.5 py-1 text-[10px] font-semibold ring-1 ${s.status === 'pending' ? 'bg-amber-50 text-amber-800 ring-amber-100' : 'bg-emerald-50 text-emerald-800 ring-emerald-100'}`}
-                  >
-                    {fmt12(s.startTime)}
-                  </div>
-                ))}
-                {daySlots.length === 0 && <div className="rounded-lg bg-slate-50 px-1.5 py-1 text-center text-[10px] text-slate-300">—</div>}
+                {daySlots.map((s) => {
+                  // FIX: Tooltip uses resolved name
+                  const name = resolveDoctorName(s, doctors);
+                  return (
+                    <div
+                      key={s.id}
+                      title={`${name} · ${fmt12(s.startTime)}–${fmt12(s.endTime)}`}
+                      className={`truncate rounded-lg px-1.5 py-1 text-[10px] font-semibold ring-1 ${s.status === 'pending' ? 'bg-amber-50 text-amber-800 ring-amber-100' : 'bg-emerald-50 text-emerald-800 ring-emerald-100'}`}
+                    >
+                      {fmt12(s.startTime)}
+                    </div>
+                  );
+                })}
+                {daySlots.length === 0 && (
+                  <div className="rounded-lg bg-slate-50 px-1.5 py-1 text-center text-[10px] text-slate-300">—</div>
+                )}
               </div>
             </div>
           );
@@ -531,6 +573,7 @@ const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
   );
 };
 
+// ─── MAIN PAGE ─────────────────────────────────────────────────────────────
 interface Props { addToast: (kind: 'success' | 'error', message: string) => void; }
 
 const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
@@ -542,9 +585,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
 
   const [filterDoctor, setFilterDoctor] = useState('');
   const [filterStatus, setFilterStatus] = useState<'' | SlotStatus>('');
-  
-  // BUG FIX 2: Default From Date is now empty so PAST and COMPLETED slots actually show up!
-  const [filterFromDate, setFilterFromDate] = useState(''); 
+  const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -555,10 +596,16 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
     try {
       setLoading(true);
       const [slotsData, rawDoctors] = await Promise.all([
-        channelingApi.getChannelingSlots({ doctorId: filterDoctor || undefined, status: (filterStatus || undefined) as SlotStatus | undefined, fromDate: filterFromDate || undefined, toDate: filterToDate || undefined }),
+        channelingApi.getChannelingSlots({
+          doctorId: filterDoctor || undefined,
+          status: (filterStatus || undefined) as SlotStatus | undefined,
+          fromDate: filterFromDate || undefined,
+          toDate: filterToDate || undefined,
+        }),
         fetchDoctorsBypass(),
       ]);
-      setSlots(slotsData.slots); setDoctors(rawDoctors);
+      setSlots(slotsData.slots);
+      setDoctors(rawDoctors);
     } catch (err) {
       addToastRef.current('error', err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -572,8 +619,11 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
     if (!window.confirm('Cancel this channeling slot?')) return;
     try {
       const res = await channelingApi.cancelChannelingSlot(id);
-      addToast('success', res.message); loadData();
-    } catch (err) { addToast('error', err instanceof Error ? err.message : 'Failed to cancel slot'); }
+      addToast('success', res.message);
+      loadData();
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to cancel slot');
+    }
   };
 
   const handleDeleteSlot = async (id: string) => {
@@ -582,10 +632,11 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
       const res = await channelingApi.deleteChannelingSlot(id);
       addToast('success', res.message);
       setSlots((prev) => prev.filter((s) => s.id !== id));
-    } catch (err) { addToast('error', err instanceof Error ? err.message : 'Failed to delete slot'); }
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to delete slot');
+    }
   };
 
-  // BUG FIX 3: Fully reloads data on Create/Edit to guarantee Doctor Name displays immediately
   const handleSlotCreated = () => { loadData(); setShowAddModal(false); };
   const handleSlotUpdated = () => { loadData(); setEditingSlot(null); };
 
@@ -667,24 +718,34 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
 
         <div className="mt-5">
           {loading ? (
-            <div className="flex items-center justify-center py-16"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" /></div>
+            <div className="flex items-center justify-center py-16">
+              <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+            </div>
           ) : slots.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-16 text-center">
-              <div className="grid h-16 w-16 place-items-center rounded-2xl bg-slate-100"><IconCalendar className="h-8 w-8 text-slate-400" /></div>
+              <div className="grid h-16 w-16 place-items-center rounded-2xl bg-slate-100">
+                <IconCalendar className="h-8 w-8 text-slate-400" />
+              </div>
               <p className="mt-4 text-sm font-semibold text-slate-600">No channeling slots found</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {slots.map((slot) => (
-                <SlotCard key={slot.id} slot={slot} onEdit={setEditingSlot} onCancel={handleCancelSlot} onDelete={handleDeleteSlot} />
+                // FIX: doctors passed into SlotCard
+                <SlotCard key={slot.id} slot={slot} doctors={doctors} onEdit={setEditingSlot} onCancel={handleCancelSlot} onDelete={handleDeleteSlot} />
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {showAddModal && <AddSlotModal doctors={doctors} onClose={() => setShowAddModal(false)} onCreated={handleSlotCreated} addToast={addToast} />}
-      {editingSlot && <EditSlotModal slot={editingSlot} onClose={() => setEditingSlot(null)} onUpdated={handleSlotUpdated} addToast={addToast} />}
+      {showAddModal && (
+        <AddSlotModal doctors={doctors} onClose={() => setShowAddModal(false)} onCreated={handleSlotCreated} addToast={addToast} />
+      )}
+      {editingSlot && (
+        // FIX: doctors passed into EditSlotModal
+        <EditSlotModal slot={editingSlot} doctors={doctors} onClose={() => setEditingSlot(null)} onUpdated={handleSlotUpdated} addToast={addToast} />
+      )}
     </div>
   );
 };
