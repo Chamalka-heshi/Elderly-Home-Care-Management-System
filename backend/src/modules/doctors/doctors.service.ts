@@ -8,20 +8,53 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Doctor } from './entities/doctor.entity';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
-import { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto'; 
+import { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { Prescription } from '../prescription/entities/prescription.entity';
+import { ChannelingSlot, SlotStatus } from '../channeling-slot/entities/channeling-slot.entity';
+
+// ── Dashboard response type ──────────────────────────────────────────────────
+
+export interface DashboardRecentPatient {
+  id: string;          // prescription id (stable key for the row)
+  name: string;
+  age: number;
+  diagnosis: string | null;
+  status: 'Active' | 'Completed' | 'Discontinued';
+  prescriptionDate: string;
+}
+
+export interface DoctorDashboardStats {
+  myPatientsCount: number;
+  todaysAppointmentsCount: number;
+  activePrescriptionsCount: number;
+  pendingAppointmentsCount: number;
+  recentPatients: DashboardRecentPatient[];
+}
+
+// ── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class DoctorsService {
   constructor(
     @InjectRepository(Doctor)
     private doctorRepository: Repository<Doctor>,
+
+    @InjectRepository(Prescription)
+    private prescriptionRepository: Repository<Prescription>,
+
+    @InjectRepository(ChannelingSlot)
+    private channelingSlotRepository: Repository<ChannelingSlot>,
+
     private usersService: UsersService,
   ) {}
 
+  // ── Create ──────────────────────────────────────────────────────────────────
+
   async create(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
-    const { email, password, fullName, contactNumber, ...doctorData } = createDoctorDto;
+    const { email, password, fullName, contactNumber, ...doctorData } =
+      createDoctorDto;
 
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
@@ -51,6 +84,8 @@ export class DoctorsService {
 
     return this.doctorRepository.save(doctor);
   }
+
+  // ── Queries ──────────────────────────────────────────────────────────────────
 
   async findAll(): Promise<Doctor[]> {
     return this.doctorRepository.find({
@@ -89,9 +124,97 @@ export class DoctorsService {
   async findProfileByUserId(userId: string) {
     const doctor = await this.findByUserId(userId);
     if (!doctor) return null;
-
     return doctor;
   }
+
+  // ── Dashboard stats ───────────────────────────────────────────────────────
+
+  /**
+   * Returns aggregated stats for the doctor's dashboard home page.
+   * All queries are scoped to the authenticated doctor's own data.
+   */
+  async getDashboardStats(userId: string): Promise<DoctorDashboardStats> {
+    // 1. Resolve doctor row from users.id
+    const doctor = await this.doctorRepository.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!doctor) {
+      throw new NotFoundException('Doctor profile not found');
+    }
+
+    const doctorId = doctor.id;
+    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // 2. Unique patients count  — distinct patientName values across all prescriptions
+    const uniquePatientsResult = await this.prescriptionRepository
+      .createQueryBuilder('rx')
+      .select('COUNT(DISTINCT rx.patient_name)', 'count')
+      .where('rx.doctor_id = :doctorId', { doctorId })
+      .getRawOne<{ count: string }>();
+
+    const myPatientsCount = parseInt(uniquePatientsResult?.count ?? '0', 10);
+
+    // 3. Today's appointments — channeling slots with date = today, status active/pending
+    const todaysAppointmentsCount = await this.channelingSlotRepository.count({
+      where: {
+        doctorId,
+        date: todayStr,
+        status: SlotStatus.ACTIVE,
+      },
+    });
+
+    // 4. Active prescriptions
+    const activePrescriptionsCount = await this.prescriptionRepository.count({
+      where: { doctorId, status: 'active' },
+    });
+
+    // 5. Pending channeling slots (doctor hasn't accepted yet)
+    const pendingAppointmentsCount = await this.channelingSlotRepository.count({
+      where: { doctorId, status: SlotStatus.PENDING },
+    });
+
+    // 6. Recent patients — last 5 prescriptions ordered by createdAt DESC
+    const recentRx = await this.prescriptionRepository.find({
+      where: { doctorId },
+      order: { createdAt: 'DESC' },
+      take: 5,
+      select: [
+        'id',
+        'patientName',
+        'patientAge',
+        'diagnosis',
+        'status',
+        'issuedDate',
+        'createdAt',
+      ],
+    });
+
+    const recentPatients: DashboardRecentPatient[] = recentRx.map((rx) => ({
+      id: rx.id,
+      name: rx.patientName,
+      age: rx.patientAge,
+      diagnosis: rx.diagnosis,
+      status:
+        rx.status === 'active'
+          ? 'Active'
+          : rx.status === 'completed'
+          ? 'Completed'
+          : 'Discontinued',
+      prescriptionDate: rx.issuedDate,
+    }));
+
+    return {
+      myPatientsCount,
+      todaysAppointmentsCount,
+      activePrescriptionsCount,
+      pendingAppointmentsCount,
+      recentPatients,
+    };
+  }
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
 
   async updateProfileByUserId(userId: string, updateData: UpdateDoctorProfileDto) {
     const doctor = await this.findByUserId(userId);
@@ -104,7 +227,9 @@ export class DoctorsService {
     if (updateData.fullName || updateData.contactNumber) {
       await this.usersService.update(userId, {
         ...(updateData.fullName && { fullName: updateData.fullName }),
-        ...(updateData.contactNumber && { contactNumber: updateData.contactNumber }),
+        ...(updateData.contactNumber && {
+          contactNumber: updateData.contactNumber,
+        }),
       });
     }
 
@@ -118,6 +243,10 @@ export class DoctorsService {
 
     // 3. Fetch updated user separately for the response
     const updatedUser = await this.usersService.findById(userId);
+
+    if (!updatedUser) {
+      throw new NotFoundException('User not found after profile update');
+    }
 
     return {
       id: updatedUser.id,
@@ -139,7 +268,12 @@ export class DoctorsService {
     await this.usersService.activateUser(doctor.user.id);
   }
 
-  async setAvailability(userId: string, availableDays: string[], availableTimeStart: string, availableTimeEnd: string): Promise<Doctor> {
+  async setAvailability(
+    userId: string,
+    availableDays: string[],
+    availableTimeStart: string,
+    availableTimeEnd: string,
+  ): Promise<Doctor> {
     const doctor = await this.findByUserId(userId);
     if (!doctor) throw new NotFoundException('Doctor not found');
 
