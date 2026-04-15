@@ -29,7 +29,7 @@ export class DoctorsController {
   @Get('me')
   getMe(@Request() req: any) {
     const userId = req.user.sub;
-    return this.doctorsService.findByUserId(userId);
+    return this.doctorsService.findOne(userId);
   }
 
   // ── Doctor Dashboard Home ─────────────────────────────────────────────────
