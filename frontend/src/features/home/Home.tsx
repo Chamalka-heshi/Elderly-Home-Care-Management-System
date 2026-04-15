@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./homePage.css";
 
 
@@ -11,11 +11,9 @@ import aboutImg from "../../assets/Home/about.jpg";
 import bestCareImg from "../../assets/Home/best-care.jpg";
 
 
-//../../../components/Auth/AuthModal
 import AuthModal, { type AuthMode } from "../../components/auth/AuthModal";
 import LoginCard from "../auth/Login/LoginCard";
 import SignupCard from "../auth/Signin/Signupcard";
-import ForgotPasswordCard from "../auth/ForgotPassword/ForgotPassword";
 
 interface Service {
   title: string;
@@ -30,20 +28,13 @@ const services: Service[] = [
 ];
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
 
-  const openLogin = () => {
-    setAuthMode("login");
-    setAuthOpen(true);
-  };
-
-  const openSignup = () => {
-    setAuthMode("signup");
-    setAuthOpen(true);
-  };
-
-  const closeAuth = () => setAuthOpen(false);
+  const openLogin  = () => { setAuthMode("login");  setAuthOpen(true); };
+  const openSignup = () => { setAuthMode("signup"); setAuthOpen(true); };
+  const closeAuth  = () => setAuthOpen(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -251,15 +242,11 @@ const Home: React.FC = () => {
           <LoginCard
             onSuccessClose={closeAuth}
             onGoSignup={() => setAuthMode("signup")}
-            onForgotPassword={() => setAuthMode("forgot")}
-          />
-        ) : authMode === "signup" ? (
-          <SignupCard
-            onSuccessClose={closeAuth}
-            onGoLogin={() => setAuthMode("login")}
+            onForgotPassword={() => { closeAuth(); navigate("/forgot-password"); }}
           />
         ) : (
-          <ForgotPasswordCard
+          <SignupCard
+            onSuccessClose={closeAuth}
             onGoLogin={() => setAuthMode("login")}
           />
         )}
