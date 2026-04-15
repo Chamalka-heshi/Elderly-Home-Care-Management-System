@@ -1,4 +1,3 @@
-// src/auth/AuthContext.tsx
 import { createContext, useContext } from 'react';
 
 export type UserRole = 'admin' | 'doctor' | 'caregiver' | 'family';
@@ -9,6 +8,7 @@ export interface User {
   email: string;
   role: UserRole;
   contactNumber?: string;
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextType {
