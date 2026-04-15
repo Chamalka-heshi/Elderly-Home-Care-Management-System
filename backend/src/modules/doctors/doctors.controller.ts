@@ -1,5 +1,14 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Get, Param, Request, Patch, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Request,
+  Patch,
+  Body,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
@@ -21,6 +30,20 @@ export class DoctorsController {
   getMe(@Request() req: any) {
     const userId = req.user.sub;
     return this.doctorsService.findByUserId(userId);
+  }
+
+  // ── Doctor Dashboard Home ─────────────────────────────────────────────────
+
+  /**
+   * GET /doctors/dashboard
+   * Returns aggregated stats + recent patients for the doctor's home page.
+   * Requires DOCTOR role.
+   */
+  @Get('dashboard')
+  @Roles(UserRole.DOCTOR)
+  getDashboard(@Request() req: any) {
+    const userId = req.user.sub;
+    return this.doctorsService.getDashboardStats(userId);
   }
 
   @Get(':id')
@@ -45,9 +68,19 @@ export class DoctorsController {
   @Roles(UserRole.DOCTOR)
   setAvailability(
     @Request() req: any,
-    @Body() body: { availableDays: string[]; availableTimeStart: string; availableTimeEnd: string },
+    @Body()
+    body: {
+      availableDays: string[];
+      availableTimeStart: string;
+      availableTimeEnd: string;
+    },
   ) {
     const userId = req.user.sub;
-    return this.doctorsService.setAvailability(userId, body.availableDays, body.availableTimeStart, body.availableTimeEnd);
+    return this.doctorsService.setAvailability(
+      userId,
+      body.availableDays,
+      body.availableTimeStart,
+      body.availableTimeEnd,
+    );
   }
 }
