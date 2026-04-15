@@ -5,9 +5,15 @@ import { DoctorsService } from './doctors.service';
 import { DoctorsController } from './doctors.controller';
 import { Doctor } from './entities/doctor.entity';
 import { UsersModule } from '../users/users.module';
+import { Prescription } from '../prescription/entities/prescription.entity';
+import { ChannelingSlot } from '../channeling-slot/entities/channeling-slot.entity';
+import { Patient } from '../patients/entities/patient.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Doctor]), UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([Doctor, Prescription, ChannelingSlot, Patient]),
+    UsersModule,
+  ],
   controllers: [DoctorsController],
   providers: [DoctorsService],
   exports: [DoctorsService],
