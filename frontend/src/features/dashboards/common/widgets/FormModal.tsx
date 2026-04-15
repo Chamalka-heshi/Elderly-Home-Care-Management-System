@@ -1,13 +1,3 @@
-/**
- * src/features/dashboards/common/widgets/FormModal.tsx
- * ──────────────────────────────────────────────────────
- * Generic modal with a dynamic form, shared by AdminDashboard and
- * DoctorDashboard (and any future role dashboards).
- *
- * Changes vs. the original per-role copies:
- *  • `textarea?: true` field option now renders a <textarea> instead of <input>
- *  • Single source of truth — no more duplicate files in admin/ and doctor/
- */
 
 import React from "react";
 
@@ -19,6 +9,7 @@ export interface FieldConfig {
   required?:   boolean;
   textarea?:   boolean;                            // render <textarea> when true
   options?:    { value: string; label: string }[]; // render <select> when provided
+  hint?:       string;                             // helper text shown beneath the field
 }
 
 interface Props {
@@ -104,6 +95,11 @@ const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, f
                   min={f.type === "number" ? "0" : undefined}
                   className={inputBase}
                 />
+              )}
+
+              {/* Optional hint text */}
+              {f.hint && (
+                <p className="text-[11px] font-medium text-slate-400">{f.hint}</p>
               )}
             </label>
           ))}
