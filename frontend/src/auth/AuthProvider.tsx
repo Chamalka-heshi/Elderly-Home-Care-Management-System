@@ -1,23 +1,41 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext, type User } from './AuthContext';
+import { isTokenExpired } from './tokenUtils';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-/** Read the persisted user synchronously from localStorage on first render. */
-const readStoredUser = (): User | null => {
+/**
+ * On first render:
+ *  1. Read the stored JWT from localStorage.
+ *  2. If it's missing or expired  → wipe storage and start with user = null.
+ *  3. If it's still valid          → restore the stored user object.
+ *
+ * No manual expiry timestamps are calculated here – we rely entirely on
+ * the `exp` claim that the backend embeds in the JWT.
+ */
+const initUser = (): User | null => {
   try {
-    return JSON.parse(localStorage.getItem('user') || 'null');
+    const token = localStorage.getItem('token');
+
+    if (!token || isTokenExpired(token)) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      return null;
+    }
+
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+
   } catch {
     return null;
   }
 };
 
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // Initialise from localStorage so a page refresh doesn't clear auth state.
-  const [user, setUserState] = useState<User | null>(readStoredUser);
+  const [user, setUserState] = useState<User | null>(initUser);
 
   const setUser = (u: User | null) => {
     if (u) {
