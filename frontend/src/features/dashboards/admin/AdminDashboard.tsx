@@ -30,15 +30,13 @@ export interface DashboardStats {
 export interface CreateAdminRequest {
   fullName: string;
   email: string;
-  password: string;
-  contactNumber?: string;
+  contactNumber: string;
 }
 
 export interface CreateDoctorRequest {
   fullName: string;
   email: string;
-  password: string;
-  contactNumber?: string;
+  contactNumber: string;
   specialization: string;
   licenseNumber: string;
   yearsOfExperience: number;
@@ -47,8 +45,7 @@ export interface CreateDoctorRequest {
 export interface CreateCaregiverRequest {
   fullName: string;
   email: string;
-  password: string;
-  contactNumber?: string;
+  contactNumber: string;
   shiftPreference: "day" | "night" | "flexible";
   certifications: string[];
   yearsOfExperience: number;
@@ -100,26 +97,26 @@ const MENU_ITEMS: MenuItem[] = [
 // ── Form field configs 
 const ADMIN_FIELDS: FieldConfig[] = [
   { name: "fullName",      label: "Full Name",      required: true, placeholder: "Enter full name" },
-  { name: "email",         label: "Email",          required: true, type: "email",    placeholder: "admin@carehome.com" },
-  { name: "password",      label: "Password",       required: true, type: "password", placeholder: "••••••••" },
-  { name: "contactNumber", label: "Contact Number", placeholder: "+94 77 123 4567" },
+  { name: "email",         label: "Email",          required: true, type: "email", placeholder: "admin@carehome.com" },
+  { name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
+    hint: "Used to generate a temporary password — sent to their email." },
 ];
 
 const DOCTOR_FIELDS: FieldConfig[] = [
   { name: "fullName",          label: "Full Name",           required: true, placeholder: "Dr. Jane Smith" },
-  { name: "email",             label: "Email",               required: true, type: "email",    placeholder: "doctor@carehome.com" },
-  { name: "password",          label: "Password",            required: true, type: "password", placeholder: "••••••••" },
-  { name: "contactNumber",     label: "Contact Number",      placeholder: "+94 77 123 4567" },
+  { name: "email",             label: "Email",               required: true, type: "email", placeholder: "doctor@carehome.com" },
+  { name: "contactNumber",     label: "Contact Number",      required: true, placeholder: "0771234567",
+    hint: "Used to generate a temporary password — sent to their email." },
   { name: "specialization",    label: "Specialization",      required: true, placeholder: "e.g. Cardiologist" },
   { name: "licenseNumber",     label: "License Number",      required: true, placeholder: "MD-XXXXX" },
   { name: "yearsOfExperience", label: "Years of Experience", required: true, type: "number", placeholder: "0" },
 ];
 
 const CAREGIVER_FIELDS: FieldConfig[] = [
-  { name: "fullName",           label: "Full Name",     required: true, placeholder: "Enter full name" },
-  { name: "email",              label: "Email",         required: true, type: "email",    placeholder: "caregiver@carehome.com" },
-  { name: "password",           label: "Password",      required: true, type: "password", placeholder: "••••••••" },
-  { name: "contactNumber",      label: "Contact Number", placeholder: "+94 77 123 4567" },
+  { name: "fullName",           label: "Full Name",      required: true, placeholder: "Enter full name" },
+  { name: "email",              label: "Email",          required: true, type: "email", placeholder: "caregiver@carehome.com" },
+  { name: "contactNumber",      label: "Contact Number", required: true, placeholder: "0771234567",
+    hint: "Used to generate a temporary password — sent to their email." },
   {
     name: "shiftPreference", label: "Shift Preference", required: true,
     options: [
@@ -235,8 +232,7 @@ const AdminDashboard: React.FC = () => {
     const data: CreateAdminRequest = {
       fullName:      fd.get("fullName") as string,
       email:         fd.get("email") as string,
-      password:      fd.get("password") as string,
-      contactNumber: (fd.get("contactNumber") as string) || undefined,
+      contactNumber: fd.get("contactNumber") as string,
     };
     try {
       setModalLoading(true);
@@ -253,8 +249,7 @@ const AdminDashboard: React.FC = () => {
     const data: CreateDoctorRequest = {
       fullName:          fd.get("fullName") as string,
       email:             fd.get("email") as string,
-      password:          fd.get("password") as string,
-      contactNumber:     (fd.get("contactNumber") as string) || undefined,
+      contactNumber:     fd.get("contactNumber") as string,
       specialization:    fd.get("specialization") as string,
       licenseNumber:     fd.get("licenseNumber") as string,
       yearsOfExperience: parseInt(fd.get("yearsOfExperience") as string, 10),
@@ -284,8 +279,7 @@ const AdminDashboard: React.FC = () => {
     const data: CreateCaregiverRequest = {
       fullName:           fd.get("fullName") as string,
       email:              fd.get("email") as string,
-      password:           fd.get("password") as string,
-      contactNumber:      (fd.get("contactNumber") as string) || undefined,
+      contactNumber:      fd.get("contactNumber") as string,
       shiftPreference:    fd.get("shiftPreference") as "day" | "night" | "flexible",
       certifications:     certsRaw ? certsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [],
       yearsOfExperience:  parseInt(fd.get("yearsOfExperience") as string, 10) || 0,
@@ -402,9 +396,9 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <FormModal title="Add New Admin"     open={showAddAdmin}     loading={modalLoading} onClose={() => setShowAddAdmin(false)}     onSubmit={handleCreateAdmin}    fields={ADMIN_FIELDS} />
-      <FormModal title="Add New Doctor"    open={showAddDoctor}    loading={modalLoading} onClose={() => setShowAddDoctor(false)}    onSubmit={handleCreateDoctor}   fields={DOCTOR_FIELDS} />
-      <FormModal title="Add New Caregiver" open={showAddCaregiver} loading={modalLoading} onClose={() => setShowAddCaregiver(false)} onSubmit={handleCreateCaregiver} fields={CAREGIVER_FIELDS} />
+      <FormModal title="Add New Admin — Password auto-generated & emailed"     open={showAddAdmin}     loading={modalLoading} onClose={() => setShowAddAdmin(false)}     onSubmit={handleCreateAdmin}    fields={ADMIN_FIELDS} />
+      <FormModal title="Add New Doctor — Password auto-generated & emailed"    open={showAddDoctor}    loading={modalLoading} onClose={() => setShowAddDoctor(false)}    onSubmit={handleCreateDoctor}   fields={DOCTOR_FIELDS} />
+      <FormModal title="Add New Caregiver — Password auto-generated & emailed" open={showAddCaregiver} loading={modalLoading} onClose={() => setShowAddCaregiver(false)} onSubmit={handleCreateCaregiver} fields={CAREGIVER_FIELDS} />
     </div>
   );
 };
