@@ -14,6 +14,7 @@ import bestCareImg from "../../assets/Home/best-care.jpg";
 import AuthModal, { type AuthMode } from "../../components/auth/AuthModal";
 import LoginCard from "../auth/Login/LoginCard";
 import SignupCard from "../auth/Signin/Signupcard";
+import ForgotPasswordCard from "../auth/ForgotPassword/ForgotPassword";
 
 interface Service {
   title: string;
@@ -28,7 +29,6 @@ const services: Service[] = [
 ];
 
 const Home: React.FC = () => {
-  const navigate = useNavigate();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
 
@@ -232,25 +232,19 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <AuthModal
-        open={authOpen}
-        mode={authMode}
-        onClose={closeAuth}
-        onSwitchMode={(m) => setAuthMode(m)}
-      >
-        {authMode === "login" ? (
-          <LoginCard
-            onSuccessClose={closeAuth}
-            onGoSignup={() => setAuthMode("signup")}
-            onForgotPassword={() => { closeAuth(); navigate("/forgot-password"); }}
-          />
-        ) : (
-          <SignupCard
-            onSuccessClose={closeAuth}
-            onGoLogin={() => setAuthMode("login")}
-          />
-        )}
-      </AuthModal>
+      <AuthModal open={authOpen} onClose={closeAuth} mode={authMode} onSwitchMode={setAuthMode}>
+              {authMode === "login" ? (
+                <LoginCard
+                  onGoSignup={() => setAuthMode("signup")}
+                  onSuccessClose={closeAuth}
+                  onForgotPassword={() => setAuthMode("forgot")}
+                />
+              ) : authMode === "forgot" ? (
+                <ForgotPasswordCard onGoLogin={() => setAuthMode("login")} />
+              ) : (
+                <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
+              )}
+            </AuthModal>
 
       <Footer />
     </div>
