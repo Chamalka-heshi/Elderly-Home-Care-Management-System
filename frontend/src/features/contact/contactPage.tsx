@@ -47,43 +47,6 @@ const validators = {
  * the click-out link via handleMapClick.
  * 4. Fallback: build embed from addressLine1 + city.
  */
-const resolveEmbedUrl = (info: ContactInfo): string | null => {
-  if (info.mapUrl?.trim()) {
-    try {
-      const u = new URL(info.mapUrl);
-
-      // ① Already a proper embed URL — use as-is
-      if (u.pathname.includes('/maps/embed')) {
-        return info.mapUrl;
-      }
-
-      // ② Full Google Maps URL (place, search, etc.) — inject output=embed
-      if (
-        (u.hostname.includes('google.com') || u.hostname.includes('maps.google.com')) &&
-        u.pathname.includes('/maps')
-      ) {
-        u.searchParams.set('output', 'embed');
-        return u.toString();
-      }
-
-      // ③ Short URL (maps.app.goo.gl) — cannot be embedded in an iframe due to
-      //    redirect chains being blocked by browsers. Fall through to address
-      //    fallback below. The short URL is still used for handleMapClick.
-    } catch {
-      // unparseable URL — fall through
-    }
-  }
-
-  // ④ Fallback: build embed from stored address fields (works without API key)
-  if (info.addressLine1?.trim() && info.city?.trim()) {
-    const q = [info.addressLine1, info.addressLine2, info.city]
-      .filter(Boolean)
-      .join(', ');
-    return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
-  }
-
-  return null;
-};
 
 // ─── Component ────────────────────────────────────────────────────────────
 
@@ -122,12 +85,6 @@ const ContactPage: React.FC = () => {
   const isFormValid = useMemo(
     () => !errors.fullName && !errors.email && !errors.phone && !errors.message,
     [errors],
-  );
-
-  // Embed URL — resolved from mapUrl or address fields
-  const mapEmbedUrl = useMemo(
-    () => (contactInfo ? resolveEmbedUrl(contactInfo) : null),
-    [contactInfo],
   );
 
   // ── Fetch contact info ──────────────────────────────────────────────────
