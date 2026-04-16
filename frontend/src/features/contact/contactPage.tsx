@@ -37,28 +37,44 @@ const validators = {
 };
 
 /**
- * Build a Google Maps embed src from whatever we have — no new backend field needed.
+ * Resolves a Google Maps embed URL from the stored mapUrl or address fields.
  *
- * Strategy (in priority order):
- * 1. If mapUrl looks like a full maps.google.com URL, swap ?output=embed in.
- * 2. Build from addressLine1 + city (works without an API key).
+ * Priority:
+ * 1. Already a proper embed URL  → use directly.
+ * 2. Full google.com/maps URL    → inject output=embed.
+ * 3. Short URL (maps.app.goo.gl) → browsers block iframe redirect chains,
+ * so fall through to address-based embed. The short URL is still used for
+ * the click-out link via handleMapClick.
+ * 4. Fallback: build embed from addressLine1 + city.
  */
 const resolveEmbedUrl = (info: ContactInfo): string | null => {
-  // 1 — full Google Maps URL (contains /maps/place/ or maps?q=)
   if (info.mapUrl?.trim()) {
     try {
       const u = new URL(info.mapUrl);
-      // already an embeddable maps URL → just ensure output=embed
-      if (u.hostname.includes('google.com') && u.pathname.includes('/maps')) {
+
+      // ① Already a proper embed URL — use as-is
+      if (u.pathname.includes('/maps/embed')) {
+        return info.mapUrl;
+      }
+
+      // ② Full Google Maps URL (place, search, etc.) — inject output=embed
+      if (
+        (u.hostname.includes('google.com') || u.hostname.includes('maps.google.com')) &&
+        u.pathname.includes('/maps')
+      ) {
         u.searchParams.set('output', 'embed');
         return u.toString();
       }
+
+      // ③ Short URL (maps.app.goo.gl) — cannot be embedded in an iframe due to
+      //    redirect chains being blocked by browsers. Fall through to address
+      //    fallback below. The short URL is still used for handleMapClick.
     } catch {
-      // not a parseable URL — fall through
+      // unparseable URL — fall through
     }
   }
 
-  // 2 — build from address fields (always present once API responds)
+  // ④ Fallback: build embed from stored address fields (works without API key)
   if (info.addressLine1?.trim() && info.city?.trim()) {
     const q = [info.addressLine1, info.addressLine2, info.city]
       .filter(Boolean)
@@ -108,7 +124,7 @@ const ContactPage: React.FC = () => {
     [errors],
   );
 
-  // Embed URL — derived from existing API fields, no extra backend field needed
+  // Embed URL — resolved from mapUrl or address fields
   const mapEmbedUrl = useMemo(
     () => (contactInfo ? resolveEmbedUrl(contactInfo) : null),
     [contactInfo],
@@ -164,6 +180,7 @@ const ContactPage: React.FC = () => {
     }
   };
 
+  // Opens the stored mapUrl (short or full) in a new tab securely
   const handleMapClick = () => {
     if (contactInfo?.mapUrl) {
       window.open(contactInfo.mapUrl, '_blank', 'noopener,noreferrer');
@@ -450,60 +467,36 @@ const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            {/* ── Visit Us — with embedded map ──────────────── */}
-            <div className="cp-info-card cp-info-card--neutral cp-info-card--map">
+            <div className="cp-info-card cp-info-card--neutral">
+              <div className="cp-info-card__icon">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+              </div>
 
-              {/* Address row */}
-              <div className="cp-info-card__top">
-                <div className="cp-info-card__icon">
-                  <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div className="cp-info-card__title-row">
-                    <h3 className="cp-info-card__title">Visit Us</h3>
-                    {!infoLoading && contactInfo?.mapUrl && (
-                      <span
-                        className="cp-map-badge"
-                        onClick={handleMapClick}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === 'Enter' && handleMapClick()}
-                      >
-                        <svg viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
-                          <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-                          <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
-                        </svg>
-                        Open Maps
-                      </span>
-                    )}
-                  </div>
-                  {infoLoading ? <Skeleton /> : contactInfo?.addressLine1 ? (
+              <div className="cp-info-card__content">
+                <h3 className="cp-info-card__title">Visit Us</h3>
+                <p className="cp-info-card__sub">Come and meet us</p>
+
+                {infoLoading ? (
+                  <Skeleton />
+                ) : contactInfo?.addressLine1 ? (
+                  <>
                     <p className="cp-info-card__address">
                       {contactInfo.addressLine1}
                       {contactInfo.addressLine2 && <>, {contactInfo.addressLine2}</>}
-                      <br />{contactInfo.city}
+                      {contactInfo.city && <>, {contactInfo.city}</>}
                     </p>
-                  ) : <span className="cp-info-card__link">—</span>}
-                </div>
+                    {contactInfo?.mapUrl && (
+                      <button className="cp-info-card__link" onClick={handleMapClick} type="button">
+                        Open in Google Maps
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <span className="cp-info-card__link">—</span>
+                )}
               </div>
-
-              {/* Embedded map — shown once contact info loads */}
-              {!infoLoading && mapEmbedUrl && (
-                <div className="cp-map-embed">
-                  <iframe
-                    src={mapEmbedUrl}
-                    title="Our location on Google Maps"
-                    width="100%"
-                    height="200"
-                    style={{ border: 0, borderRadius: '8px', display: 'block' }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                </div>
-              )}
             </div>
 
             {/* Hours */}

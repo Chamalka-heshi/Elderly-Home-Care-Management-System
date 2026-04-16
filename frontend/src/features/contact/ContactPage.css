@@ -449,3 +449,26 @@
   .cp-skeleton { animation: none; }
   .cp-info-card:hover, .cp-btn:hover { transform: none; }
 }
+
+/* ─── Map embed "Open in Google Maps" button ─────────────────────────────── */
+.cp-map-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 1px solid rgba(58, 175, 92, 0.30);
+  border-radius: 8px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease), transform 0.18s var(--ease);
+}
+.cp-map-open-btn:hover {
+  background: rgba(58, 175, 92, 0.20);
+  border-color: rgba(58, 175, 92, 0.50);
+  transform: translateY(-1px);
+}
