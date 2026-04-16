@@ -29,24 +29,13 @@ export class ContactService {
 
   // ── Public: DB-backed contact info ────────────────────────────────────────
 
-  async getInfo(): Promise<Partial<ContactInfo>> {
+  async getInfo(): Promise<ContactInfo> {
     const row = await this.infoRepo.findOne({
       where: {},
       order: { createdAt: 'ASC' },
     });
-    if (row) return row;
-
-    // Env-var fallback before admin saves a row
-    return {
-      phonePrimary:   process.env.CONTACT_PHONE_PRIMARY,
-      phoneEmergency: process.env.CONTACT_PHONE_EMERGENCY,
-      email:          process.env.CONTACT_EMAIL,
-      addressLine1:   process.env.CONTACT_ADDRESS_LINE1,
-      addressLine2:   process.env.CONTACT_ADDRESS_LINE2,
-      city:           process.env.CONTACT_CITY,
-      openHours:      process.env.CONTACT_OPEN_HOURS,
-      mapUrl:         process.env.CONTACT_MAP_URL,
-    } as Partial<ContactInfo>;
+    if (!row) throw new NotFoundException('Contact information not found');
+    return row;
   }
 
   // ── Admin: upsert contact info ─────────────────────────────────────────────
