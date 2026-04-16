@@ -87,11 +87,11 @@ export const signout = async (
   setUser: (u: User | null) => void,
   navigate: (p: string) => void,
 ) => {
+  navigate('/');
   await signOutFirebase();
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   setUser(null);
-  navigate('/login');
 };
 
 export const getStoredUser = (): User | null => {

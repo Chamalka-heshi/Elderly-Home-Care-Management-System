@@ -16,7 +16,6 @@ const SignOutButton = () => {
   const handleSignOut = async () => {
     try {
       await signout(setUser, navigate);
-      navigate('/'); 
     } catch (error) {
       console.error('Sign out error:', error);
     }

@@ -39,8 +39,15 @@ const AuthPageShell: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const sessionExpired = new URLSearchParams(window.location.search).get('reason') === 'expired';
   return (
     <AuthPageShell>
+      {sessionExpired && (
+        <div className="flex items-center gap-2 rounded-b-none rounded-t-3xl border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">
+          <span>⏱️</span>
+          <span>Your session expired. Please sign in again to continue.</span>
+        </div>
+      )}
       <LoginCard
         onSuccessClose={() => navigate("/")}
         onGoSignup={() => navigate("/signup")}
