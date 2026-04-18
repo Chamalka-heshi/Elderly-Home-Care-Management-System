@@ -7,9 +7,11 @@ import {
   UpdateDateColumn,
   Index,
   ManyToOne,
+  OneToOne,
   JoinColumn,
 } from 'typeorm';
 import { Doctor } from '../../doctors/entities/doctor.entity';
+import { Appointment } from '../../appointments/entities/appointment.entity';
 
 export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
 
@@ -48,6 +50,19 @@ export class Prescription {
   })
   @JoinColumn({ name: 'doctor_id' })
   doctor: Doctor;
+
+  // ── Appointment link (optional) ──────────────────────────────────────────────
+
+  /**
+   * The appointment this prescription was created for.
+   * When set, the appointment is auto-completed and cannot get a second prescription.
+   */
+  @Column({ name: 'appointment_id', nullable: true, type: 'uuid' })
+  appointmentId: string | null;
+
+  @OneToOne(() => Appointment, { eager: false, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'appointment_id' })
+  appointment: Appointment | null;
 
   // ── Patient info (free-text — no patient table FK required) ─────────────────
 
