@@ -78,6 +78,7 @@ import CaregiverManagement from "./pages/CaregiverManagement";
 import FamilyManagement   from "./pages/FamilyManagement";
 import PatientManagement  from "./pages/PatientManagement";
 import AppointmentManagement from "./pages/AppointmentManagement";
+import AppointmentRequests   from "./pages/AppointmentRequests";
 import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
 
@@ -89,7 +90,8 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: IconHeart,           label: "Patient Management"  },
   { icon: IconStethoscope,     label: "Doctor Management"   },
   { icon: IconUserPlus,        label: "Caregiver Management"},
-  { icon: IconCalendar,        label: "Appointment Management" },
+  { icon: IconCalendar,        label: "Channeling Slot Management" },
+  { icon: IconCalendar,        label: "Appointment Requests"   },
   { icon: IconInbox,           label: "Contact Messages"    },
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
 ];
@@ -385,8 +387,11 @@ const AdminDashboard: React.FC = () => {
             {!pageLoading && activeMenu === "Patient Management" && (
               <PatientManagement patients={patients} loading={false} onDelete={handleDeletePatient} />
             )}
-            {activeMenu === "Appointment Management" && (
+            {activeMenu === "Channeling Slot Management" && (
               <AppointmentManagement addToast={addToast}/>
+            )}
+            {activeMenu === "Appointment Requests" && (
+              <AppointmentRequests addToast={addToast} />
             )}
             {activeMenu === "Contact Messages" && (
               <ContactMessages addToast={addToast} />

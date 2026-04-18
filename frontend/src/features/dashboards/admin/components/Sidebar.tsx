@@ -11,7 +11,8 @@ export type MenuLabel =
   | "Doctor Management"
   | "Caregiver Management"
   | "Contact Messages"
-  | "Appointment Management"
+  | "Channeling Slot Management"
+  | "Appointment Requests"
   | "Settings";
 
 export interface MenuItem {
