@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import * as channelingApi from '../../../../api/channeling/admin-channeling.api';
+import { getAllDoctors } from '../../../../api/users/admin-users.api';
 import type { ChannelingSlot, SlotStatus } from '../../../../api/channeling/channeling.types';
 import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen } from '../../../../api/channeling/channeling.types';
 
@@ -16,39 +17,14 @@ import {
   IconEdit,
 } from '../../common/icons';
 
-// ─── BYPASS HELPER ─────────────────────────────────────────────────────────
-const fetchDoctorsBypass = async () => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-  const token = localStorage.getItem('token');
-  const res = await fetch(`${API_BASE_URL}/doctors`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error('Failed to fetch raw doctors');
-  const rawDoctors = await res.json();
-
-  return rawDoctors.map((doc: any) => ({
-    id: doc.id,
-    fullName: doc.user?.fullName || doc.fullName || 'Unknown Doctor',
-    specialization: doc.specialization,
-    isActive: doc.user?.isActive ?? true,
-    availableDays: doc.availableDays,
-    availableTimeStart: doc.availableTimeStart,
-    availableTimeEnd: doc.availableTimeEnd,
-    user: doc.user,
-  }));
-};
-// ───────────────────────────────────────────────────────────────────────────
-
 const today = () => new Date().toISOString().split('T')[0];
 
-// ─── CORE FIX: Doctor name resolver ────────────────────────────────────────
-// Resolves doctor name from slot.doctor nested obj OR falls back to doctors[] lookup by doctorId
+// Doctor name resolver - admin API returns flat Doctor objects (fullName at top level)
 function resolveDoctorName(slot: ChannelingSlot, doctors: any[]): string {
-  // Try deeply nested slot.doctor first
+  // Try nested slot.doctor first (populated by backend on slot fetch)
   const fromSlot =
-    slot.doctor?.user?.fullName ||
     (slot.doctor as any)?.fullName ||
-    (slot.doctor as any)?.user?.fullName;
+    slot.doctor?.user?.fullName;
   if (fromSlot) return fromSlot;
 
   // Fallback: look up from the separately-fetched doctors array
@@ -62,7 +38,6 @@ function resolveDoctorSpecialization(slot: ChannelingSlot, doctors: any[]): stri
   const found = doctors.find((d) => d.id === slot.doctorId);
   return found?.specialization || '—';
 }
-// ───────────────────────────────────────────────────────────────────────────
 
 function statusBadge(slot: ChannelingSlot) {
   if (slot.status === 'cancelled')
@@ -309,7 +284,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
 // ─── EDIT SLOT MODAL ───────────────────────────────────────────────────────
 interface EditSlotModalProps {
   slot: ChannelingSlot;
-  doctors: any[]; // ← ADDED: needed to resolve doctor name
+  doctors: any[];
   onClose: () => void;
   onUpdated: () => void;
   addToast: (kind: 'success' | 'error', msg: string) => void;
@@ -323,20 +298,21 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   const [notes, setNotes] = useState(slot.notes ?? '');
   const [saving, setSaving] = useState(false);
 
-  // FIX: Use resolver so name always shows
   const doctorName = resolveDoctorName(slot, doctors);
+  const doctorSpec = resolveDoctorSpecialization(slot, doctors);
+  const doctorObj  = doctors.find((d) => d.id === slot.doctorId);
 
   const validEndTimes = useMemo(() => TIMES.filter((t) => t > startTime), [startTime]);
-
   useEffect(() => {
     if (endTime <= startTime) setEndTime(validEndTimes[0] ?? '23:30');
   }, [startTime, endTime, validEndTimes]);
 
-  const cutoffDisplay = useMemo(() => {
-    return bookingCutoffDate(slot.date, startTime, cutoff).toLocaleString('en-GB', {
+  const cutoffDisplay = useMemo(() =>
+    bookingCutoffDate(slot.date, startTime, cutoff).toLocaleString('en-GB', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
-    });
-  }, [slot.date, startTime, cutoff]);
+    }),
+    [slot.date, startTime, cutoff]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,8 +332,10 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white shadow-2xl my-4">
+
+        {/* ── Header ── */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white">
@@ -365,50 +343,101 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Edit Channeling Slot</p>
-              {/* FIX: doctorName resolved from lookup */}
-              <p className="text-xs text-slate-500">{doctorName} · {fmtDate(slot.date)}</p>
+              <p className="text-xs text-slate-500">Pending — changes require doctor re-approval</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><IconX /></button>
+          <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <IconX />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Start Time <span className="text-red-500">*</span></label>
-              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} required>
-                {TIMES.map((t) => <option key={t} value={t}>{fmt12(t)}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">End Time <span className="text-red-500">*</span></label>
-              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} required>
-                {validEndTimes.map((t) => <option key={t} value={t}>{fmt12(t)}</option>)}
-              </select>
+        <form onSubmit={handleSubmit} className="divide-y divide-slate-100">
+
+          {/* ── Doctor info (read-only) ── */}
+          <div className="px-6 py-4 space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Doctor Details</p>
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-100">
+                <IconStethoscope className="h-5 w-5 text-emerald-700" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-slate-800 truncate">{doctorName}</p>
+                <p className="text-xs text-slate-500">{doctorSpec}</p>
+                {doctorObj?.availableTimeStart && doctorObj?.availableTimeEnd && (
+                  <p className="mt-0.5 text-xs text-blue-600 font-medium">
+                    Preferred: {fmt12(doctorObj.availableTimeStart)} – {fmt12(doctorObj.availableTimeEnd)}
+                  </p>
+                )}
+              </div>
+              <span className="shrink-0 rounded-xl bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-100">
+                Pending
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Booking Cutoff (min before start)</label>
-              <input type="number" min={5} max={120} value={cutoff} onChange={(e) => setCutoff(Number(e.target.value))} className={inputCls} />
-              <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
-                <IconClock className="h-3 w-3" /> Bookings close at {cutoffDisplay}
-              </p>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Max Patients</label>
-              <input type="number" min={1} max={200} value={maxPatients} onChange={(e) => setMaxPatients(Number(e.target.value))} className={inputCls} />
+          {/* ── Slot identity (read-only) ── */}
+          <div className="px-6 py-4 space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Slot Details</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold text-slate-400">Date</p>
+                <p className="mt-0.5 text-sm font-bold text-slate-800">{fmtDate(slot.date)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold text-slate-400">Slot ID</p>
+                <p className="mt-0.5 truncate text-xs font-mono text-slate-500">{slot.id.slice(0,18)}…</p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes (optional)</label>
-            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputCls} resize-none`} />
+          {/* ── Editable fields ── */}
+          <div className="space-y-4 px-6 py-5">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Edit Timings &amp; Capacity</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Start Time <span className="text-red-500">*</span></label>
+                <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} required>
+                  {TIMES.map((t) => <option key={t} value={t}>{fmt12(t)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">End Time <span className="text-red-500">*</span></label>
+                <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} required>
+                  {validEndTimes.map((t) => <option key={t} value={t}>{fmt12(t)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Booking Cutoff (min before)</label>
+                <input type="number" min={5} max={120} value={cutoff} onChange={(e) => setCutoff(Number(e.target.value))} className={inputCls} />
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
+                  <IconClock className="h-3 w-3" /> Closes at {cutoffDisplay}
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Max Patients</label>
+                <input type="number" min={1} max={200} value={maxPatients} onChange={(e) => setMaxPatients(Number(e.target.value))} className={inputCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes (optional)</label>
+              <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Cardiology clinic only" className={`${inputCls} resize-none`} />
+            </div>
+
+            <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-[11px] text-amber-700 ring-1 ring-amber-100">
+              ⚠️ Editing a pending slot will require the doctor to re-approve it.
+            </p>
           </div>
 
-          <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+          {/* ── Footer ── */}
+          <div className="flex justify-end gap-3 px-6 py-4">
+            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Cancel
+            </button>
             <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-60">
               {saving ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <IconEdit />}
               {saving ? 'Saving…' : 'Save Changes'}
@@ -476,14 +505,19 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
 
       {!isCancelled && !isPast && !isRejected && (
         <div className="mt-3 flex justify-end gap-2">
-          <button onClick={() => onEdit(slot)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
-            <IconEdit className="h-3.5 w-3.5" /> Edit
-          </button>
+          {/* Only show Edit & Delete when still pending — once doctor approves (active), lock those actions */}
+          {slot.status !== 'active' && (
+            <>
+              <button onClick={() => onEdit(slot)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                <IconEdit className="h-3.5 w-3.5" /> Edit
+              </button>
+              <button onClick={() => onDelete(slot.id)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-red-200 hover:bg-red-50 hover:text-red-700">
+                <IconTrash className="h-3.5 w-3.5" /> Delete
+              </button>
+            </>
+          )}
           <button onClick={() => onCancel(slot.id)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700">
             <IconBan className="h-3.5 w-3.5" /> Cancel
-          </button>
-          <button onClick={() => onDelete(slot.id)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-red-200 hover:bg-red-50 hover:text-red-700">
-            <IconTrash className="h-3.5 w-3.5" /> Delete
           </button>
         </div>
       )}
@@ -576,7 +610,7 @@ const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
 // ─── MAIN PAGE ─────────────────────────────────────────────────────────────
 interface Props { addToast: (kind: 'success' | 'error', message: string) => void; }
 
-const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
+const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
   const [slots, setSlots] = useState<ChannelingSlot[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -595,17 +629,17 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [slotsData, rawDoctors] = await Promise.all([
+      const [slotsData, doctorsData] = await Promise.all([
         channelingApi.getChannelingSlots({
           doctorId: filterDoctor || undefined,
           status: (filterStatus || undefined) as SlotStatus | undefined,
           fromDate: filterFromDate || undefined,
           toDate: filterToDate || undefined,
         }),
-        fetchDoctorsBypass(),
+        getAllDoctors(),
       ]);
       setSlots(slotsData.slots);
-      setDoctors(rawDoctors);
+      setDoctors(doctorsData.doctors);
     } catch (err) {
       addToastRef.current('error', err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -653,7 +687,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Appointment Management</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Channeling Slot Management</h1>
           <p className="mt-1 text-sm text-slate-500">Assign channeling time slots to doctors · patients book during the open window</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700">
@@ -750,4 +784,4 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
   );
 };
 
-export default AppointmentManagement;
+export default ChannelingSlotManagement;
