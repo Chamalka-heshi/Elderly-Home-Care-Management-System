@@ -77,7 +77,7 @@ import DoctorManagement   from "./pages/DoctorManagement";
 import CaregiverManagement from "./pages/CaregiverManagement";
 import FamilyManagement   from "./pages/FamilyManagement";
 import PatientManagement  from "./pages/PatientManagement";
-import AppointmentManagement from "./pages/AppointmentManagement";
+import AppointmentManagement from "./pages/ChannelingSlotManagement";
 import AppointmentRequests   from "./pages/AppointmentRequests";
 import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
