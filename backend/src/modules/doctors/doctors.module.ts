@@ -9,9 +9,11 @@ import { Prescription } from '../prescription/entities/prescription.entity';
 import { ChannelingSlot } from '../channeling-slot/entities/channeling-slot.entity';
 import { Patient } from '../patients/entities/patient.entity';
 
+import { Appointment } from '../appointments/entities/appointment.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Doctor, Prescription, ChannelingSlot, Patient]),
+    TypeOrmModule.forFeature([Doctor, Prescription, ChannelingSlot, Patient, Appointment]),
     UsersModule,
   ],
   controllers: [DoctorsController],
