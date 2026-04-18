@@ -13,6 +13,7 @@ import { UsersService } from '../users/users.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Prescription } from '../prescription/entities/prescription.entity';
 import { ChannelingSlot, SlotStatus } from '../channeling-slot/entities/channeling-slot.entity';
+import { Appointment, AppointmentStatus } from '../appointments/entities/appointment.entity';
 
 // ── Dashboard response type ──────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ export interface DashboardRecentPatient {
   id: string;          // prescription id (stable key for the row)
   name: string;
   age: number;
+  bloodGroup: string | null;
   diagnosis: string | null;
   status: 'Active' | 'Completed' | 'Discontinued';
   prescriptionDate: string;
@@ -46,6 +48,9 @@ export class DoctorsService {
 
     @InjectRepository(ChannelingSlot)
     private channelingSlotRepository: Repository<ChannelingSlot>,
+
+    @InjectRepository(Appointment)
+    private appointmentRepository: Repository<Appointment>,
 
     private usersService: UsersService,
   ) {}
@@ -213,34 +218,28 @@ export class DoctorsService {
       where: { doctorId, status: SlotStatus.PENDING },
     });
 
-    // 6. Recent patients — last 5 prescriptions ordered by createdAt DESC
-    const recentRx = await this.prescriptionRepository.find({
-      where: { doctorId },
-      order: { createdAt: 'DESC' },
-      take: 5,
-      select: [
-        'id',
-        'patientName',
-        'patientAge',
-        'diagnosis',
-        'status',
-        'issuedDate',
-        'createdAt',
-      ],
-    });
+    // 6. Recent patients — last 10 confirmed/pending appointments ordered by slot date DESC
+    const recentAppointments = await this.appointmentRepository
+      .createQueryBuilder('appt')
+      .innerJoinAndSelect('appt.slot', 'slot')
+      .innerJoinAndSelect('appt.patient', 'patient')
+      .where('slot.doctorId = :doctorId', { doctorId })
+      .andWhere('appt.status IN (:...statuses)', {
+        statuses: [AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING],
+      })
+      .orderBy('slot.date', 'DESC')
+      .addOrderBy('slot.startTime', 'ASC')
+      .take(10)
+      .getMany();
 
-    const recentPatients: DashboardRecentPatient[] = recentRx.map((rx) => ({
-      id: rx.id,
-      name: rx.patientName,
-      age: rx.patientAge,
-      diagnosis: rx.diagnosis,
-      status:
-        rx.status === 'active'
-          ? 'Active'
-          : rx.status === 'completed'
-          ? 'Completed'
-          : 'Discontinued',
-      prescriptionDate: rx.issuedDate,
+    const recentPatients: DashboardRecentPatient[] = recentAppointments.map((appt) => ({
+      id: appt.id,
+      name: appt.patient.fullName,
+      age: this.computeAge(appt.patient.dateOfBirth),
+      bloodGroup: appt.patient.bloodGroup ?? null,
+      diagnosis: null,
+      status: appt.status === AppointmentStatus.CONFIRMED ? 'Active' : 'Active',
+      prescriptionDate: appt.slot?.date ?? new Date().toISOString().split('T')[0],
     }));
 
     return {
@@ -250,6 +249,16 @@ export class DoctorsService {
       pendingAppointmentsCount,
       recentPatients,
     };
+  }
+
+  /** Compute age in whole years from dateOfBirth */
+  private computeAge(dateOfBirth: Date | string): number {
+    const dob = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
   }
 
   // ── Mutations ─────────────────────────────────────────────────────────────
