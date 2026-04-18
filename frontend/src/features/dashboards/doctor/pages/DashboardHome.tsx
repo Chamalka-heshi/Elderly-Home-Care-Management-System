@@ -63,9 +63,9 @@ const statusTone = (s: DashboardRecentPatient['status']) =>
 
 const SkeletonRow = () => (
   <tr>
-    {[1, 2, 3, 4].map((i) => (
+    {[1, 2, 3, 4, 5, 6].map((i) => (
       <td key={i} className="px-4 py-3">
-        <div className="h-4 rounded-lg bg-slate-100 animate-pulse" style={{ width: `${60 + i * 8}%` }} />
+        <div className="h-4 rounded-lg bg-slate-100 animate-pulse" style={{ width: `${55 + i * 7}%` }} />
       </td>
     ))}
   </tr>
@@ -239,9 +239,9 @@ const DashboardHome: React.FC<Props> = ({ onNavigate, onAddReport }) => {
                   <tr className="border-b border-slate-100 text-xs font-semibold text-slate-600">
                     <th className="px-4 py-3">Patient</th>
                     <th className="px-4 py-3">Age</th>
-                    <th className="px-4 py-3">Diagnosis</th>
+                    <th className="px-4 py-3">Blood Group</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Issued</th>
+                    <th className="px-4 py-3">Slot Date</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
@@ -251,16 +251,21 @@ const DashboardHome: React.FC<Props> = ({ onNavigate, onAddReport }) => {
                   ) : stats?.recentPatients.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
-                        No recent prescriptions found.
+                        No recent patients found.
                       </td>
                     </tr>
                   ) : (
                     (stats?.recentPatients ?? []).map((p) => (
                       <tr key={p.id} className="transition hover:bg-slate-50/60">
                         <td className="px-4 py-3 font-semibold text-slate-800">{p.name}</td>
-                        <td className="px-4 py-3 text-slate-600">{p.age}</td>
-                        <td className="px-4 py-3 text-slate-600 max-w-[140px] truncate" title={p.diagnosis ?? ''}>
-                          {p.diagnosis ?? '—'}
+                        <td className="px-4 py-3 text-slate-600">
+                          <span className="font-semibold">{p.age}</span>
+                          <span className="text-xs text-slate-400"> yrs</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {p.bloodGroup
+                            ? <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700 ring-1 ring-red-100">{p.bloodGroup}</span>
+                            : <span className="text-slate-400">—</span>}
                         </td>
                         <td className="px-4 py-3">
                           <Badge tone={statusTone(p.status)}>{p.status}</Badge>
@@ -289,8 +294,8 @@ const DashboardHome: React.FC<Props> = ({ onNavigate, onAddReport }) => {
             <h3 className="mb-4 text-base font-bold text-slate-900">Quick Actions</h3>
             <div className="flex flex-col gap-3">
               {[
-                { label: 'Manage Appointments', nav: 'Appointments' as MenuLabel },
-                { label: 'Write Prescription', nav: 'Prescriptions' as MenuLabel },
+                { label: 'Channeling Slots',    nav: 'Channeling Slots' as MenuLabel },
+                { label: 'Write Prescription',  nav: 'Prescription' as MenuLabel },
                 { label: 'Patient Management', nav: 'Patient Management' as MenuLabel },
                 { label: 'My Profile', nav: 'Doctor Profile' as MenuLabel },
               ].map(({ label, nav }) => (
