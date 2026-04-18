@@ -35,6 +35,10 @@ export class CreateMedicineDto {
 // patientId is a plain string reference — no patient table FK required.
 
 export class CreatePrescriptionDto {
+  // Appointment this prescription is for (optional — auto-completes appointment)
+  @IsOptional()
+  appointmentId?: string;
+
   // Patient details (stored as plain strings — no patient table FK)
   @IsString()
   @IsOptional()
