@@ -1,0 +1,277 @@
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Appointment, AppointmentStatus } from './entities/appointment.entity';
+import {
+  CreateAppointmentDto,
+  UpdateAppointmentStatusDto,
+  QueryAppointmentsDto,
+} from './dto/appointment.dto';
+import { ChannelingSlot, SlotStatus } from '../channeling-slot/entities/channeling-slot.entity';
+import { Patient } from '../patients/entities/patient.entity';
+import { FamilyMember } from '../family/entities/family-member.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
+
+// ── Sensitive fields hidden from admin ────────────────────────────────────────
+const MEDICAL_SENSITIVE_FIELDS = [
+  'medicalHistory',
+  'allergies',
+  'currentMedications',
+  'chronicConditions',
+] as const;
+
+type SafePatient = Omit<Patient, (typeof MEDICAL_SENSITIVE_FIELDS)[number]>;
+
+@Injectable()
+export class AppointmentService {
+  constructor(
+    @InjectRepository(Appointment)
+    private readonly appointmentRepo: Repository<Appointment>,
+    @InjectRepository(ChannelingSlot)
+    private readonly slotRepo: Repository<ChannelingSlot>,
+    @InjectRepository(Patient)
+    private readonly patientRepo: Repository<Patient>,
+    @InjectRepository(FamilyMember)
+    private readonly familyRepo: Repository<FamilyMember>,
+    @InjectRepository(Doctor)
+    private readonly doctorRepo: Repository<Doctor>,
+  ) {}
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /** Strip sensitive medical fields — used for admin responses */
+  private stripMedicalDetails(patient: Patient): SafePatient {
+    const safe: any = { ...patient };
+    for (const field of MEDICAL_SENSITIVE_FIELDS) {
+      delete safe[field];
+    }
+    return safe as SafePatient;
+  }
+
+  private buildSafeAppointment(appt: Appointment, includeFullMedical: boolean) {
+    return {
+      ...appt,
+      patient: includeFullMedical
+        ? appt.patient
+        : this.stripMedicalDetails(appt.patient),
+    };
+  }
+
+  // ── Family member: create appointment ───────────────────────────────────────
+
+  async createAppointment(
+    userId: string,
+    dto: CreateAppointmentDto,
+  ): Promise<Appointment> {
+    // Resolve family member from user id
+    const familyMember = await this.familyRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+    if (!familyMember) throw new NotFoundException('Family member profile not found');
+
+    // Validate slot
+    const slot = await this.slotRepo.findOne({ where: { id: dto.slotId } });
+    if (!slot) throw new NotFoundException('Channeling slot not found');
+    if (slot.status !== SlotStatus.ACTIVE)
+      throw new BadRequestException('This slot is not active / available for booking');
+
+    // Validate slot date is in the future
+    const today = new Date().toISOString().split('T')[0];
+    if (slot.date < today)
+      throw new BadRequestException('Cannot book a past slot');
+
+    // Validate patient belongs to this family member
+    const patient = await this.patientRepo.findOne({
+      where: { id: dto.patientId, familyMemberId: familyMember.id },
+    });
+    if (!patient)
+      throw new ForbiddenException('Patient not found or does not belong to your account');
+    if (!patient.isActive)
+      throw new BadRequestException('Patient is not active');
+
+    // Check duplicate: same patient + same slot
+    const duplicate = await this.appointmentRepo.findOne({
+      where: {
+        slotId: dto.slotId,
+        patientId: dto.patientId,
+        status: AppointmentStatus.PENDING,
+      },
+    });
+    if (duplicate)
+      throw new BadRequestException('An appointment for this patient in this slot already exists');
+
+    // Check slot capacity
+    const booked = await this.appointmentRepo.count({
+      where: {
+        slotId: dto.slotId,
+        status: AppointmentStatus.CONFIRMED,
+      },
+    });
+    if (booked >= slot.maxPatients)
+      throw new BadRequestException('This slot is fully booked');
+
+    // Create appointment
+    const appointment = this.appointmentRepo.create({
+      slotId: dto.slotId,
+      patientId: dto.patientId,
+      familyMemberId: familyMember.id,
+      status: AppointmentStatus.PENDING,
+      notes: dto.notes ?? null,
+    });
+
+    return this.appointmentRepo.save(appointment);
+  }
+
+  // ── Family member: get own appointments ─────────────────────────────────────
+
+  async getMyAppointments(userId: string): Promise<Appointment[]> {
+    const familyMember = await this.familyRepo.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!familyMember) throw new NotFoundException('Family member profile not found');
+
+    return this.appointmentRepo.find({
+      where: { familyMemberId: familyMember.id },
+      relations: ['slot', 'slot.doctor', 'slot.doctor.user', 'patient'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // ── Family member: cancel own appointment ───────────────────────────────────
+
+  async cancelMyAppointment(userId: string, id: string): Promise<{ message: string }> {
+    const familyMember = await this.familyRepo.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!familyMember) throw new NotFoundException('Family member profile not found');
+
+    const appointment = await this.appointmentRepo.findOne({
+      where: { id, familyMemberId: familyMember.id },
+    });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+    if (appointment.status === AppointmentStatus.CANCELLED)
+      throw new BadRequestException('Appointment is already cancelled');
+    if (appointment.status === AppointmentStatus.COMPLETED)
+      throw new BadRequestException('Cannot cancel a completed appointment');
+
+    appointment.status = AppointmentStatus.CANCELLED;
+    await this.appointmentRepo.save(appointment);
+    return { message: 'Appointment cancelled successfully' };
+  }
+
+  // ── Doctor: get appointments for their slots (FULL medical details) ─────────
+
+  async getDoctorAppointments(userId: string): Promise<any[]> {
+    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    if (!doctor) throw new NotFoundException('Doctor profile not found');
+
+    const appointments = await this.appointmentRepo
+      .createQueryBuilder('appt')
+      .innerJoinAndSelect('appt.slot', 'slot')
+      .leftJoinAndSelect('slot.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'doctorUser')
+      .innerJoinAndSelect('appt.patient', 'patient')
+      .innerJoinAndSelect('appt.familyMember', 'fm')
+      .innerJoinAndSelect('fm.user', 'fmUser')
+      .where('slot.doctorId = :doctorId', { doctorId: doctor.id })
+      .orderBy('slot.date', 'DESC')
+      .addOrderBy('slot.startTime', 'ASC')
+      .getMany();
+
+    // Doctor sees FULL medical details — augment each patient with computed age
+    // prescriptionId is already a plain column so it is included automatically
+    return appointments.map((a) => {
+      const safe = this.buildSafeAppointment(a, true) as any;
+      if (safe.patient?.dateOfBirth) {
+        safe.patient = { ...safe.patient, age: this.computeAge(safe.patient.dateOfBirth) };
+      }
+      return safe;
+    });
+  }
+
+  /** Compute age in whole years from a dateOfBirth string or Date */
+  private computeAge(dateOfBirth: string | Date): number {
+    const dob = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
+  }
+
+  // ── Doctor: update appointment status ───────────────────────────────────────
+
+  async updateAppointmentStatusByDoctor(
+    userId: string,
+    id: string,
+    dto: UpdateAppointmentStatusDto,
+  ): Promise<Appointment> {
+    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    if (!doctor) throw new NotFoundException('Doctor profile not found');
+
+    const appointment = await this.appointmentRepo.findOne({
+      where: { id },
+      relations: ['slot'],
+    });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+    if (appointment.slot.doctorId !== doctor.id)
+      throw new ForbiddenException('This appointment does not belong to your slots');
+
+    appointment.status = dto.status;
+    if (dto.notes !== undefined) appointment.notes = dto.notes;
+    return this.appointmentRepo.save(appointment);
+  }
+
+  // ── Admin: get all appointments (NO sensitive medical details) ──────────────
+
+  async getAllAppointments(query: QueryAppointmentsDto): Promise<any[]> {
+    const qb = this.appointmentRepo
+      .createQueryBuilder('appt')
+      .innerJoinAndSelect('appt.slot', 'slot')
+      .leftJoinAndSelect('slot.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'doctorUser')
+      .innerJoinAndSelect('appt.patient', 'patient')
+      .innerJoinAndSelect('appt.familyMember', 'fm')
+      .innerJoinAndSelect('fm.user', 'fmUser')
+      .orderBy('appt.createdAt', 'DESC');
+
+    if (query.status) qb.andWhere('appt.status = :status', { status: query.status });
+    if (query.patientId) qb.andWhere('appt.patientId = :patientId', { patientId: query.patientId });
+    if (query.doctorId) qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
+
+    const appointments = await qb.getMany();
+
+    // Admin sees NO sensitive medical details
+    return appointments.map((a) => this.buildSafeAppointment(a, false));
+  }
+
+  // ── Admin: update appointment status ────────────────────────────────────────
+
+  async adminUpdateStatus(
+    id: string,
+    dto: UpdateAppointmentStatusDto,
+  ): Promise<{ message: string }> {
+    const appointment = await this.appointmentRepo.findOne({ where: { id } });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+
+    appointment.status = dto.status;
+    if (dto.notes !== undefined) appointment.notes = dto.notes;
+    await this.appointmentRepo.save(appointment);
+    return { message: 'Appointment status updated' };
+  }
+
+  // ── Admin: delete appointment ────────────────────────────────────────────────
+
+  async adminDelete(id: string): Promise<{ message: string }> {
+    const appointment = await this.appointmentRepo.findOne({ where: { id } });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+    await this.appointmentRepo.remove(appointment);
+    return { message: 'Appointment deleted successfully' };
+  }
+}
