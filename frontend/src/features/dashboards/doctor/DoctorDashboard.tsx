@@ -36,7 +36,7 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: IconClipboard,       label: "Medical Reports"    },
   { icon: IconHeart,           label: "Prescription"       },
   { icon: IconStethoscope,     label: "Treatment Plans"    },
-  { icon: IconCalendar,        label: "Appointments"       },
+  { icon: IconCalendar,        label: "Channeling Slots"       },
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
 ];
 
@@ -131,7 +131,7 @@ const DoctorDashboard: React.FC = () => {
             {activeMenu === "Medical Reports"    && <MedicalReports />}
             {activeMenu === "Prescription"       && <Prescription />}
             {activeMenu === "Treatment Plans"    && <TreatmentPlans />}
-            {activeMenu === "Appointments"       && <Appointments />}
+            {activeMenu === "Channeling Slots"       && <Appointments />}
             {activeMenu === "Settings"           && <Settings />}
           </main>
         </div>
