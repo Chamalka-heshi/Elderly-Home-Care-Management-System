@@ -16,6 +16,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { PrescriptionsModule } from './modules/prescription/prescription.module';
 import { ChannelingSlotModule } from './modules/channeling-slot/channeling-slot.module';
+import { AppointmentModule } from './modules/appointments/appointment.module';
 
 @Module({
   imports: [
@@ -27,10 +28,6 @@ import { ChannelingSlotModule } from './modules/channeling-slot/channeling-slot.
     }),
 
     // ── JWT (global) ─────────────────────────────────────────────────────
-    // JwtModule + UsersModule available globally via JwtConfigModule.
-    // JwtAuthGuard and RolesGuard are registered below as APP_GUARD —
-    // they are instantiated at app level so DI resolves correctly for
-    // every feature module without each needing to import UsersModule.
     JwtConfigModule,
 
     // ── Database ─────────────────────────────────────────────────────────
@@ -61,6 +58,7 @@ import { ChannelingSlotModule } from './modules/channeling-slot/channeling-slot.
     ContactModule,
     PrescriptionsModule,
     ChannelingSlotModule,
+    AppointmentModule,         
   ],
 
   providers: [
