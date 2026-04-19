@@ -28,6 +28,7 @@ export type MenuLabel =
   | "Prescription"
   | "Treatment Plans"
   | "Channeling Slots"
+  | "Appointments"
   | "Settings";
 
 export interface MenuItem {
@@ -59,6 +60,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
     "Prescription":       "Create and manage prescription",
     "Treatment Plans":    "Manage patient treatment",
     "Channeling Slots":   "View channeling schedule",
+    "Appointments":       "View & prescribe for confirmed patients",
     "Settings":           "Manage settings",
   };
 
