@@ -1,12 +1,24 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { FamilyService } from './family.service';
-import { FamilyMember } from './entities/family-member.entity';
-import { UsersModule } from '../users/users.module';
+/* eslint-disable prettier/prettier */
+import { Module, forwardRef } from '@nestjs/common';
+import { TypeOrmModule }      from '@nestjs/typeorm';
+import { FamilyService }      from './family.service';
+import { FamilyController }   from './family.controller';
+import { FamilyMember }       from './entities/family-member.entity';
+import { UsersModule }        from '../users/users.module';
+import { PatientsModule }     from '../patients/patients.module';
+import { AppointmentModule }  from '../appointments/appointment.module';
+import { PrescriptionsModule } from '../prescription/prescription.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FamilyMember]), UsersModule],
-  providers: [FamilyService],
-  exports: [FamilyService],
+  imports: [
+    TypeOrmModule.forFeature([FamilyMember]),
+    UsersModule,
+    forwardRef(() => PatientsModule),
+    AppointmentModule,
+    PrescriptionsModule,
+  ],
+  controllers: [FamilyController],
+  providers:   [FamilyService],
+  exports:     [FamilyService],
 })
 export class FamilyModule {}
