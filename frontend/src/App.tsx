@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 
 import AuthProvider    from "./auth/AuthProvider";
 import ProtectedRoute  from "./auth/ProtectedRoute";
+import { useAuth }     from "./auth/AuthContext";
 
 import Home     from "./features/home/Home";
 import About    from "./features/about/AboutUsPage";
@@ -80,7 +81,9 @@ const ForgotPasswordPage: React.FC = () => {
 
 const AdminProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  return <AdminProfile onBack={() => navigate("/admin")} />;
+  const { user } = useAuth();
+  const basePath = user?.role === 'super_admin' ? '/super_admin' : '/admin';
+  return <AdminProfile onBack={() => navigate(basePath)} />;
 };
 
 const DoctorProfilePage: React.FC = () => {
@@ -117,13 +120,15 @@ const App: React.FC = () => (
         <Route path="/change-password" element={<ForceChangePassword />} />
 
         {/* ── Protected dashboard shells ── */}
-        <Route path="/admin/*"     element={<ProtectedRoute role="admin">    <AdminDashboard />    </ProtectedRoute>} />
+        <Route path="/admin/*"     element={<ProtectedRoute role={["admin", "super_admin"]}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/super_admin/*" element={<ProtectedRoute role="super_admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/doctor/*"    element={<ProtectedRoute role="doctor">   <DoctorDashboard />   </ProtectedRoute>} />
         <Route path="/caregiver/*" element={<ProtectedRoute role="caregiver"><CaregiverDashboard /></ProtectedRoute>} />
         <Route path="/family/*"    element={<ProtectedRoute role="family">   <FamilyDashboard />   </ProtectedRoute>} />
 
         {/* ── Profile pages ── */}
-        <Route path="/admin/profile"    element={<ProtectedRoute role="admin">    <AdminProfilePage />    </ProtectedRoute>} />
+        <Route path="/admin/profile"       element={<ProtectedRoute role={["admin", "super_admin"]}><AdminProfilePage /></ProtectedRoute>} />
+        <Route path="/super_admin/profile" element={<ProtectedRoute role="super_admin"><AdminProfilePage /></ProtectedRoute>} />
         <Route path="/doctor/profile"   element={<ProtectedRoute role="doctor">   <DoctorProfilePage />   </ProtectedRoute>} />
         <Route path="/caregiver/profile" element={<ProtectedRoute role="caregiver"><CaregiverProfilePage /></ProtectedRoute>} />
         <Route path="/family/profile"   element={<ProtectedRoute role="family">   <FamilyProfilePage />   </ProtectedRoute>} />
