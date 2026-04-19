@@ -18,9 +18,15 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
 
   const displayName = user?.fullName ?? "Admin User";
   const displayRole =
+    user?.role === "super_admin" ? "Super Administrator" :
     user?.role === "admin"     ? "Administrator" :
     user?.role === "doctor"    ? "Doctor"        :
     user?.role === "caregiver" ? "Caregiver"     : "Family Member";
+
+  const roleBadgeLabel = user?.role === "super_admin" ? "Super Admin" : "Admin";
+  const roleBadgeClass = user?.role === "super_admin"
+    ? "hidden sm:inline-flex items-center rounded-full bg-violet-50 px-2 py-1 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-100"
+    : "hidden sm:inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100";
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 backdrop-blur-xl">
@@ -76,8 +82,8 @@ const Topbar: React.FC<Props> = ({ activeMenu, onToggleSidebar, onProfileClick }
             </span>
 
             {/* Role badge */}
-            <span className="hidden sm:inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-              Admin
+            <span className={roleBadgeClass}>
+              {roleBadgeLabel}
             </span>
 
             {/* Chevron */}

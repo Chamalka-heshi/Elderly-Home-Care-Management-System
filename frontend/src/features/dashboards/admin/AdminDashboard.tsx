@@ -5,7 +5,7 @@ import { useAuth } from "../../../auth/AuthContext";
 // ── NEW API IMPORTS ──────────────────────────────────────────────────────────
 import { getDashboardStats } from "../../../api/users/admin-dashboard.api";
 import {
-  getAllAdmins, createAdmin,
+  getAllAdmins, createAdmin, deleteAdmin,
   getAllDoctors, createDoctor, deactivateDoctor, activateDoctor,
   getAllCaregivers, createCaregiver, deactivateCaregiver, activateCaregiver,
   getAllFamilies, toggleFamilyStatus
@@ -83,19 +83,7 @@ import AppointmentRequests   from "./pages/AppointmentRequests";
 import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
 
-// ── Menu items 
-const MENU_ITEMS: MenuItem[] = [
-  { icon: IconLayoutDashboard, label: "Dashboard"           },
-  { icon: IconShield,          label: "Admin Management"    },
-  { icon: IconUsers,           label: "Family Management"   },
-  { icon: IconHeart,           label: "Patient Management"  },
-  { icon: IconStethoscope,     label: "Doctor Management"   },
-  { icon: IconUserPlus,        label: "Caregiver Management"},
-  { icon: IconCalendar,        label: "Channeling Slot Management" },
-  { icon: IconCalendar,        label: "Appointment Requests"   },
-  { icon: IconInbox,           label: "Contact Messages"    },
-  { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
-];
+
 
 // ── Form field configs 
 const ADMIN_FIELDS: FieldConfig[] = [
@@ -146,6 +134,20 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
+
+  // ── Menu items (built here so isSuperAdmin is in scope) ──
+  const MENU_ITEMS: MenuItem[] = [
+    { icon: IconLayoutDashboard, label: "Dashboard"                  },
+    ...(isSuperAdmin ? [{ icon: IconShield, label: "Admin Management" as MenuLabel }] : []),
+    { icon: IconUsers,           label: "Family Management"          },
+    { icon: IconHeart,           label: "Patient Management"         },
+    { icon: IconStethoscope,     label: "Doctor Management"          },
+    { icon: IconUserPlus,        label: "Caregiver Management"       },
+    { icon: IconCalendar,        label: "Channeling Slot Management" },
+    { icon: IconCalendar,        label: "Appointment Requests"       },
+    { icon: IconInbox,           label: "Contact Messages"           },
+    { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
+  ];
 
   // ── UI state 
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
@@ -222,9 +224,9 @@ const AdminDashboard: React.FC = () => {
   }, [addToast]);
 
   useEffect(() => {
-    if      (activeMenu === "Dashboard")            loadDashboard();
-    else if (activeMenu === "Admin Management")     loadAdmins();
-    else if (activeMenu === "Doctor Management")    loadDoctors();
+    if      (activeMenu === "Dashboard")                        loadDashboard();
+    else if (activeMenu === "Admin Management" && isSuperAdmin) loadAdmins();
+    else if (activeMenu === "Doctor Management")                loadDoctors();
     else if (activeMenu === "Caregiver Management") loadCaregivers();
     else if (activeMenu === "Family Management")    loadFamilies();
     else if (activeMenu === "Patient Management")   loadPatients();
@@ -246,6 +248,13 @@ const AdminDashboard: React.FC = () => {
       setShowAddAdmin(false); loadAdmins();
     } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create admin"); }
     finally { setModalLoading(false); }
+  };
+
+  const handleDeleteAdmin = async (id: string) => {
+    try {
+      const res = await deleteAdmin(id);
+      addToast("success", res.message); loadAdmins();
+    } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to delete admin"); }
   };
 
   const handleCreateDoctor = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -375,8 +384,8 @@ const AdminDashboard: React.FC = () => {
                 onAddDoctor={() => setShowAddDoctor(true)}
               />
             )}
-            {!pageLoading && activeMenu === "Admin Management" && (
-              <AdminManagement admins={admins as any} loading={false} canAddAdmin={isSuperAdmin} onAddAdmin={() => setShowAddAdmin(true)} />
+            {!pageLoading && isSuperAdmin && activeMenu === "Admin Management" && (
+              <AdminManagement admins={admins as any} loading={false} canAddAdmin={isSuperAdmin} onAddAdmin={() => setShowAddAdmin(true)} onDeleteAdmin={isSuperAdmin ? handleDeleteAdmin : undefined} />
             )}
             {!pageLoading && activeMenu === "Doctor Management" && (
               <DoctorManagement doctors={doctors} loading={false} onAddDoctor={() => setShowAddDoctor(true)} onToggleStatus={handleToggleDoctorStatus} />

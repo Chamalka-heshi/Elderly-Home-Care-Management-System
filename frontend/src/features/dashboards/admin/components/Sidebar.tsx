@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import SignOutButton from "../../../../components/signoutbtn";
 import { IconSparkles, IconSearch, IconX } from "../../common/icons";
+import { useAuth } from "../../../../auth/AuthContext";
 
 // ── Types ──
 export type MenuLabel =
@@ -31,6 +32,8 @@ interface Props {
 // ── Component ──
 const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNavigate }) => {
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -67,7 +70,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">Care Home</p>
-                <p className="text-xs text-slate-500">Admin Panel</p>
+                <p className="text-xs text-slate-500">{isSuperAdmin ? 'Super Admin Panel' : 'Admin Panel'}</p>
               </div>
             </div>
             <button
