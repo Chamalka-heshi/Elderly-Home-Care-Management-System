@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 // modules/prescription/prescription.controller.ts
 import {
   Controller,
@@ -22,44 +23,16 @@ import { CreatePrescriptionDto } from './dto/prescription.dto';
 import type { PrescriptionStatus } from './entities/prescription.entity';
 
 /**
- * Doctor routes: require DOCTOR role (enforced globally by RolesGuard).
- * Family route:  GET /prescriptions/for-family — requires FAMILY role.
+ * PrescriptionsController — doctor routes only.
  *
- * IMPORTANT: the static route `for-family` must be declared BEFORE
- * the parameterised route `/:id`, otherwise Express will try to match
- * "for-family" as a UUID and throw a validation error.
+ * Family-member prescription routes have moved to FamilyController
+ * under /family/prescriptions.
  */
 @Controller('prescriptions')
 export class PrescriptionsController {
   constructor(private readonly service: PrescriptionService) {}
 
-  // ── Family member endpoint ───────────────────────────────────────────────────
-
-  /**
-   * GET /prescriptions/for-family
-   * Returns all prescriptions for every patient that belongs to the
-   * authenticated family member.  Includes doctor name via eager join.
-   */
-  @Get('for-family')
-  @Roles(UserRole.FAMILY)
-  findForFamily(@GetUser('sub') userId: string) {
-    return this.service.findForFamily(userId);
-  }
-
-  /**
-   * GET /prescriptions/for-family/:id
-   * Family member views a single prescription by ID (must own the patient).
-   */
-  @Get('for-family/:id')
-  @Roles(UserRole.FAMILY)
-  findOneForFamily(
-    @GetUser('sub') userId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.service.findOneForFamily(id, userId);
-  }
-
-  // ── Doctor endpoints ─────────────────────────────────────────────────────────
+  // ── Doctor endpoints ──────────────────────────────────────────────────────────
 
   @Post()
   @Roles(UserRole.DOCTOR)
