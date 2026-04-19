@@ -11,7 +11,7 @@ import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
 import {
   IconLayoutDashboard, IconUsers, IconClipboard,
   IconHeart, IconStethoscope, IconCalendar, IconSettings,
-  IconCheckCircle, IconAlertCircle,
+  IconActivity, IconCheckCircle, IconAlertCircle,
   type IconProps,
 } from "../common/icons";
 
@@ -25,7 +25,8 @@ import PatientMgmt    from "./pages/PatientManagement";
 import MedicalReports from "./pages/MedicalReports";
 import Prescription   from "./pages/Prescription";
 import TreatmentPlans from "./pages/TreatmentPlans";
-import Appointments   from "./pages/Appointments";
+import ChannelingSlots from "./pages/ChannelingSlots";
+import Appointments from "./pages/Appointments";
 import Settings       from "./pages/Settings";
 
 //  Menu items — mirrors AdminDashboard MENU_ITEMS pattern 
@@ -33,10 +34,11 @@ import Settings       from "./pages/Settings";
 const MENU_ITEMS: MenuItem[] = [
   { icon: IconLayoutDashboard, label: "Dashboard"          },
   { icon: IconUsers,           label: "Patient Management" },
-  { icon: IconClipboard,       label: "Medical Reports"    },
+  { icon: IconActivity,        label: "Appointments"        },
+  { icon: IconCalendar,        label: "Channeling Slots"    },
   { icon: IconHeart,           label: "Prescription"       },
-  { icon: IconStethoscope,     label: "Treatment Plans"    },
-  { icon: IconCalendar,        label: "Channeling Slots"       },
+  { icon: IconClipboard,       label: "Medical Reports"    },
+  { icon: IconStethoscope,     label: "Treatment Plans"    },  
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
 ];
 
@@ -131,7 +133,8 @@ const DoctorDashboard: React.FC = () => {
             {activeMenu === "Medical Reports"    && <MedicalReports />}
             {activeMenu === "Prescription"       && <Prescription />}
             {activeMenu === "Treatment Plans"    && <TreatmentPlans />}
-            {activeMenu === "Channeling Slots"       && <Appointments />}
+            {activeMenu === "Channeling Slots"       && <ChannelingSlots />}
+            {activeMenu === "Appointments"           && <Appointments />}
             {activeMenu === "Settings"           && <Settings />}
           </main>
         </div>
