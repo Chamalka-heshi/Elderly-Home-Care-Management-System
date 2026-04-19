@@ -33,6 +33,7 @@ import ElderlyProfile      from "./pages/ElderlyProfile";
 import MedicalReports      from "./pages/MedicalReports";
 import Prescription        from "./pages/Prescription";
 import CareUpdates         from "./pages/CareUpdates";
+import Appointments        from "./pages/Appointments";
 import Payments            from "./pages/Payments";
 import Settings            from "./pages/Settings";
 
@@ -44,6 +45,7 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: IconClipboard,       label: "Medical Reports" },
   { icon: IconHeart,           label: "Prescription"    },
   { icon: IconCalendar,        label: "Care Updates"    },
+  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Appointments" },
   { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Payments"  },
   { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings"  },
 ];
@@ -134,6 +136,7 @@ const FamilyMemberDashboard: React.FC = () => {
             {activeMenu === "Medical Reports" && <MedicalReports />}
             {activeMenu === "Prescription"    && <Prescription />}
             {activeMenu === "Care Updates"    && <CareUpdates />}
+            {activeMenu === "Appointments"    && <Appointments />}
             {activeMenu === "Payments"        && <Payments />}
             {activeMenu === "Settings"        && <Settings />}
           </main>
