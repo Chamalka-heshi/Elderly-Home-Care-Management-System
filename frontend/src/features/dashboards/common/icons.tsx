@@ -274,3 +274,37 @@ export const IconSparkles: React.FC<IconProps> = ({ className }) => (
     <path d="M12 2l1.2 4.2L17.4 8l-4.2 1.2L12 13.4l-1.2-4.2L6.6 8l4.2-1.8L12 2zm7 7l.8 2.8 2.8.8-2.8.8L19 16.6l-.8-2.8-2.8-.8 2.8-1.2L19 9zM4 14l1 3.3L8.3 18 5 19l-1 3-1-3-3-.7 3-.7L4 14z" />
   </svg>
 );
+// ── Doctor Appointments specific ──────────────────────────────────────────────
+
+export const IconFileText: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M16 13H8M16 17H8M10 9H8" />
+  </svg>
+);
+
+export const IconActivity: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+      d="M22 12h-4l-3 9L9 3l-3 9H2" />
+  </svg>
+);
+
+export const IconUserCheck: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+      d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM16 11l2 2 4-4" />
+  </svg>
+);
+
+export const IconChevronRight: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+  </svg>
+);
+
+export const IconChevronUp: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M18 15l-6-6-6 6" />
+  </svg>
+);
