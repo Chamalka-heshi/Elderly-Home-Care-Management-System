@@ -6,6 +6,7 @@ export interface DashboardRecentPatient {
   id: string;
   name: string;
   age: number;
+  bloodGroup: string | null;
   diagnosis: string | null;
   status: 'Active' | 'Completed' | 'Discontinued';
   prescriptionDate: string;
