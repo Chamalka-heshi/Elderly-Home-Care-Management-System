@@ -83,6 +83,14 @@ export class AdminController {
     };
   }
 
+  @Delete('admins/:id')
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async deleteAdmin(@Param('id') id: string) {
+    await this.adminService.deleteAdmin(id);
+    return { message: 'Admin account deleted successfully' };
+  }
+
   @Get('admins')
   async getAllAdmins() {
     const admins = await this.adminService.findAll();

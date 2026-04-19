@@ -4,6 +4,7 @@ import type { Admin, Doctor, Caregiver, Family } from './user.types';
 // Admins
 export const createAdmin = (data: any) => apiFetch<{admin: Admin}>('/admin/admins', { method: 'POST', body: JSON.stringify(data) });
 export const getAllAdmins = () => apiFetch<{admins: Admin[]}>('/admin/admins');
+export const deleteAdmin = (id: string) => apiFetch<{message: string}>(`/admin/admins/${id}`, { method: 'DELETE' });
 
 // Doctors
 export const createDoctor = (data: any) => apiFetch<{doctor: Doctor}>('/admin/doctors', { method: 'POST', body: JSON.stringify(data) });
