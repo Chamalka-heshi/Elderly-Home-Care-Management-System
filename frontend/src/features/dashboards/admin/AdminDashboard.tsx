@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom"; // <-- Added Router Navigation
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../auth/AuthContext";
 
 // ── NEW API IMPORTS ──────────────────────────────────────────────────────────
 import { getDashboardStats } from "../../../api/users/admin-dashboard.api";
@@ -39,7 +40,7 @@ export interface CreateDoctorRequest {
   contactNumber: string;
   specialization: string;
   licenseNumber: string;
-  yearsOfExperience: number;
+  experienceYears: number;
 }
 
 export interface CreateCaregiverRequest {
@@ -111,7 +112,7 @@ const DOCTOR_FIELDS: FieldConfig[] = [
     hint: "Used to generate a temporary password — sent to their email." },
   { name: "specialization",    label: "Specialization",      required: true, placeholder: "e.g. Cardiologist" },
   { name: "licenseNumber",     label: "License Number",      required: true, placeholder: "MD-XXXXX" },
-  { name: "yearsOfExperience", label: "Years of Experience", required: true, type: "number", placeholder: "0" },
+  { name: "experienceYears",   label: "Years of Experience", required: true, type: "number", placeholder: "0" },
 ];
 
 const CAREGIVER_FIELDS: FieldConfig[] = [
@@ -142,7 +143,9 @@ const CAREGIVER_FIELDS: FieldConfig[] = [
 interface Toast { id: number; kind: "success" | "error"; message: string; }
 
 const AdminDashboard: React.FC = () => {
-  const navigate = useNavigate(); // <-- Setup Router Hook
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
 
   // ── UI state 
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
@@ -254,7 +257,7 @@ const AdminDashboard: React.FC = () => {
       contactNumber:     fd.get("contactNumber") as string,
       specialization:    fd.get("specialization") as string,
       licenseNumber:     fd.get("licenseNumber") as string,
-      yearsOfExperience: parseInt(fd.get("yearsOfExperience") as string, 10),
+      experienceYears:   parseInt(fd.get("experienceYears") as string, 10),
     };
     try {
       setModalLoading(true);
@@ -353,7 +356,7 @@ const AdminDashboard: React.FC = () => {
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => navigate("/admin/profile")} 
+            onProfileClick={() => navigate(isSuperAdmin ? "/super_admin/profile" : "/admin/profile")}
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
@@ -368,12 +371,12 @@ const AdminDashboard: React.FC = () => {
                 stats={dashboardStats}
                 patients={patients}
                 onNavigate={setActiveMenu}
-                onAddAdmin={() => setShowAddAdmin(true)}
+                onAddAdmin={isSuperAdmin ? () => setShowAddAdmin(true) : undefined}
                 onAddDoctor={() => setShowAddDoctor(true)}
               />
             )}
             {!pageLoading && activeMenu === "Admin Management" && (
-              <AdminManagement admins={admins as any} loading={false} onAddAdmin={() => setShowAddAdmin(true)} />
+              <AdminManagement admins={admins as any} loading={false} canAddAdmin={isSuperAdmin} onAddAdmin={() => setShowAddAdmin(true)} />
             )}
             {!pageLoading && activeMenu === "Doctor Management" && (
               <DoctorManagement doctors={doctors} loading={false} onAddDoctor={() => setShowAddDoctor(true)} onToggleStatus={handleToggleDoctorStatus} />
@@ -401,7 +404,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <FormModal title="Add New Admin — Password auto-generated & emailed"     open={showAddAdmin}     loading={modalLoading} onClose={() => setShowAddAdmin(false)}     onSubmit={handleCreateAdmin}    fields={ADMIN_FIELDS} />
+      {isSuperAdmin && <FormModal title="Add New Admin — Password auto-generated & emailed"     open={showAddAdmin}     loading={modalLoading} onClose={() => setShowAddAdmin(false)}     onSubmit={handleCreateAdmin}    fields={ADMIN_FIELDS} />}
       <FormModal title="Add New Doctor — Password auto-generated & emailed"    open={showAddDoctor}    loading={modalLoading} onClose={() => setShowAddDoctor(false)}    onSubmit={handleCreateDoctor}   fields={DOCTOR_FIELDS} />
       <FormModal title="Add New Caregiver — Password auto-generated & emailed" open={showAddCaregiver} loading={modalLoading} onClose={() => setShowAddCaregiver(false)} onSubmit={handleCreateCaregiver} fields={CAREGIVER_FIELDS} />
     </div>

@@ -46,7 +46,7 @@ export class ContactController {
   // ── Admin: contact info management ────────────────────────────────────────
 
   @Put('info')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   updateInfo(
     @Body(new ValidationPipe({ whitelist: true })) dto: UpdateContactInfoDto,
   ) {
@@ -56,19 +56,19 @@ export class ContactController {
   // ── Admin: message management ─────────────────────────────────────────────
 
   @Get('messages')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getAllMessages() {
     return this.contactService.getAllMessages();
   }
 
   @Get('messages/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getMessage(@Param('id') id: string) {
     return this.contactService.getMessage(id);
   }
 
   @Post('messages/:id/reply')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   replyToMessage(
     @Param('id') id: string,
     @Body(new ValidationPipe({ whitelist: true })) dto: ReplyContactMessageDto,
@@ -79,7 +79,7 @@ export class ContactController {
   }
 
   @Delete('messages/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   deleteMessage(@Param('id') id: string) {
     return this.contactService.deleteMessage(id);
   }

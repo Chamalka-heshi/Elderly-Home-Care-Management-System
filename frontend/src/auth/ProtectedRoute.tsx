@@ -4,7 +4,7 @@ import { useAuth, type UserRole } from './AuthContext';
 import { isTokenExpired } from './tokenUtils';
 
 interface ProtectedRouteProps {
-  role: UserRole;
+  role: UserRole | UserRole[];
   children: ReactNode;
 }
 
@@ -12,7 +12,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ role, children }) => {
   const { user } = useAuth();
   const token = localStorage.getItem('token');
 
-  if (!user || isTokenExpired(token) || user.role !== role) {
+  const allowedRoles = Array.isArray(role) ? role : [role];
+
+  if (!user || isTokenExpired(token) || !allowedRoles.includes(user.role)) {
     return <Navigate to="/login" replace />;
   }
 

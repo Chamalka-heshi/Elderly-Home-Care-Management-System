@@ -25,7 +25,7 @@ import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 
 // JWT + RolesGuard are enforced globally via APP_GUARD in AppModule.
 @Controller('admin')
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
@@ -50,6 +50,7 @@ export class AdminController {
   // ============ ADMIN MANAGEMENT ============
 
   @Post('admins')
+  @Roles(UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createAdmin(@Body() createAdminDto: CreateAdminDto) {
     const tempPassword = this.buildTempPassword(createAdminDto.contactNumber);

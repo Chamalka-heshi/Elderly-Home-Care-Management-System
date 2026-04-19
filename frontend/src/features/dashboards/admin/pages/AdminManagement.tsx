@@ -8,19 +8,26 @@ import { IconShield } from "../../common/icons";
 interface Props {
   admins: Admin[];
   loading: boolean;
+  canAddAdmin?: boolean;
   onAddAdmin: () => void;
 }
 
-const AdminManagement: React.FC<Props> = ({ admins, loading, onAddAdmin }) => (
+const AdminManagement: React.FC<Props> = ({ admins, loading, canAddAdmin = false, onAddAdmin }) => (
 
   <TableShell
     title="Admin Accounts"
     subtitle="Manage all system administrators and their permissions."
     right={
-      <button onClick={onAddAdmin}
-        className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
-        <IconShield className="h-4 w-4" /> + Add Admin
-      </button>
+      canAddAdmin ? (
+        <button onClick={onAddAdmin}
+          className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
+          <IconShield className="h-4 w-4" /> + Add Admin
+        </button>
+      ) : (
+        <span className="flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed select-none">
+          <IconShield className="h-4 w-4" /> Only Super Admin can add admins
+        </span>
+      )
     }
   >
     {loading ? (

@@ -113,7 +113,8 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     ).toUpperCase();
   }, [user?.fullName]);
 
-  const roleLabel = "Administrator";
+  const roleLabel =
+    user?.role === "super_admin" ? "Super Administrator" : "Administrator";
 
   // ── Tab definitions ───────────────────────────────────────────────────
   const tabs: {
@@ -357,7 +358,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                     </h3>
                     <p className="text-sm text-slate-500">{user?.email}</p>
                     <div className="mt-1 flex items-center gap-2">
-                      <Pill tone="emerald">Admin</Pill>
+                      <Pill tone="emerald">{roleLabel}</Pill>
                       <span className="text-xs text-slate-400">
                         ID: {user?.id?.slice(0, 12)}…
                       </span>

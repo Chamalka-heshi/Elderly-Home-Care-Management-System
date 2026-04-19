@@ -18,7 +18,7 @@ export class Caregiver {
   user: User;
 
   // ── Caregiver-specific fields ────────────────────────────────────────────
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   nic: string;
 
   @Column({ nullable: true })

@@ -129,6 +129,7 @@ export class AuthService {
     return {
       message: 'Login successful',
       user: {
+        id: user.id,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
@@ -167,6 +168,7 @@ export class AuthService {
         profileData = stripUser(await this.caregiversService.findByUserId(user.id));
         break;
       case UserRole.ADMIN:
+      case UserRole.SUPER_ADMIN:
         profileData = stripUser(await this.adminService.findByUserId(user.id));
         break;
     }
@@ -242,6 +244,16 @@ export class AuthService {
       user.firebaseUid = uid;
       if (!user.avatarUrl && picture) user.avatarUrl = picture;
       await this.userRepository.save(user);
+    }
+
+    // ── Self-heal: guarantee a FamilyMember row exists for every FAMILY user.
+    // This covers (a) returning Google users whose row was never created due to
+    // a prior error, and (b) email/password users who later sign in with Google.
+    if (user.role === UserRole.FAMILY) {
+      const existingFamily = await this.familyService.findByUserId(user.id);
+      if (!existingFamily) {
+        await this.familyService.create({ user });
+      }
     }
 
     const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);

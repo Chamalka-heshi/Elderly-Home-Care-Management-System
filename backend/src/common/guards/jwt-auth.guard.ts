@@ -93,11 +93,10 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('This account has been deactivated');
     }
 
-    // ── Step 6: Attach verified user to the request ───────────────────────
     request.user = {
       sub:           payload.sub,
       email:         payload.email,
-      role:          payload.role,
+      role:          user.role,
       contactNumber: payload.contactNumber ?? '',
     };
 

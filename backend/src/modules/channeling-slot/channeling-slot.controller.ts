@@ -38,32 +38,32 @@ export class ChannelingSlotController {
   // ── Admin routes ──────────────────────────────────────────────────────────
 
   @Post('admin')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   create(@Body() dto: CreateChannelingSlotDto) { return this.service.create(dto); }
 
   @Get('admin')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   findAll(@Query() query: QueryChannelingSlotsDto) { return this.service.findAll(query); }
 
   @Get('admin/doctor/:doctorId/weekly')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   weeklySchedule(@Param('doctorId', ParseUUIDPipe) doctorId: string) { return this.service.getWeeklySchedule(doctorId); }
 
   @Get('admin/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   findOne(@Param('id', ParseUUIDPipe) id: string) { return this.service.findOne(id); }
 
   @Patch('admin/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateChannelingSlotDto) { return this.service.update(id, dto); }
 
   @Patch('admin/:id/cancel')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   cancel(@Param('id', ParseUUIDPipe) id: string) { return this.service.cancel(id); }
 
   @Delete('admin/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) { return this.service.remove(id); }
 }

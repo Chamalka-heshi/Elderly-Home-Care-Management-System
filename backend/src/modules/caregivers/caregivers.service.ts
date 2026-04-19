@@ -43,7 +43,7 @@ export class CaregiversService {
 
     const caregiver = this.caregiverRepository.create({
       user,
-      nic: caregiverData.nic || '000000000V',
+      nic: caregiverData.nic ?? undefined,
       address: caregiverData.address,
       qualification: caregiverData.qualification,
       experienceYears: caregiverData.yearsOfExperience || 0,

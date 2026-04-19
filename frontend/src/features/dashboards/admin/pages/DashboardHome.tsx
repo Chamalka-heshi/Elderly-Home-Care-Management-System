@@ -43,7 +43,7 @@ interface Props {
   stats: DashboardStats;
   patients: Patient[];
   onNavigate: (label: MenuLabel) => void;
-  onAddAdmin: () => void;
+  onAddAdmin?: () => void;   // undefined → not a super admin, button is hidden
   onAddDoctor: () => void;
 }
 
@@ -62,9 +62,11 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
           <p className="mt-1 text-sm text-slate-600">Quick overview of patients, staff, and families.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button onClick={onAddAdmin} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
-            + Add New Admin
-          </button>
+          {onAddAdmin && (
+            <button onClick={onAddAdmin} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
+              + Add New Admin
+            </button>
+          )}
           <button onClick={() => onNavigate("Patient Management")} className="rounded-2xl border border-slate-200 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             View Patients
           </button>
