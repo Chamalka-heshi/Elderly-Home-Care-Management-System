@@ -32,6 +32,7 @@ export type MenuLabel =
   | "Medical Reports"
   | "Prescription"
   | "Care Updates"
+  | "Appointments"
   | "Payments"
   | "Settings";
 
@@ -63,6 +64,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
     "Medical Reports": "View doctor reports",
     "Prescription":    "View prescribed medications",
     "Care Updates":    "View caregiver notes",
+    "Appointments":    "Book & manage appointments",
     "Payments":        "View and manage payments",
     "Settings":        "Manage settings",
   };
