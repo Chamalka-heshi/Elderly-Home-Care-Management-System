@@ -119,27 +119,18 @@ export class ContactService {
 
   // ── Private: build & send reply email via MailService ─────────────────────
 
-  private async sendReplyEmail(msg: ContactMessage): Promise<void> {
-    const info       = await this.getInfo();
-    const systemName = process.env.SYSTEM_NAME ?? 'Care Home Management System';
-    const fromEmail  = process.env.SMTP_USER ?? info.email ?? 'noreply@carehome.lk';
+  // ── Private: build & send reply email via MailService ─────────────────────
 
-    const html = await this.mailService.buildReplyEmailHtml({
-      recipientName: msg.fullName,
-      reply:         msg.reply ?? '',
-      originalMsg:   msg.message,
-      systemName,
-      phonePrimary:  info.phonePrimary ?? '',
-      systemEmail:   info.email        ?? fromEmail,
-    });
+private async sendReplyEmail(msg: ContactMessage): Promise<void> {
+  const info = await this.getInfo();
 
-    await this.mailService.sendMail({
-      from:    `"${systemName}" <${fromEmail}>`,
-      to:      `"${msg.fullName}" <${msg.email}>`,
-      subject: `Re: Your enquiry — ${systemName}`,
-      html,
-    });
-
-    this.logger.log(`Reply email sent to ${msg.email}`);
-  }
+  await this.mailService.sendReplyEmail(
+    msg.fullName,
+    msg.email,
+    msg.reply ?? '',
+    msg.message,
+    info.phonePrimary ?? '',
+    info.email ?? process.env.SMTP_USER ?? '',
+  );
+}
 }
