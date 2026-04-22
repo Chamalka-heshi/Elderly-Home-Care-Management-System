@@ -304,12 +304,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
         {/* DANGER ZONE TAB */}
         {tab === "danger" && (
           <DangerZoneTab
-            deactivateNote="Temporarily disable your caregiver account access. An admin can reactivate it."
             deleteNote="Permanently delete your account and all associated data. This cannot be undone. You will be signed out immediately."
-            footerNote="Destructive account actions require confirmation from an admin. Please contact your system administrator to proceed."
-            footerIcon={IconUsers}
-            onDeactivate={() => addToast("error", "Deactivation requires admin approval.")}
-            onDelete={() => addToast("error", "Account deletion requires admin confirmation.")}
           />
         )}
       </main>
