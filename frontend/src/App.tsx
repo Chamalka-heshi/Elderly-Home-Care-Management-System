@@ -82,23 +82,25 @@ const ForgotPasswordPage: React.FC = () => {
 const AdminProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const basePath = user?.role === 'super_admin' ? '/super_admin' : '/admin';
-  return <AdminProfile onBack={() => navigate(basePath)} />;
+  return <AdminProfile onBack={() => navigate(`/${user!.role}`)} />;
 };
 
 const DoctorProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  return <DoctorProfile onBack={() => navigate("/doctor")} />;
+  const { user } = useAuth();
+  return <DoctorProfile onBack={() => navigate(`/${user!.role}`)} />;
 };
 
 const FamilyProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  return <FamilyMemberProfile onBack={() => navigate("/family")} />;
+  const { user } = useAuth();
+  return <FamilyMemberProfile onBack={() => navigate(`/${user!.role}`)} />;
 };
 
 const CaregiverProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  return <CaregiverProfile onBack={() => navigate("/caregiver")} />;
+  const { user } = useAuth();
+  return <CaregiverProfile onBack={() => navigate(`/${user!.role}`)} />;
 };
 
 // ── App ───────────────────────────────────────────────────────────────────────

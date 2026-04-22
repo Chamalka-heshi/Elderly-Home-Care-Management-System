@@ -7,6 +7,8 @@
  */
 
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth }     from "../../../auth/AuthContext";
 
 // ── Layout components (family-member-specific) ────────────────────────────────
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
@@ -27,7 +29,6 @@ import {
 import { DashboardAmbientBg } from "../common/ui";
 
 // ── Pages (family-member-specific) ────────────────────────────────────────────
-import FamilyMemberProfile from "./pages/FamilyMemberProfile";
 import DashboardHome       from "./pages/DashboardHome";
 import ElderlyProfile      from "./pages/ElderlyProfile";
 import MedicalReports      from "./pages/MedicalReports";
@@ -64,9 +65,11 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const FamilyMemberDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { user }  = useAuth();
+
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showProfile,   setShowProfile]   = useState(false);
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
   const [showContact,  setShowContact]  = useState(false);
@@ -127,7 +130,7 @@ const FamilyMemberDashboard: React.FC = () => {
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => setShowProfile(true)}
+            onProfileClick={() => navigate(`/${user!.role}/profile`)}
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
@@ -142,13 +145,6 @@ const FamilyMemberDashboard: React.FC = () => {
           </main>
         </div>
       </div>
-
-      {/* Full-screen profile overlay */}
-      {showProfile && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-50">
-          <FamilyMemberProfile onBack={() => setShowProfile(false)} />
-        </div>
-      )}
 
       {/* Contact support modal */}
       <FormModal

@@ -365,7 +365,7 @@ const AdminDashboard: React.FC = () => {
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => navigate(isSuperAdmin ? "/super_admin/profile" : "/admin/profile")}
+            onProfileClick={() => navigate(`/${user!.role}/profile`)}
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">

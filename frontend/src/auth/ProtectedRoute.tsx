@@ -14,8 +14,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ role, children }) => {
 
   const allowedRoles = Array.isArray(role) ? role : [role];
 
-  if (!user || isTokenExpired(token) || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+  // No token or expired → tell login page why
+  if (!token || isTokenExpired(token)) {
+    return <Navigate to="/login?reason=expired" replace />;
+  }
+
+  // Logged in but wrong role → send to their own dashboard
+  if (!user || !allowedRoles.includes(user.role)) {
+    return <Navigate to={user ? `/${user.role}` : '/'} replace />;
   }
 
   return <>{children}</>;
