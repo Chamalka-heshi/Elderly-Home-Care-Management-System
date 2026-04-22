@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth }     from "../../../auth/AuthContext";
 
 // ── Layout components  
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
@@ -19,7 +21,6 @@ import {
 import { DashboardAmbientBg } from "../common/ui";
 
 // Pages 
-import DoctorProfile  from "./pages/DoctorProfile";   
 import DashboardHome  from "./pages/DashboardHome";
 import PatientMgmt    from "./pages/PatientManagement";
 import MedicalReports from "./pages/MedicalReports";
@@ -55,10 +56,11 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 // ── Component 
 
 const DoctorDashboard: React.FC = () => {
-  // ── UI state — mirrors AdminDashboard exactly 
+  const navigate = useNavigate();
+  const { user }  = useAuth();
+
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showProfile,   setShowProfile]   = useState(false); 
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
   // ── Modal state 
@@ -124,7 +126,7 @@ const DoctorDashboard: React.FC = () => {
          <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => setShowProfile(true)}
+            onProfileClick={() => navigate(`/${user!.role}/profile`)}
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
@@ -139,13 +141,6 @@ const DoctorDashboard: React.FC = () => {
           </main>
         </div>
       </div>
-
-      
-      {showProfile && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-50">
-          <DoctorProfile onBack={() => setShowProfile(false)} />
-        </div>
-      )}
 
       
       <FormModal

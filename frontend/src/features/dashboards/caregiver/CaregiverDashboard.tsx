@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth }     from "../../../auth/AuthContext";
 
 // ── Layout components (caregiver-specific) ──
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
@@ -19,7 +21,6 @@ import {
 import { DashboardAmbientBg } from "../common/ui";
 
 // ── Pages (caregiver-specific) ──
-import CaregiverProfile   from "./pages/CaregiverProfile";
 import DashboardHome      from "./pages/DashboardHome";
 import AssignedPatients   from "./pages/AssignedPatients";
 import CareNotes          from "./pages/CareNotes";
@@ -55,9 +56,11 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 // ── Component ─
 
 const CaregiverDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { user }  = useAuth();
+
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showProfile,   setShowProfile]   = useState(false);
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
   const [showLogShift,  setShowLogShift]  = useState(false);
@@ -118,7 +121,7 @@ const CaregiverDashboard: React.FC = () => {
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => setShowProfile(true)}
+            onProfileClick={() => navigate(`/${user!.role}/profile`)}
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
@@ -132,13 +135,6 @@ const CaregiverDashboard: React.FC = () => {
           </main>
         </div>
       </div>
-
-      {/* Full-screen profile overlay */}
-      {showProfile && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-50">
-          <CaregiverProfile onBack={() => setShowProfile(false)} />
-        </div>
-      )}
 
       {/* Log Shift modal */}
       <FormModal
