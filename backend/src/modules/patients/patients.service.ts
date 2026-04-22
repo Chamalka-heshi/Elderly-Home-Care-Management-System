@@ -6,7 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryFailedError } from 'typeorm';
+import { Repository, QueryFailedError, Not, IsNull } from 'typeorm';
 import { Patient }          from './entities/patient.entity';
 import { FamilyMember }     from '../family/entities/family-member.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -104,5 +104,31 @@ export class PatientsService {
       relations: ['familyMember'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /** Caregiver-facing: only patients whose family has selected a payment plan */
+  async findAllWithPaymentPlan(): Promise<Patient[]> {
+    return this.patientsRepository.find({
+      where: { paymentPlan: Not(IsNull()) },
+      relations: ['familyMember'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /** Family member selects or changes the payment plan for a patient they own */
+  async setPaymentPlan(
+    patientId: string,
+    familyMemberUserId: string,
+    plan: string,
+  ): Promise<Patient> {
+    // resolve family member record from user id
+    const fm = await this.familyMemberRepository.findOne({
+      where: { user: { id: familyMemberUserId } },
+      relations: ['user'],
+    });
+    if (!fm) throw new NotFoundException('Family member not found');
+    const patient = await this.findOneByFamily(patientId, fm.id);
+    patient.paymentPlan = plan;
+    return this.patientsRepository.save(patient);
   }
 }

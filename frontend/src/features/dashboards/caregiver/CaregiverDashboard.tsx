@@ -1,6 +1,4 @@
-import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth }     from "../../../auth/AuthContext";
+import React, { useState, useCallback, useEffect } from "react";
 
 // ── Layout components (caregiver-specific) ──
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
@@ -19,8 +17,11 @@ import {
 
 // ── Shared UI from common ───
 import { DashboardAmbientBg } from "../common/ui";
+import { getAssignedPatients } from "../../../api/caregivers/caregiver.api";
+import type { Patient } from "../../../api/patients/patient.types";
 
 // ── Pages (caregiver-specific) ──
+import CaregiverProfile   from "./pages/CaregiverProfile";
 import DashboardHome      from "./pages/DashboardHome";
 import AssignedPatients   from "./pages/AssignedPatients";
 import CareNotes          from "./pages/CareNotes";
@@ -41,12 +42,13 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: (p: IconProps) => <IconSettings {...p} />,   label: "Settings"           },
 ];
 
-// ── Log Shift modal fields ───
+// ── Shift type options ───
 
-const LOG_SHIFT_FIELDS: FieldConfig[] = [
-  { name: "patient",   label: "Patient Name",  required: true,  placeholder: "e.g. John Silva" },
-  { name: "shiftType", label: "Shift Type",    required: true,  placeholder: "e.g. Morning, Evening, Night" },
-  { name: "notes",     label: "Shift Notes",   required: false, placeholder: "Any observations during this shift…", textarea: true },
+const SHIFT_TYPE_OPTIONS = [
+  { value: "Morning",   label: "Morning (06:00 – 14:00)" },
+  { value: "Afternoon", label: "Afternoon (14:00 – 22:00)" },
+  { value: "Evening",   label: "Evening (18:00 – 22:00)" },
+  { value: "Night",     label: "Night (22:00 – 06:00)" },
 ];
 
 // ── Toast type ──
@@ -56,15 +58,45 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 // ── Component ─
 
 const CaregiverDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const { user }  = useAuth();
-
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showProfile,   setShowProfile]   = useState(false);
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
   const [showLogShift,  setShowLogShift]  = useState(false);
   const [modalLoading,  setModalLoading]  = useState(false);
+  const [patients,      setPatients]      = useState<Patient[]>([]);
+
+  // Load patients for the Log Shift dropdown
+  useEffect(() => {
+    getAssignedPatients()
+      .then((res) => setPatients(res.patients))
+      .catch(() => {/* silent — modal shows empty if patients fail */});
+  }, []);
+
+  const logShiftFields: FieldConfig[] = [
+    {
+      name: "patient",
+      label: "Patient",
+      required: true,
+      options: patients.length > 0
+        ? patients.map((p) => ({ value: p.fullName, label: p.fullName }))
+        : [{ value: "", label: "Loading patients…" }],
+    },
+    {
+      name: "shiftType",
+      label: "Shift Type",
+      required: true,
+      options: SHIFT_TYPE_OPTIONS,
+    },
+    {
+      name: "notes",
+      label: "Shift Notes",
+      required: false,
+      placeholder: "Any observations during this shift…",
+      textarea: true,
+    },
+  ];
 
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
@@ -121,7 +153,7 @@ const CaregiverDashboard: React.FC = () => {
           <Topbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => navigate(`/${user!.role}/profile`)}
+            onProfileClick={() => setShowProfile(true)}
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
@@ -136,6 +168,13 @@ const CaregiverDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Full-screen profile overlay */}
+      {showProfile && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-50">
+          <CaregiverProfile onBack={() => setShowProfile(false)} />
+        </div>
+      )}
+
       {/* Log Shift modal */}
       <FormModal
         title="Log Shift"
@@ -143,7 +182,7 @@ const CaregiverDashboard: React.FC = () => {
         loading={modalLoading}
         onClose={() => setShowLogShift(false)}
         onSubmit={handleLogShift}
-        fields={LOG_SHIFT_FIELDS}
+        fields={logShiftFields}
       />
     </div>
   );

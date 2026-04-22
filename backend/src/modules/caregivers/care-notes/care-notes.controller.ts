@@ -23,7 +23,7 @@ export class CareNotesController {
 
    @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateCareNoteDto, @Request() req) {
+  create(@Body() dto: CreateCareNoteDto, @Request() req: any) {
     return this.careNotesService.create(dto, req.user.id);
   }
 
@@ -33,7 +33,7 @@ export class CareNotesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCareNoteDto,
-    @Request() req,
+    @Request() req: any,
   ) {
     return this.careNotesService.update(id, dto, req.user.id);
   }

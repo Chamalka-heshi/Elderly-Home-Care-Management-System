@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Caregiver } from './entities/caregiver.entity';
 import { CreateCaregiverDto } from './dto/create-caregiver.dto';
 import { UsersService } from '../users/users.service';
+import { UpdateCaregiverProfileDto } from './dto/update-caregiver-profile.dto';
 import { UserRole } from '../../common/enums/user-role.enum';
 
 @Injectable()
@@ -117,5 +118,33 @@ export class CaregiversService {
   async activate(id: string): Promise<void> {
     const caregiver = await this.findOne(id);
     await this.usersService.activateUser(caregiver.user.id);
+  }
+
+  async updateProfileByUserId(
+    userId: string,
+    dto: UpdateCaregiverProfileDto,
+  ): Promise<Caregiver> {
+    const caregiver = await this.findByUserId(userId);
+    if (!caregiver) {
+      throw new NotFoundException('Caregiver profile not found');
+    }
+
+    // Update base user fields (fullName, contactNumber)
+    if (dto.fullName || dto.contactNumber) {
+      await this.usersService.update(caregiver.user.id, {
+        ...(dto.fullName    && { fullName: dto.fullName }),
+        ...(dto.contactNumber && { contactNumber: dto.contactNumber }),
+      });
+    }
+
+    // Update caregiver-specific fields
+    if (dto.address          !== undefined) caregiver.address         = dto.address;
+    if (dto.qualification    !== undefined) caregiver.qualification   = dto.qualification;
+    if (dto.experienceYears  !== undefined) caregiver.experienceYears = dto.experienceYears;
+    if (dto.specializations  !== undefined) caregiver.specializations = dto.specializations;
+    if (dto.emergencyContact !== undefined) caregiver.emergencyContact= dto.emergencyContact;
+    if (dto.availableShifts  !== undefined) caregiver.availableShifts = dto.availableShifts;
+
+    return this.caregiverRepository.save(caregiver);
   }
 }

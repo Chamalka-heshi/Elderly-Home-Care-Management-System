@@ -71,6 +71,10 @@ export class Patient {
   @Column({ default: true })
   isActive: boolean;
 
+  /** Set when family member selects a plan on the payments page: BASIC | REGULAR | PREMIUM */
+  @Column({ nullable: true })
+  paymentPlan: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
