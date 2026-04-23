@@ -48,6 +48,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
   const [loading, setLoading]           = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError]               = useState("");
+  const [errorField, setErrorField]     = useState<"email" | "password" | null>(null);
 
   // Redirect already-authenticated users
   useEffect(() => {
@@ -68,6 +69,20 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  const clearErrors = () => { setError(""); setErrorField(null); };
+
+  const setFieldError = (msg: string) => {
+    setError(msg);
+    const lower = msg.toLowerCase();
+    if (lower.includes("email") || lower.includes("account") || lower.includes("no account")) {
+      setErrorField("email");
+    } else if (lower.includes("password") || lower.includes("incorrect")) {
+      setErrorField("password");
+    } else {
+      setErrorField(null);
+    }
+  };
+
   const handleSuccess = (role: string, mustChangePassword?: boolean) => {
     if (mustChangePassword) {
       onSuccessClose();
@@ -82,7 +97,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    clearErrors();
 
     if (!email.trim() || !password) {
       setError("Please fill in all fields.");
@@ -108,7 +123,8 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       setUser(res.user);
       handleSuccess(res.user.role, res.user.mustChangePassword);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
+      const msg = err instanceof Error ? err.message : "Sign in failed";
+      setFieldError(msg);
       setPassword("");
     } finally {
       setLoading(false);
@@ -119,7 +135,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    setError("");
+    clearErrors();
     try {
       const res = await googleAuth();
       setUser(res.user);
@@ -127,6 +143,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
     } catch (err: any) {
       const code: string = err?.code ?? "";
       setError(code ? friendlyFirebaseError(code) : (err?.message ?? "Google sign-in failed"));
+      setErrorField(null);
     } finally {
       setGoogleLoading(false);
     }
@@ -166,8 +183,8 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
           Sign in to manage elderly care, appointments and monitoring.
         </p>
 
-        {/* Error banner */}
-        {error && (
+        {/* Error banner — only for general errors (not field-specific) */}
+        {error && !errorField && (
           <div className="mt-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             <span>⚠️</span>
             <span>{error}</span>
@@ -182,12 +199,19 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
             </label>
             <input
               value={email}
-              onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
+              onChange={(e) => { setEmail(e.target.value); clearErrors(); }}
               disabled={anyLoading}
               type="email"
               placeholder="example@email.com"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition hover:border-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60 disabled:cursor-not-allowed disabled:bg-slate-50"
+              className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition hover:border-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+                errorField === "email"
+                  ? "border-red-400 focus:border-red-400 focus:ring-red-200/60"
+                  : "border-slate-200 focus:border-emerald-400 focus:ring-emerald-200/60"
+              }`}
             />
+            {errorField === "email" && (
+              <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {error}</p>
+            )}
           </div>
 
           <div>
@@ -197,12 +221,16 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
             <div className="relative">
               <input
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
+                onChange={(e) => { setPassword(e.target.value); clearErrors(); }}
                 disabled={anyLoading}
                 type={showPassword ? "text" : "password"}
                 placeholder="At least 8 characters"
                 minLength={8}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60 disabled:cursor-not-allowed disabled:bg-slate-50"
+                className={`w-full rounded-xl border bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+                  errorField === "password"
+                    ? "border-red-400 focus:border-red-400 focus:ring-red-200/60"
+                    : "border-slate-200 focus:border-emerald-400 focus:ring-emerald-200/60"
+                }`}
               />
               <button
                 type="button"
@@ -213,6 +241,9 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
                 {showPassword ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
+            {errorField === "password" && (
+              <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {error}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-between">
