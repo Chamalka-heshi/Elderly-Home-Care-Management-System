@@ -28,7 +28,7 @@ const DeleteAccountButton: React.FC = () => {
       setUser(null);
       setSuccess('Account deleted successfully.');
 
-      setTimeout(() => navigate('/signup'), 1500);
+      setTimeout(() => navigate('/'), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete account');
     } finally {
