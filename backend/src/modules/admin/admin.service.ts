@@ -36,11 +36,17 @@ export class AdminService {
   // ==================== ADMIN MANAGEMENT ====================
 
   async create(createAdminDto: CreateAdminDto & { password: string }): Promise<Admin> {
-    const { email, password, fullName, contactNumber } = createAdminDto as CreateAdminDto & { password: string };
+    const { email, password, fullName, contactNumber, nic } = createAdminDto as CreateAdminDto & { password: string };
 
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('Email already registered');
+    }
+
+    // Check NIC uniqueness
+    const existingNic = await this.adminRepository.findOne({ where: { nic } });
+    if (existingNic) {
+      throw new BadRequestException('NIC already registered');
     }
 
     // fullName and contactNumber stored on the User record
@@ -52,7 +58,7 @@ export class AdminService {
       contactNumber,
     );
 
-    const admin = this.adminRepository.create({ user });
+    const admin = this.adminRepository.create({ user, nic });
     return this.adminRepository.save(admin);
   }
 
@@ -80,6 +86,7 @@ export class AdminService {
       relations: ['user'],
       select: {
         id: true,
+        nic: true,
         user: {
           id: true,
           fullName: true,
@@ -337,12 +344,18 @@ export class AdminService {
       throw new Error('User not found after update');
     }
 
+    // Re-fetch admin to get nic
+    const updatedAdmin = await this.adminRepository.findOne({
+      where: { user: { id: userId } },
+    });
+
     return {
       id: updatedUser.id,
       fullName: updatedUser.fullName,
       email: updatedUser.email,
       role: updatedUser.role,
       contactNumber: updatedUser.contactNumber,
+      nic: updatedAdmin?.nic ?? null,
     };
   }
 }

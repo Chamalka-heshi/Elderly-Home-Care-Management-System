@@ -2,6 +2,7 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
+  Column,
   OneToOne,
   JoinColumn,
 } from 'typeorm';
@@ -15,4 +16,7 @@ export class Admin {
   @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
   @JoinColumn()
   user: User;
+
+  @Column({ unique: true, nullable: true })
+  nic: string;
 }
