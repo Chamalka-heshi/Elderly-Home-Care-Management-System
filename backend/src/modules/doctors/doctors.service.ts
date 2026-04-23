@@ -81,6 +81,7 @@ export class DoctorsService {
 
     const doctor = this.doctorRepository.create({
       user,
+      nic: doctorData.nic,
       specialization: doctorData.specialization,
       licenseNumber: doctorData.licenseNumber,
       qualification: doctorData.qualification || 'MBBS',
