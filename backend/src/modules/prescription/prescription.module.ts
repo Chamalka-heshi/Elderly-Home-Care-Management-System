@@ -8,9 +8,13 @@ import { Patient }                 from '../patients/entities/patient.entity';
 import { Appointment }             from '../appointments/entities/appointment.entity';
 import { PrescriptionService }     from './prescription.service';
 import { PrescriptionsController } from './prescription.controller';
+import { MailModule }              from '../mail/mail.module';
 
 @Module({
-  imports:     [TypeOrmModule.forFeature([Prescription, Doctor, FamilyMember, Patient, Appointment])],
+  imports: [
+    TypeOrmModule.forFeature([Prescription, Doctor, FamilyMember, Patient, Appointment]),
+    MailModule,
+  ],
   controllers: [PrescriptionsController],
   providers:   [PrescriptionService],
   exports:     [PrescriptionService],
