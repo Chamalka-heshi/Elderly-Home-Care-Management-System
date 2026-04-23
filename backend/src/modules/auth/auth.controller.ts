@@ -10,7 +10,11 @@ import {
   Logger,
   UnauthorizedException,
   Patch,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { AuthService } from './auth.service';
 import { FamilySignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -132,5 +136,27 @@ export class AuthController {
     await this.authService.changePassword(userId, dto.currentPassword, dto.newPassword);
 
     return { message: 'Password updated successfully' };
+  }
+
+  @Patch('upload-avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('avatar', { storage: memoryStorage() }))
+  async uploadAvatar(
+    @Request() req: { user: JwtUser },
+    @UploadedFile() file: { mimetype: string; size: number; buffer: Buffer },
+  ) {
+    const userId = req.user.sub;
+    if (!userId) throw new UnauthorizedException('Authentication failed');
+    if (!file) throw new UnauthorizedException('No file uploaded');
+    return this.authService.uploadAvatar(userId, file);
+  }
+
+  @Delete('remove-avatar')
+  @HttpCode(HttpStatus.OK)
+  async removeAvatar(@Request() req: { user: JwtUser }) {
+    const userId = req.user.sub;
+    if (!userId) throw new UnauthorizedException('Authentication failed');
+    await this.authService.removeAvatar(userId);
+    return { message: 'Avatar removed successfully' };
   }
 }
