@@ -84,6 +84,10 @@ export class UsersService {
     await this.userRepository.update(userId, data);
   }
 
+  async updateAvatar(userId: string, avatarUrl: string | null): Promise<void> {
+    await this.userRepository.update(userId, { avatarUrl });
+  }
+
   async setMustChangePassword(userId: string, value: boolean): Promise<void> {
     await this.userRepository.update(userId, { mustChangePassword: value });
   }
