@@ -51,8 +51,11 @@ export class User {
   @Column({ type: 'varchar', nullable: true, unique: true, name: 'firebase_uid' })
   firebaseUid: string | null;
 
-  /** Profile picture URL supplied by the OAuth provider. */
-  @Column({ type: 'varchar', nullable: true, name: 'avatar_url' })
+  /**
+   * Profile picture URL (OAuth provider) or base64 data-URL (custom upload).
+   * Stored as TEXT so it can hold full base64-encoded images.
+   */
+  @Column({ type: 'text', nullable: true, name: 'avatar_url' })
   avatarUrl: string | null;
 
   // ── Timestamps ────────────────────────────────────────────────────────────
