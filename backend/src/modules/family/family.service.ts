@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { FamilyMember } from './entities/family-member.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { UpdateFamilyProfileDto } from './dto/update-family-profile.dto';
 
 @Injectable()
 export class FamilyService {
@@ -85,6 +86,36 @@ export class FamilyService {
     if (updateData.contactNumber) member.user.contactNumber = updateData.contactNumber;
 
     return this.familyRepository.save(member);
+  }
+
+  /**
+   * Update the profile of the currently logged-in family member using their userId.
+   * Uses usersService.update() directly (consistent with Doctor/Caregiver pattern)
+   * and re-fetches from DB to return a fresh, fully-populated entity.
+   */
+  async updateProfileByUserId(
+    userId: string,
+    dto: UpdateFamilyProfileDto,
+  ): Promise<FamilyMember> {
+    const member = await this.familyRepository.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!member) {
+      throw new NotFoundException('Family member profile not found');
+    }
+
+    // Update user fields directly via UsersService (avoids relying on cascade save)
+    if (dto.fullName || dto.contactNumber) {
+      await this.usersService.update(member.user.id, {
+        ...(dto.fullName      && { fullName: dto.fullName }),
+        ...(dto.contactNumber && { contactNumber: dto.contactNumber }),
+      });
+    }
+
+    // Re-fetch from DB so the returned entity has fresh, consistent user fields
+    return this.findByUserId(userId) as Promise<FamilyMember>;
   }
 
   async deactivate(id: string): Promise<void> {

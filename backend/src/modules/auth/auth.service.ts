@@ -180,6 +180,7 @@ export class AuthService {
       role: user.role,
       contactNumber: user.contactNumber,
       mustChangePassword: user.mustChangePassword,
+      createdAt: user.createdAt,
       profile: profileData,
     };
   }

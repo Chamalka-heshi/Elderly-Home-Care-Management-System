@@ -22,6 +22,7 @@ import { PatientsService }    from '../patients/patients.service';
 import { AppointmentService } from '../appointments/appointment.service';
 import { PrescriptionService } from '../prescription/prescription.service';
 import { CreatePatientDto }   from '../patients/dto/create-patient.dto';
+import { UpdateFamilyProfileDto } from './dto/update-family-profile.dto';
 import { CreateAppointmentDto } from '../appointments/dto/appointment.dto';
 
 /**
@@ -56,6 +57,32 @@ export class FamilyController {
       familyMember = await this.familyService.create({ user });
     }
     return familyMember;
+  }
+
+  // =====================================================================
+  //  PROFILE route   /family/profile
+  // =====================================================================
+
+  /**
+   * PATCH /family/profile
+   * Lets the logged-in family member update their own fullName and contactNumber.
+   */
+  @Patch('profile')
+  @Roles(UserRole.FAMILY)
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @GetUser() user: any,
+    @Body() dto: UpdateFamilyProfileDto,
+  ) {
+    const updated = await this.familyService.updateProfileByUserId(user.sub, dto);
+    return {
+      message:       'Profile updated successfully',
+      id:            updated.user.id,
+      fullName:      updated.user.fullName,
+      email:         updated.user.email,
+      role:          updated.user.role,
+      contactNumber: updated.user.contactNumber,
+    };
   }
 
   // =====================================================================
