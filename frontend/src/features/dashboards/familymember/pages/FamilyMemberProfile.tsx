@@ -28,6 +28,7 @@ import {
 } from "../../common/ui";
 import PasswordTab   from "../../common/PasswordTab";
 import DangerZoneTab from "../../common/DangerZoneTab";
+import AvatarUpload  from "../../common/AvatarUpload";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TabKey = "profile" | "password" | "danger";
@@ -72,7 +73,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
         const freshUser = await getProfile();
 
         // Sync auth context + localStorage with fresh server data
-        setUser(freshUser);
+        setUser({ ...freshUser, avatarUrl: (freshUser as any).avatarUrl ?? null });
         localStorage.setItem("user", JSON.stringify(freshUser));
 
         setFullName(freshUser.fullName ?? "");
@@ -193,12 +194,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
       <header className="sticky top-0 z-40 border-b border-white/30 bg-white/60 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-lg shadow-emerald-600/25">
-                {initials}
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-            </div>
+            <AvatarUpload initials={initials} size="sm" interactive={false} />
             <div className="leading-tight">
               <p className="text-sm font-semibold text-slate-900">{user?.fullName ?? "Family Member"}</p>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -262,12 +258,14 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
               {/* Avatar + name row */}
               <div className="mb-6 flex flex-col gap-4 border-b border-white/30 pb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="grid h-16 w-16 place-items-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-lg shadow-emerald-600/25">
-                      {initials}
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
-                  </div>
+                  <AvatarUpload
+                    initials={initials}
+                    size="lg"
+                    interactive
+                    onSuccess={() => addToast("success", "Profile photo updated.")}
+                    onError={(msg) => addToast("error", msg)}
+                    onRemoved={() => addToast("success", "Profile photo removed.")}
+                  />
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">{user?.fullName ?? "Family Member"}</h3>
                     <p className="text-sm text-slate-500">{user?.email}</p>

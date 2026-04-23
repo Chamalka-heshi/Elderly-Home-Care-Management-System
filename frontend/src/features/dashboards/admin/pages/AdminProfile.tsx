@@ -28,6 +28,7 @@ import {
 } from "../../common/ui";
 import PasswordTab from "../../common/PasswordTab";
 import DangerZoneTab from "../../common/DangerZoneTab";
+import AvatarUpload from "../../common/AvatarUpload";
 import DeleteAccountButton from "../../../../components/deleteaccount";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
         const freshUser = await getProfile();
 
         // Sync AuthContext with the latest data from the server
-        setUser(freshUser);
+        setUser({ ...freshUser, avatarUrl: (freshUser as any).avatarUrl ?? null });
 
         // Sync localStorage so refreshes are consistent
         localStorage.setItem("user", JSON.stringify(freshUser));
@@ -257,9 +258,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
       <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 px-4 py-4 backdrop-blur-xl md:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
-              <span className="text-sm font-bold">{initials}</span>
-            </div>
+            <AvatarUpload initials={initials} size="sm" interactive={false} />
             <div>
               <p className="text-base font-bold text-slate-900">
                 {user?.fullName ?? "Admin User"}
@@ -333,12 +332,14 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
               {/* Avatar + Save row */}
               <div className="mb-6 flex flex-col gap-4 border-b border-white/30 pb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="grid h-16 w-16 place-items-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-lg shadow-emerald-600/25">
-                      {initials}
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
-                  </div>
+                  <AvatarUpload
+                    initials={initials}
+                    size="lg"
+                    interactive
+                    onSuccess={() => addToast("success", "Profile photo updated.")}
+                    onError={(msg) => addToast("error", msg)}
+                    onRemoved={() => addToast("success", "Profile photo removed.")}
+                  />
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">
                       {user?.fullName ?? "Admin User"}
