@@ -35,7 +35,14 @@ export interface UpdateDoctorProfileRequest extends UpdateBaseProfileRequest {
   experienceYears?: number;
 }
 
-export interface UpdateCaregiverProfileRequest extends UpdateBaseProfileRequest {}
+export interface UpdateCaregiverProfileRequest extends UpdateBaseProfileRequest {
+  address?: string;
+  qualification?: string;
+  emergencyContact?: string;
+  experienceYears?: number;
+  specializations?: string[];
+  availableShifts?: string[];
+}
 
 export interface ChangePasswordRequest {
   currentPassword: string;

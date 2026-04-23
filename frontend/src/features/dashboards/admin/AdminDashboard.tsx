@@ -32,12 +32,14 @@ export interface CreateAdminRequest {
   fullName: string;
   email: string;
   contactNumber: string;
+  nic: string;
 }
 
 export interface CreateDoctorRequest {
   fullName: string;
   email: string;
   contactNumber: string;
+  nic: string;
   specialization: string;
   licenseNumber: string;
   experienceYears: number;
@@ -47,6 +49,7 @@ export interface CreateCaregiverRequest {
   fullName: string;
   email: string;
   contactNumber: string;
+  nic: string;
   shiftPreference: "day" | "night" | "flexible";
   certifications: string[];
   yearsOfExperience: number;
@@ -91,6 +94,8 @@ const ADMIN_FIELDS: FieldConfig[] = [
   { name: "email",         label: "Email",          required: true, type: "email", placeholder: "admin@carehome.com" },
   { name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
     hint: "Used to generate a temporary password — sent to their email." },
+  { name: "nic",           label: "NIC Number",     required: true, placeholder: "e.g. 123456789V or 200012345678",
+    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits." },
 ];
 
 const DOCTOR_FIELDS: FieldConfig[] = [
@@ -98,6 +103,8 @@ const DOCTOR_FIELDS: FieldConfig[] = [
   { name: "email",             label: "Email",               required: true, type: "email", placeholder: "doctor@carehome.com" },
   { name: "contactNumber",     label: "Contact Number",      required: true, placeholder: "0771234567",
     hint: "Used to generate a temporary password — sent to their email." },
+  { name: "nic",               label: "NIC Number",          required: true, placeholder: "e.g. 123456789V or 200012345678",
+    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits." },
   { name: "specialization",    label: "Specialization",      required: true, placeholder: "e.g. Cardiologist" },
   { name: "licenseNumber",     label: "License Number",      required: true, placeholder: "MD-XXXXX" },
   { name: "experienceYears",   label: "Years of Experience", required: true, type: "number", placeholder: "0" },
@@ -108,6 +115,8 @@ const CAREGIVER_FIELDS: FieldConfig[] = [
   { name: "email",              label: "Email",          required: true, type: "email", placeholder: "caregiver@carehome.com" },
   { name: "contactNumber",      label: "Contact Number", required: true, placeholder: "0771234567",
     hint: "Used to generate a temporary password — sent to their email." },
+  { name: "nic",                label: "NIC Number",     required: true, placeholder: "e.g. 123456789V or 200012345678",
+    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits." },
   {
     name: "shiftPreference", label: "Shift Preference", required: true,
     options: [
@@ -240,6 +249,7 @@ const AdminDashboard: React.FC = () => {
       fullName:      fd.get("fullName") as string,
       email:         fd.get("email") as string,
       contactNumber: fd.get("contactNumber") as string,
+      nic:           fd.get("nic") as string, 
     };
     try {
       setModalLoading(true);
@@ -264,6 +274,7 @@ const AdminDashboard: React.FC = () => {
       fullName:          fd.get("fullName") as string,
       email:             fd.get("email") as string,
       contactNumber:     fd.get("contactNumber") as string,
+      nic:               fd.get("nic") as string,
       specialization:    fd.get("specialization") as string,
       licenseNumber:     fd.get("licenseNumber") as string,
       experienceYears:   parseInt(fd.get("experienceYears") as string, 10),
@@ -294,6 +305,7 @@ const AdminDashboard: React.FC = () => {
       fullName:           fd.get("fullName") as string,
       email:              fd.get("email") as string,
       contactNumber:      fd.get("contactNumber") as string,
+      nic:                fd.get("nic") as string,
       shiftPreference:    fd.get("shiftPreference") as "day" | "night" | "flexible",
       certifications:     certsRaw ? certsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [],
       yearsOfExperience:  parseInt(fd.get("yearsOfExperience") as string, 10) || 0,
