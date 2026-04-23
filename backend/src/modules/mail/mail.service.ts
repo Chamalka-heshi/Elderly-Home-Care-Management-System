@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { MedicineItem } from '../prescription/entities/prescription.entity';
 
 @Injectable()
 export class MailService implements OnModuleInit {
@@ -132,6 +133,41 @@ export class MailService implements OnModuleInit {
     }
   }
 
+  // ── Prescription notification ─────────────────────────────────────────────
+
+  /**
+   * Sends a prescription summary email to the family member linked to the patient.
+   * Called by PrescriptionService after a doctor successfully creates a prescription.
+   */
+  async sendPrescriptionNotification(opts: {
+    to:               string;
+    familyMemberName: string;
+    patientName:      string;
+    doctorName:       string;
+    issuedDate:       string;
+    validUntil?:      string;
+    diagnosis?:       string;
+    notes?:           string;
+    medicines:        MedicineItem[];
+  }): Promise<void> {
+    const html = this.buildPrescriptionHtml(opts);
+
+    try {
+      await this.transporter.sendMail({
+        from:    this.defaultFromAddress,
+        to:      `"${opts.familyMemberName}" <${opts.to}>`,
+        subject: `New Prescription for ${opts.patientName} — ${this.systemName}`,
+        html,
+      });
+      this.logger.log(`Prescription notification sent → ${opts.to}`);
+    } catch (err) {
+      // Log but don't throw — prescription is already saved; email is best-effort
+      this.logger.error(
+        `Failed to send prescription notification → ${opts.to}: ${this.errMsg(err)}`,
+      );
+    }
+  }
+
   // ── HTML builders ─────────────────────────────────────────────────────────
 
   private buildCredentialsHtml(opts: {
@@ -216,6 +252,169 @@ export class MailService implements OnModuleInit {
     </div>
 
   </div>
+</body>
+</html>`;
+  }
+
+  private buildPrescriptionHtml(opts: {
+    familyMemberName: string;
+    patientName:      string;
+    doctorName:       string;
+    issuedDate:       string;
+    validUntil?:      string;
+    diagnosis?:       string;
+    notes?:           string;
+    medicines:        MedicineItem[];
+  }): string {
+    const {
+      familyMemberName, patientName, doctorName,
+      issuedDate, validUntil, diagnosis, notes, medicines,
+    } = opts;
+    const year = new Date().getFullYear();
+
+    const medicineRows = medicines.map((m) => `
+      <tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;font-weight:600;">${m.medicineName}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.dosage}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.frequency}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#64748b;">${m.instructions ?? '—'}</td>
+      </tr>`).join('');
+
+    const diagnosisBlock = diagnosis ? `
+      <tr>
+        <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Diagnosis</td>
+        <td style="padding:10px 0;font-size:15px;color:#0f172a;">${diagnosis}</td>
+      </tr>` : '';
+
+    const notesBlock = notes ? `
+      <tr>
+        <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;vertical-align:top;">Notes</td>
+        <td style="padding:10px 0;font-size:15px;color:#0f172a;line-height:1.6;">${notes.replace(/\n/g, '<br>')}</td>
+      </tr>` : '';
+
+    const validUntilBlock = validUntil ? `
+      <tr>
+        <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Valid Until</td>
+        <td style="padding:10px 0;font-size:15px;color:#0f172a;">${validUntil}</td>
+      </tr>` : '';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>New Prescription — ${this.systemName}</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:16px;overflow:hidden;
+                    box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:600px;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);padding:32px 40px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-.5px;">
+              🏥 ${this.systemName}
+            </h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,.85);font-size:14px;">
+              New Prescription Issued
+            </p>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding:32px 40px 0;">
+            <p style="margin:0 0 8px;font-size:16px;color:#0f172a;">
+              Dear <strong>${familyMemberName}</strong>,
+            </p>
+            <p style="margin:0;font-size:15px;color:#475569;line-height:1.7;">
+              Dr. <strong>${doctorName}</strong> has issued a new prescription for
+              <strong>${patientName}</strong>. Please find the full details below.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Summary card -->
+        <tr>
+          <td style="padding:24px 40px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
+              <tr>
+                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Patient</td>
+                <td style="padding:10px 0;font-size:15px;color:#0f172a;font-weight:600;">${patientName}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Doctor</td>
+                <td style="padding:10px 0;font-size:15px;color:#0f172a;">Dr. ${doctorName}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Issued Date</td>
+                <td style="padding:10px 0;font-size:15px;color:#0f172a;">${issuedDate}</td>
+              </tr>
+              ${validUntilBlock}
+              ${diagnosisBlock}
+              ${notesBlock}
+            </table>
+          </td>
+        </tr>
+
+        <!-- Medicines table -->
+        <tr>
+          <td style="padding:28px 40px 0;">
+            <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;
+                      letter-spacing:.6px;color:#64748b;">
+              💊 Prescribed Medicines
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#f1f5f9;">
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Medicine</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Dosage</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Frequency</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Duration</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Instructions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${medicineRows}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Notice -->
+        <tr>
+          <td style="padding:24px 40px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 18px;font-size:13px;color:#1e40af;line-height:1.6;">
+                  ℹ️ You can view this prescription at any time by logging into your
+                  <a href="${this.appUrl}" style="color:#2563eb;font-weight:600;">family member dashboard</a>.
+                  If you have any questions, please contact the clinic directly.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:28px 40px;text-align:center;border-top:1px solid #e2e8f0;margin-top:28px;">
+            <p style="margin:0;font-size:12px;color:#94a3b8;">
+              © ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
   }
