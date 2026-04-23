@@ -1,4 +1,4 @@
-import { apiFetch } from '../core/apiClient';
+import { apiFetch, apiFetchMultipart } from '../core/apiClient';
 import type { User, UserRole } from '../../auth/AuthContext';
 import { isTokenExpired } from '../../auth/tokenUtils';
 import { signInWithGoogle, signOutFirebase } from '../../config/firebase';
@@ -114,6 +114,18 @@ export const changePasswordApi = (data: ChangePasswordRequest) =>
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+
+export const uploadAvatar = (file: File): Promise<{ avatarUrl: string }> => {
+  const form = new FormData();
+  form.append('avatar', file);
+  return apiFetchMultipart<{ avatarUrl: string }>('/auth/upload-avatar', {
+    method: 'PATCH',
+    body: form,
+  });
+};
+
+export const removeAvatar = () =>
+  apiFetch<{ message: string }>('/auth/remove-avatar', { method: 'DELETE' });
 
 export const getStoredToken = () => localStorage.getItem('token');
 

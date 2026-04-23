@@ -45,3 +45,16 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   if (res.status === 204) return undefined as unknown as T;
   return res.json();
 }
+
+/** Multipart/form-data fetch wrapper (no Content-Type header — browser sets boundary) */
+export async function apiFetchMultipart<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: { ...headers, ...(options.headers as Record<string, string> ?? {}) },
+  });
+  if (!res.ok) await handleApiError(res, endpoint);
+  if (res.status === 204) return undefined as unknown as T;
+  return res.json();
+}
