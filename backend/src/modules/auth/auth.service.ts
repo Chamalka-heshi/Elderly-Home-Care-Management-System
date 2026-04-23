@@ -36,10 +36,8 @@ export class AuthService {
     private readonly adminService: AdminService,
   ) {}
 
-
   // ──────────────────────────────────────────────────────────────────────────
   // PUBLIC: Family Member Signup
-  // Only role that can self-register
   // ──────────────────────────────────────────────────────────────────────────
   async familySignup(signupDto: FamilySignupDto) {
     const { email, password, fullName, contactNumber } = signupDto;
@@ -134,13 +132,15 @@ export class AuthService {
         email: user.email,
         role: user.role,
         contactNumber: user.contactNumber,
-        // Frontend uses this flag to redirect to the forced password-change page
         mustChangePassword: user.mustChangePassword,
       },
       token,
     };
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Get Profile
+  // ──────────────────────────────────────────────────────────────────────────
   async getProfile(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -149,8 +149,6 @@ export class AuthService {
 
     let profileData = null;
 
-    // Helper — strips the nested `user` relation from any profile entity
-    // to avoid duplicating user fields that are already returned at the top level
     const stripUser = (entity: any) => {
       if (!entity) return null;
       const { user: _, ...rest } = entity;
@@ -181,15 +179,16 @@ export class AuthService {
       contactNumber: user.contactNumber,
       mustChangePassword: user.mustChangePassword,
       createdAt: user.createdAt,
+      avatarUrl: user.avatarUrl ?? null,
       profile: profileData,
     };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Delete Account (soft delete / deactivate)
+  // Delete Account
   // ──────────────────────────────────────────────────────────────────────────
   async deleteAccount(userId: string) {
-    await this.usersService.deactivateUser(userId);   
+    await this.usersService.deactivateUser(userId);
     return { message: 'Account deleted successfully' };
   }
 
@@ -247,9 +246,6 @@ export class AuthService {
       await this.userRepository.save(user);
     }
 
-    // ── Self-heal: guarantee a FamilyMember row exists for every FAMILY user.
-    // This covers (a) returning Google users whose row was never created due to
-    // a prior error, and (b) email/password users who later sign in with Google.
     if (user.role === UserRole.FAMILY) {
       const existingFamily = await this.familyService.findByUserId(user.id);
       if (!existingFamily) {
@@ -273,6 +269,35 @@ export class AuthService {
     };
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Avatar Upload / Remove
+  // ──────────────────────────────────────────────────────────────────────────
+  async uploadAvatar(
+    userId: string,
+    file: { mimetype: string; size: number; buffer: Buffer },
+  ): Promise<{ avatarUrl: string }> {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Only JPEG, PNG, WEBP, or GIF images are allowed');
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('Avatar image must be smaller than 5 MB');
+    }
+
+    const base64  = file.buffer.toString('base64');
+    const dataUrl = `data:${file.mimetype};base64,${base64}`;
+
+    await this.usersService.updateAvatar(userId, dataUrl);
+    return { avatarUrl: dataUrl };
+  }
+
+  async removeAvatar(userId: string): Promise<void> {
+    await this.usersService.updateAvatar(userId, null);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Change Password
+  // ──────────────────────────────────────────────────────────────────────────
   async changePassword(userId: string, currentPw: string, newPw: string): Promise<void> {
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -285,8 +310,6 @@ export class AuthService {
     }
 
     await this.usersService.updatePassword(userId, newPw);
-
-    // Clear the forced-change flag now that they have set their own password
     await this.usersService.setMustChangePassword(userId, false);
   }
 
