@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useAuth } from "../../../../auth/AuthContext";
+import type { User } from "../../../../auth/AuthContext";         
 import {
   getProfile,
   updateAdminProfile,
@@ -54,6 +55,10 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
   const [fullName, setFullName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
 
+  // ── Read-only profile fields ──────────────────────────────────────────
+  const [nic, setNic] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+
   // ── Password fields ───────────────────────────────────────────────────
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -81,6 +86,11 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
         // Pre-fill editable fields with fresh data
         setFullName(freshUser.fullName ?? "");
         setContactNumber(freshUser.contactNumber ?? "");
+
+        // Read-only profile fields come from the nested `profile` object
+        const profile = (freshUser as any)?.profile ?? {};
+        setNic(profile.nic ?? null);
+        setCreatedAt((freshUser as any).createdAt ?? null);
       } catch (err: any) {
         setProfileError(err.message || "Failed to load profile. Please try again.");
       } finally {
@@ -89,7 +99,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     };
 
     fetchProfile();
-  }, []); // Runs once on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const addToast = useCallback(
@@ -164,7 +174,11 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
 
       // Merge updated fields back into AuthContext and localStorage
       if (user) {
-        const newUserState = { ...user, ...updatedUser };
+        const newUserState: User = {
+          ...user,
+          fullName:      updatedUser.fullName      ?? user.fullName,
+          contactNumber: updatedUser.contactNumber ?? user.contactNumber,
+        };
         setUser(newUserState);
         localStorage.setItem("user", JSON.stringify(newUserState));
       }
@@ -209,95 +223,68 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     }
   };
 
-  // ── Early returns: Loading / Error ────────────────────────────────────
+  // ── Loading / Error state ─────────────────────────────────────────────
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 grid place-items-center">
-        <AmbientBg />
-        <div className="flex flex-col items-center gap-3 text-slate-500">
-          <svg
-            className="h-8 w-8 animate-spin text-emerald-600"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
-          </svg>
-          <p className="text-sm font-medium">Loading your profile…</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     );
   }
 
   if (profileError) {
     return (
-      <div className="min-h-screen bg-slate-50 grid place-items-center">
-        <AmbientBg />
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlert className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-800">Failed to Load Profile</p>
-            <p className="mt-1 text-sm text-slate-500">{profileError}</p>
-          </div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="rounded-2xl border border-red-200 bg-white px-6 py-8 text-center shadow-sm">
+          <p className="text-sm text-red-600">{profileError}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 transition"
+            onClick={onBack}
+            className="mt-4 text-sm font-semibold text-emerald-600 underline"
           >
-            Retry
+            Go Back
           </button>
         </div>
       </div>
     );
   }
 
-  // ── Main Render ───────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50">
       <AmbientBg />
       <ToastList toasts={toasts} />
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-40 border-b border-white/30 bg-white/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-lg shadow-emerald-600/25">
-                {initials}
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 px-4 py-4 backdrop-blur-xl md:px-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+              <span className="text-sm font-bold">{initials}</span>
             </div>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">
+            <div>
+              <p className="text-base font-bold text-slate-900">
                 {user?.fullName ?? "Admin User"}
               </p>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <IconShield className="h-3 w-3" />
-                {roleLabel}
-              </div>
+              <p className="text-xs text-slate-500">{user?.email}</p>
             </div>
           </div>
 
-          <button
-            onClick={onBack}
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:shadow-md"
-          >
-            <IconChevronLeft className="h-4 w-4" />
-            Back to Dashboard
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-3 py-1.5 sm:flex">
+              <IconShield className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-semibold text-slate-700">
+                {roleLabel}
+              </span>
+            </div>
+
+            <button
+              onClick={onBack}
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:shadow-md"
+            >
+              <IconChevronLeft className="h-4 w-4" />
+              Back to Dashboard
+            </button>
+          </div>
         </div>
       </header>
 
@@ -340,7 +327,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
           <div className="space-y-6">
             <SectionCard
               title="Profile Information"
-              subtitle="Update your personal details."
+              subtitle="Update your personal details. Email and NIC cannot be changed."
               rightSlot={<Pill tone="emerald">{roleLabel}</Pill>}
             >
               {/* Avatar + Save row */}
@@ -378,6 +365,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
 
               {/* Fields */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {/* Editable */}
                 <div>
                   <FieldLabel>Full Name</FieldLabel>
                   <GlassInput
@@ -385,19 +373,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
                   />
-                </div>
-
-                <div>
-                  <FieldLabel>
-                    <span className="inline-flex items-center gap-2">
-                      <IconMail className="h-4 w-4 text-slate-400" />
-                      Email Address
-                    </span>
-                  </FieldLabel>
-                  <GlassInput value={user?.email ?? ""} disabled />
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Email address cannot be changed here.
-                  </p>
                 </div>
 
                 <div>
@@ -414,6 +389,35 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                   />
                 </div>
 
+                {/* Read-only */}
+                <div>
+                  <FieldLabel>
+                    <span className="inline-flex items-center gap-2">
+                      <IconMail className="h-4 w-4 text-slate-400" />
+                      Email Address
+                    </span>
+                  </FieldLabel>
+                  <GlassInput value={user?.email ?? ""} disabled />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Email address cannot be changed.
+                  </p>
+                </div>
+
+                <div>
+                  <FieldLabel>
+                    <span className="inline-flex items-center gap-2">
+                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
+                      </svg>
+                      NIC Number
+                    </span>
+                  </FieldLabel>
+                  <GlassInput value={nic ?? "—"} disabled />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    NIC cannot be changed after account creation.
+                  </p>
+                </div>
+
                 <div>
                   <FieldLabel>Role</FieldLabel>
                   <GlassInput value={roleLabel} disabled />
@@ -424,7 +428,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
             {/* Account Summary */}
             <SectionCard
               title="Account Summary"
-              subtitle="Read-only overview of your account."
+              subtitle="Read-only overview of your account details."
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
@@ -434,6 +438,17 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                     mono: true,
                   },
                   { label: "Role", value: user?.role ?? "admin" },
+                  { label: "NIC", value: nic ?? "—", mono: true },
+                  {
+                    label: "Member Since",
+                    value: createdAt
+                      ? new Date(createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—",
+                  },
                   { label: "Status", value: "Active" },
                 ].map(({ label, value, mono }) => (
                   <div
@@ -477,7 +492,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
           <DangerZoneTab
             deleteNote="Permanently delete your admin account and all associated data. This cannot be undone."
             deleteButton={<DeleteAccountButton />}
-          />   
+          />
         )}
       </main>
     </div>

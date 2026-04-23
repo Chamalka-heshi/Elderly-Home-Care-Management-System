@@ -1,13 +1,20 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useAuth } from "../../../../auth/AuthContext";
+import {
+  getProfile,
+  updateCaregiverProfile,
+  changePasswordApi,
+} from "../../../../api/auth/auth.api";
 
-// ── Common shared components ─
+import DeleteAccountButton from "../../../../components/deleteaccount";
+
+// ── Common shared components ─────────────────────────────────────────────
 import {
   IconMail, IconPhone, IconChevronLeft, IconAlert,
-  IconUsers, IconSettings,
+  IconUsers, IconSettings, IconShield,
 } from "../../common/icons";
 import {
-  FieldLabel, GlassInput, GlassSelect,
+  FieldLabel, GlassInput,
   SectionCard, PrimaryBtn, Pill,
   AmbientBg, ToastList,
   type Toast,
@@ -15,35 +22,83 @@ import {
 import PasswordTab   from "../../common/PasswordTab";
 import DangerZoneTab from "../../common/DangerZoneTab";
 
-// ── Types ──
+// ── Types ────────────────────────────────────────────────────────────────
 type TabKey = "profile" | "password" | "danger";
 
 interface Props {
   onBack: () => void;
 }
 
-// ── Component ─
+// ══════════════════════════════════════════════════════════════════════════
+//  CaregiverProfile Component
+// ══════════════════════════════════════════════════════════════════════════
 const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
 
+  // ── UI state ──────────────────────────────────────────────────────────
   const [tab,    setTab]    = useState<TabKey>("profile");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Editable fields
-  const [fullName,        setFullName]        = useState(user?.fullName     ?? "");
-  const [contactNumber,   setContactNumber]   = useState(user?.contactNumber ?? "");
-  const [specialization,  setSpecialization]  = useState("Elderly & Dementia Care");
-  const [shiftPreference, setShiftPreference] = useState("Morning");
-  const [employeeId,      setEmployeeId]      = useState("CG-2024-0042");
-  const [address,         setAddress]         = useState("45 Hospital Road, Colombo 07");
+  // ── Profile fetch state ───────────────────────────────────────────────
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError,   setProfileError]   = useState<string | null>(null);
 
-  // Password fields
+  // ── Editable fields ───────────────────────────────────────────────────
+  const [fullName,        setFullName]        = useState("");
+  const [contactNumber,   setContactNumber]   = useState("");
+  const [address,         setAddress]         = useState("");
+  const [qualification,   setQualification]   = useState("");
+  const [emergencyContact, setEmergencyContact] = useState("");
+  const [experienceYears, setExperienceYears] = useState<number>(0);
+  const [availableShifts, setAvailableShifts] = useState<string[]>([]);
+  const [specializations, setSpecializations] = useState<string[]>([]);
+
+  // ── Read-only fields ──────────────────────────────────────────────────
+  const [nic,       setNic]       = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+
+  // ── Password fields ───────────────────────────────────────────────────
   const [currentPw,   setCurrentPw]   = useState("");
   const [newPw,       setNewPw]       = useState("");
   const [confirmPw,   setConfirmPw]   = useState("");
   const [pwLoading,   setPwLoading]   = useState(false);
   const [profLoading, setProfLoading] = useState(false);
 
+  // ── Fetch profile on mount ────────────────────────────────────────────
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setProfileLoading(true);
+        setProfileError(null);
+
+        const freshUser = await getProfile();
+
+        setUser(freshUser);
+        localStorage.setItem("user", JSON.stringify(freshUser));
+
+        const profile = (freshUser as any)?.profile ?? {};
+
+        setFullName(freshUser.fullName ?? "");
+        setContactNumber(freshUser.contactNumber ?? "");
+        setAddress(profile.address ?? "");
+        setQualification(profile.qualification ?? "");
+        setEmergencyContact(profile.emergencyContact ?? "");
+        setExperienceYears(profile.experienceYears ?? 0);
+        setAvailableShifts(profile.availableShifts ?? []);
+        setSpecializations(profile.specializations ?? []);
+        setNic(profile.nic ?? null);
+        setCreatedAt((freshUser as any).createdAt ?? null);
+      } catch (err: any) {
+        setProfileError(err.message || "Failed to load profile. Please try again.");
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Helpers ───────────────────────────────────────────────────────────
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
     setToasts((t) => [...t, { id, kind, message }]);
@@ -59,40 +114,88 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
     ).toUpperCase();
   }, [user?.fullName]);
 
+  // ── API Handlers ──────────────────────────────────────────────────────
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) { addToast("error", "Full name cannot be empty."); return; }
     try {
       setProfLoading(true);
-      await new Promise((r) => setTimeout(r, 600));
+      const updatedData = await updateCaregiverProfile({
+        fullName,
+        contactNumber,
+        address,
+        qualification,
+        emergencyContact,
+        experienceYears: Number(experienceYears),
+        specializations,
+        availableShifts,
+      });
+
+      // Reflect updated base-user fields back into the auth context.
+      // Caregiver-specific fields (address, specializations, etc.) live in
+      // the profile sub-object and must NOT be spread onto the User root.
+      if (user) {
+        const newUserState = {
+          ...user,
+          fullName:      (updatedData as any).fullName      ?? user.fullName,
+          contactNumber: (updatedData as any).contactNumber ?? user.contactNumber,
+        };
+        setUser(newUserState);
+        localStorage.setItem("user", JSON.stringify(newUserState));
+      }
+
       addToast("success", "Profile updated successfully.");
-    } catch {
-      addToast("error", "Failed to update profile.");
+    } catch (err: any) {
+      addToast("error", err.message || "Failed to update profile.");
     } finally {
       setProfLoading(false);
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!currentPw || !newPw || !confirmPw) { addToast("error", "All password fields are required."); return; }
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPw) { addToast("error", "Enter your current password."); return; }
+    if (newPw.length < 8) { addToast("error", "New password must be 8+ characters."); return; }
     if (newPw !== confirmPw) { addToast("error", "New passwords do not match."); return; }
-    if (newPw.length < 8)   { addToast("error", "Password must be at least 8 characters."); return; }
     try {
       setPwLoading(true);
-      await new Promise((r) => setTimeout(r, 600));
+      const response = await changePasswordApi({ currentPassword: currentPw, newPassword: newPw });
+      addToast("success", response.message || "Password changed successfully.");
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
-      addToast("success", "Password changed successfully.");
-    } catch {
-      addToast("error", "Failed to change password.");
+    } catch (err: any) {
+      addToast("error", err.message || "Failed to change password.");
     } finally {
       setPwLoading(false);
     }
   };
 
+  // ── Tab definitions ───────────────────────────────────────────────────
   const tabs: { key: TabKey; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { key: "profile",  label: "Profile",    icon: IconUsers    },
-    { key: "password", label: "Password",   icon: IconSettings },
-    { key: "danger",   label: "Danger Zone",icon: IconAlert    },
+    { key: "profile",  label: "Profile",     icon: IconUsers    },
+    { key: "password", label: "Password",    icon: IconSettings },
+    { key: "danger",   label: "Danger Zone", icon: IconAlert    },
   ];
+
+  // ── Loading / Error state ─────────────────────────────────────────────
+  if (profileLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="rounded-2xl border border-red-200 bg-white px-6 py-8 text-center shadow-sm">
+          <p className="text-sm text-red-600">{profileError}</p>
+          <button onClick={onBack} className="mt-4 text-sm font-semibold text-emerald-600 underline">
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -112,14 +215,20 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
             </div>
           </div>
 
-          <button
-            onClick={onBack}
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:shadow-md"
-          >
-            <IconChevronLeft className="h-4 w-4" />
-            Back to Dashboard
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-3 py-1.5 sm:flex">
+              <IconShield className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-semibold text-slate-700">Caregiver</span>
+            </div>
+            <button
+              onClick={onBack}
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:shadow-md"
+            >
+              <IconChevronLeft className="h-4 w-4" />
+              Back to Dashboard
+            </button>
+          </div>
         </div>
       </header>
 
@@ -160,7 +269,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
           <div className="space-y-6">
             <SectionCard
               title="Profile Information"
-              subtitle="Update your personal and professional details."
+              subtitle="Update your personal and professional details. Email and NIC cannot be changed."
               rightSlot={<Pill tone="emerald">Caregiver</Pill>}
             >
               {/* Avatar + name row */}
@@ -192,8 +301,9 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
                 </PrimaryBtn>
               </div>
 
-              {/* Basic fields */}
+              {/* Fields */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {/* Editable */}
                 <div>
                   <FieldLabel>Full Name</FieldLabel>
                   <GlassInput value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your full name" />
@@ -202,78 +312,122 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
                 <div>
                   <FieldLabel>
                     <span className="inline-flex items-center gap-2">
-                      <IconMail className="h-4 w-4 text-slate-400" /> Email Address
+                      <IconPhone className="h-4 w-4 text-slate-400" />
+                      Contact Number
+                    </span>
+                  </FieldLabel>
+                  <GlassInput value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} placeholder="+94 77 123 4567" />
+                </div>
+
+                <div>
+                  <FieldLabel>Address</FieldLabel>
+                  <GlassInput value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter your address" />
+                </div>
+
+                <div>
+                  <FieldLabel>Qualification</FieldLabel>
+                  <GlassInput value={qualification} onChange={(e) => setQualification(e.target.value)} placeholder="e.g. Diploma in Nursing" />
+                </div>
+
+                <div>
+                  <FieldLabel>Emergency Contact</FieldLabel>
+                  <GlassInput value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="0771234567" />
+                </div>
+
+                <div>
+                  <FieldLabel>Years of Experience</FieldLabel>
+                  <GlassInput
+                    type="number"
+                    value={String(experienceYears)}
+                    onChange={(e) => setExperienceYears(Number(e.target.value))}
+                    placeholder="e.g. 3"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Specializations (comma-separated)</FieldLabel>
+                  <GlassInput
+                    value={specializations.join(", ")}
+                    onChange={(e) =>
+                      setSpecializations(
+                        e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      )
+                    }
+                    placeholder="e.g. Elderly Care, Dementia Care"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Available Shifts (comma-separated)</FieldLabel>
+                  <GlassInput
+                    value={availableShifts.join(", ")}
+                    onChange={(e) =>
+                      setAvailableShifts(
+                        e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      )
+                    }
+                    placeholder="e.g. day, night, flexible"
+                  />
+                </div>
+
+                {/* Read-only */}
+                <div>
+                  <FieldLabel>
+                    <span className="inline-flex items-center gap-2">
+                      <IconMail className="h-4 w-4 text-slate-400" />
+                      Email Address
                     </span>
                   </FieldLabel>
                   <GlassInput value={user?.email ?? ""} disabled />
-                  <p className="mt-1 text-[11px] text-slate-400">Email address cannot be changed here.</p>
+                  <p className="mt-1 text-[11px] text-slate-400">Email address cannot be changed.</p>
                 </div>
 
                 <div>
                   <FieldLabel>
                     <span className="inline-flex items-center gap-2">
-                      <IconPhone className="h-4 w-4 text-slate-400" /> Contact Number
+                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
+                      </svg>
+                      NIC Number
                     </span>
                   </FieldLabel>
-                  <GlassInput value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} placeholder="+94 77 987 6543" />
-                </div>
-
-                <div>
-                  <FieldLabel>Role</FieldLabel>
-                  <GlassInput value="Caregiver" disabled />
-                </div>
-              </div>
-
-              {/* Caregiver-specific section */}
-              <div className="mt-8 border-t border-white/30 pt-6">
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <IconSettings className="h-4 w-4 text-slate-500" />
-                    <h4 className="text-sm font-semibold text-slate-900">Professional Details</h4>
-                  </div>
-                  <PrimaryBtn tone="blue" onClick={() => addToast("success", "Professional details saved.")} className="py-2 text-xs">
-                    Save Details
-                  </PrimaryBtn>
-                </div>
-
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Specialization</FieldLabel>
-                    <GlassInput value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="e.g. Elderly & Dementia Care" />
-                  </div>
-
-                  <div>
-                    <FieldLabel>Shift Preference</FieldLabel>
-                    <GlassSelect value={shiftPreference} onChange={(e) => setShiftPreference(e.target.value)}>
-                      <option>Morning</option>
-                      <option>Afternoon</option>
-                      <option>Evening</option>
-                      <option>Night</option>
-                      <option>Flexible</option>
-                    </GlassSelect>
-                  </div>
-
-                  <div>
-                    <FieldLabel>Employee ID</FieldLabel>
-                    <GlassInput value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="CG-YYYY-XXXX" />
-                  </div>
-
-                  <div>
-                    <FieldLabel>Home Address</FieldLabel>
-                    <GlassInput value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, Province" />
-                  </div>
+                  <GlassInput value={nic ?? "—"} disabled />
+                  <p className="mt-1 text-[11px] text-slate-400">NIC cannot be changed after account creation.</p>
                 </div>
               </div>
             </SectionCard>
 
-            {/* Account summary */}
-            <SectionCard title="Account Summary" subtitle="Read-only overview of your account.">
+            {/* Account Summary */}
+            <SectionCard title="Account Summary" subtitle="Read-only overview of your caregiver profile.">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { label: "User ID",       value: (user?.id?.slice(0, 16) ?? "—") + "…", mono: true },
-                  { label: "Role",          value: user?.role ?? "caregiver" },
-                  { label: "Specialization",value: specialization },
-                  { label: "Status",        value: "Active" },
+                  { label: "User ID",     value: user?.id ? user.id.slice(0, 16) + "…" : "—", mono: true },
+                  { label: "Role",        value: "Caregiver" },
+                  { label: "NIC",         value: nic ?? "—", mono: true },
+                  { label: "Experience",  value: experienceYears ? `${experienceYears} years` : "—" },
+                  {
+                    label: "Shifts",
+                    value: availableShifts.length ? availableShifts.join(", ") : "—",
+                  },
+                  {
+                    label: "Specializations",
+                    value: specializations.length ? specializations.join(", ") : "—",
+                  },
+                  {
+                    label: "Member Since",
+                    value: createdAt
+                      ? new Date(createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit", month: "short", year: "numeric",
+                        })
+                      : "—",
+                  },
+                  { label: "Status", value: "Active" },
                 ].map(({ label, value, mono }) => (
                   <div key={label} className="rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-4">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
@@ -287,7 +441,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
           </div>
         )}
 
-        {/* PASSWORD TAB */}
+        {/* ── PASSWORD TAB ── */}
         {tab === "password" && (
           <PasswordTab
             currentPw={currentPw}
@@ -301,10 +455,11 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
           />
         )}
 
-        {/* DANGER ZONE TAB */}
+        {/* ── DANGER ZONE TAB ── */}
         {tab === "danger" && (
           <DangerZoneTab
-            deleteNote="Permanently delete your account and all associated data. This cannot be undone. You will be signed out immediately."
+            deleteNote="Permanently delete your caregiver account and all associated data. This cannot be undone."
+            deleteButton={<DeleteAccountButton />}
           />
         )}
       </main>

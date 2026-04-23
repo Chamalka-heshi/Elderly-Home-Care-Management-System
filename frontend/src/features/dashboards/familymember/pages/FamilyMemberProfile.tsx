@@ -1,14 +1,19 @@
 /**
  * src/features/dashboards/familymember/pages/FamilyMemberProfile.tsx
  * ───────────────────────────────────────────────────────────────────
- * Full-screen profile page for the Family Member role.
- * Mirrors DoctorProfile structure exactly — same tabs, same glassmorphism
- * design, same common imports — but exposes family-member–specific fields
- * (Relationship, Emergency Contact, Address).
+ * Profile page for the Family Member role.
+ * Fetches real data from the backend on mount and persists changes via
+ * updateFamilyProfile (PATCH /family/profile).
  */
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useAuth } from "../../../../auth/AuthContext";
+import {
+  getProfile,
+  updateFamilyProfile,
+  changePasswordApi,
+} from "../../../../api/auth/auth.api";
+import DeleteAccountButton from "../../../../components/deleteaccount";
 
 // ── Common shared components ──────────────────────────────────────────────────
 import {
@@ -16,7 +21,7 @@ import {
   IconUsers, IconSettings,
 } from "../../common/icons";
 import {
-  FieldLabel, GlassInput, GlassSelect,
+  FieldLabel, GlassInput,
   SectionCard, PrimaryBtn, Pill,
   AmbientBg, ToastList,
   type Toast,
@@ -33,25 +38,57 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
 
+  // ── UI state ──────────────────────────────────────────────────────────────
   const [tab,    setTab]    = useState<TabKey>("profile");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Editable fields
-  const [fullName,       setFullName]       = useState(user?.fullName     ?? "");
-  const [contactNumber,  setContactNumber]  = useState(user?.contactNumber ?? "");
-  const [relationship,   setRelationship]   = useState("Son");
-  const [emergencyContact, setEmergencyContact] = useState("+94 77 999 8888");
-  const [address,        setAddress]        = useState("123 Galle Road, Colombo 03");
+  // ── Profile fetch state ───────────────────────────────────────────────────
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError,   setProfileError]   = useState<string | null>(null);
 
-  // Password fields
+  // ── Editable fields ───────────────────────────────────────────────────────
+  const [fullName,      setFullName]      = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+
+  // ── Read-only fields ──────────────────────────────────────────────────────
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+
+  // ── Password fields ───────────────────────────────────────────────────────
   const [currentPw,   setCurrentPw]   = useState("");
   const [newPw,       setNewPw]       = useState("");
   const [confirmPw,   setConfirmPw]   = useState("");
   const [pwLoading,   setPwLoading]   = useState(false);
   const [profLoading, setProfLoading] = useState(false);
 
+  // ── Fetch profile on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setProfileLoading(true);
+        setProfileError(null);
+
+        const freshUser = await getProfile();
+
+        // Sync auth context + localStorage with fresh server data
+        setUser(freshUser);
+        localStorage.setItem("user", JSON.stringify(freshUser));
+
+        setFullName(freshUser.fullName ?? "");
+        setContactNumber(freshUser.contactNumber ?? "");
+        setCreatedAt((freshUser as any).createdAt ?? null);
+      } catch (err: any) {
+        setProfileError(err.message || "Failed to load profile. Please try again.");
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
     setToasts((t) => [...t, { id, kind, message }]);
@@ -67,14 +104,29 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
     ).toUpperCase();
   }, [user?.fullName]);
 
+  // ── API Handlers ──────────────────────────────────────────────────────────
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) { addToast("error", "Full name cannot be empty."); return; }
+
     try {
       setProfLoading(true);
-      await new Promise((r) => setTimeout(r, 600));
+
+      const updatedData = await updateFamilyProfile({ fullName, contactNumber });
+
+      // Merge updated fields back into auth context
+      if (user) {
+        const newUserState = {
+          ...user,
+          fullName:      (updatedData as any).fullName      ?? user.fullName,
+          contactNumber: (updatedData as any).contactNumber ?? user.contactNumber,
+        };
+        setUser(newUserState);
+        localStorage.setItem("user", JSON.stringify(newUserState));
+      }
+
       addToast("success", "Profile updated successfully.");
-    } catch {
-      addToast("error", "Failed to update profile.");
+    } catch (err: any) {
+      addToast("error", err.message || "Failed to update profile.");
     } finally {
       setProfLoading(false);
     }
@@ -83,15 +135,16 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPw)          { addToast("error", "Enter your current password.");    return; }
-    if (newPw.length < 8)    { addToast("error", "New password must be 8+ chars."); return; }
+    if (newPw.length < 8)    { addToast("error", "New password must be 8+ characters."); return; }
     if (newPw !== confirmPw) { addToast("error", "New passwords do not match.");     return; }
+
     try {
       setPwLoading(true);
-      await new Promise((r) => setTimeout(r, 700));
-      addToast("success", "Password changed successfully.");
+      const response = await changePasswordApi({ currentPassword: currentPw, newPassword: newPw });
+      addToast("success", response.message || "Password changed successfully.");
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
-    } catch {
-      addToast("error", "Failed to change password.");
+    } catch (err: any) {
+      addToast("error", err.message || "Failed to change password.");
     } finally {
       setPwLoading(false);
     }
@@ -109,6 +162,28 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
     { key: "danger",   label: "Danger Zone", icon: IconAlert },
   ];
 
+  // ── Loading / Error states ────────────────────────────────────────────────
+  if (profileLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="rounded-2xl border border-red-200 bg-white px-6 py-8 text-center shadow-sm">
+          <p className="text-sm text-red-600">{profileError}</p>
+          <button onClick={onBack} className="mt-4 text-sm font-semibold text-emerald-600 underline">
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AmbientBg />
@@ -125,7 +200,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">{user?.fullName ?? "Family-member User"}</p>
+              <p className="text-sm font-semibold text-slate-900">{user?.fullName ?? "Family Member"}</p>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <IconUsers className="h-3 w-3" />
                 Family Member
@@ -181,7 +256,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
           <div className="space-y-6">
             <SectionCard
               title="Profile Information"
-              subtitle="Update your personal and contact details."
+              subtitle="Update your personal and contact details. Email cannot be changed."
               rightSlot={<Pill tone="emerald">Family Member</Pill>}
             >
               {/* Avatar + name row */}
@@ -194,7 +269,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
                     <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">{user?.fullName ?? "Family-member User"}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{user?.fullName ?? "Family Member"}</h3>
                     <p className="text-sm text-slate-500">{user?.email}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <Pill tone="emerald">Family Member</Pill>
@@ -213,11 +288,15 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
                 </PrimaryBtn>
               </div>
 
-              {/* Basic fields */}
+              {/* Editable fields */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
                   <FieldLabel>Full Name</FieldLabel>
-                  <GlassInput value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your full name" />
+                  <GlassInput
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                  />
                 </div>
 
                 <div>
@@ -236,49 +315,20 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
                       <IconPhone className="h-4 w-4 text-slate-400" /> Contact Number
                     </span>
                   </FieldLabel>
-                  <GlassInput value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} placeholder="+94 77 123 4567" />
+                  <GlassInput
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    placeholder="0771234567"
+                  />
                 </div>
 
                 <div>
-                  <FieldLabel>Role</FieldLabel>
+                  <FieldLabel>
+                    <span className="inline-flex items-center gap-2">
+                      <IconSettings className="h-4 w-4 text-slate-400" /> Role
+                    </span>
+                  </FieldLabel>
                   <GlassInput value="Family Member" disabled />
-                </div>
-              </div>
-
-              {/* Family-member-specific section */}
-              <div className="mt-8 border-t border-white/30 pt-6">
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <IconSettings className="h-4 w-4 text-slate-500" />
-                    <h4 className="text-sm font-semibold text-slate-900">Family Details</h4>
-                  </div>
-                  <PrimaryBtn tone="blue" onClick={() => addToast("success", "Family details saved.")} className="py-2 text-xs">
-                    Save Details
-                  </PrimaryBtn>
-                </div>
-
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Relationship to Patient</FieldLabel>
-                    <GlassSelect value={relationship} onChange={(e) => setRelationship(e.target.value)}>
-                      <option>Son</option>
-                      <option>Daughter</option>
-                      <option>Spouse</option>
-                      <option>Sibling</option>
-                      <option>Guardian</option>
-                      <option>Other</option>
-                    </GlassSelect>
-                  </div>
-
-                  <div>
-                    <FieldLabel>Emergency Contact Number</FieldLabel>
-                    <GlassInput value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="+94 77 000 0000" />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <FieldLabel>Home Address</FieldLabel>
-                    <GlassInput value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, Province" />
-                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -289,8 +339,15 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
                 {[
                   { label: "User ID",      value: (user?.id?.slice(0, 16) ?? "—") + "…", mono: true },
                   { label: "Role",         value: user?.role ?? "family" },
-                  { label: "Relationship", value: relationship },
-                  { label: "Status",       value: "Active" },
+                  {
+                    label: "Member Since",
+                    value: createdAt
+                      ? new Date(createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit", month: "short", year: "numeric",
+                        })
+                      : "—",
+                  },
+                  { label: "Status", value: "Active" },
                 ].map(({ label, value, mono }) => (
                   <div key={label} className="rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-4">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
@@ -321,12 +378,8 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
         {/* DANGER ZONE TAB */}
         {tab === "danger" && (
           <DangerZoneTab
-            deactivateNote="Temporarily disable your family member account access. An admin can reactivate it."
-            deleteNote="Permanently delete your account and all associated data. This cannot be undone. You will be signed out immediately."
-            footerNote="Destructive account actions require confirmation from an admin. Please contact your system administrator to proceed."
-            footerIcon={IconUsers}
-            onDeactivate={() => addToast("error", "Deactivation requires admin approval.")}
-            onDelete={() => addToast("error", "Account deletion requires admin confirmation.")}
+            deleteNote="Permanently delete your admin account and all associated data. This cannot be undone."
+            deleteButton={<DeleteAccountButton />}
           />
         )}
       </main>
