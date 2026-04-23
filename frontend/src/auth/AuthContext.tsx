@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   contactNumber?: string;
   mustChangePassword?: boolean;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextType {
