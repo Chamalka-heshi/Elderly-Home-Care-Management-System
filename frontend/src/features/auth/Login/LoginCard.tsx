@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import sideImg from "../../../assets/Home/Login Art.png";
+import {IconGoogle} from "../../dashboards/common/icons";    
 
 // ── NEW API IMPORTS ──────────────────────────────────────────────────────────
 import { signin, googleAuth, isAuthenticated, getCurrentRole } from "../../../api/auth/auth.api";
@@ -305,24 +306,11 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
           {googleLoading ? (
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-red-500" />
           ) : (
-            <GoogleIcon />
+            <IconGoogle />
           )}
           <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
         </button>
       </div>
     </div>
-  );
-}
-
-// ── Icon ──────────────────────────────────────────────────────────────────────
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
-      <path d="M47.532 24.552c0-1.636-.132-3.202-.388-4.701H24.48v9.01h12.985c-.566 2.99-2.24 5.525-4.76 7.226v5.998h7.698c4.508-4.15 7.129-10.269 7.129-17.533z" fill="#4285F4"/>
-      <path d="M24.48 48c6.504 0 11.955-2.152 15.94-5.852l-7.698-5.998c-2.156 1.444-4.912 2.295-8.242 2.295-6.34 0-11.706-4.278-13.624-10.026H3.026v6.19C6.998 42.618 15.147 48 24.48 48z" fill="#34A853"/>
-      <path d="M10.856 28.42A14.368 14.368 0 0 1 10.01 24c0-1.53.264-3.017.846-4.42v-6.19H3.026A23.928 23.928 0 0 0 .48 24c0 3.86.928 7.512 2.546 10.61l7.83-6.19z" fill="#FBBC05"/>
-      <path d="M24.48 9.554c3.57 0 6.762 1.226 9.282 3.634l6.946-6.946C36.428 2.384 30.984 0 24.48 0 15.147 0 6.998 5.382 3.026 13.39l7.83 6.19C12.774 13.832 18.14 9.554 24.48 9.554z" fill="#EA4335"/>
-    </svg>
   );
 }
