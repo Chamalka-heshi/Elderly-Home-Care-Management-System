@@ -20,6 +20,9 @@ export class Doctor {
   @JoinColumn()
   user: User;
 
+  @Column({ unique: true, nullable: true })
+  nic: string;
+
   @Column()
   specialization: string;
 
