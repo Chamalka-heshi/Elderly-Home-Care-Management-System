@@ -91,4 +91,12 @@ export class UsersService {
   async setMustChangePassword(userId: string, value: boolean): Promise<void> {
     await this.userRepository.update(userId, { mustChangePassword: value });
   }
+
+  async deleteUser(userId: string): Promise<void> {
+    const user = await this.findById(userId); 
+    if (!user) {
+      throw new NotFoundException('User not found');
+    } 
+    await this.userRepository.delete(userId);
+  }
 }

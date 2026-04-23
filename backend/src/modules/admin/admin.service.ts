@@ -128,19 +128,15 @@ export class AdminService {
     await this.usersService.activateUser(admin.user.id);
   }
 
-  async deleteAdmin(id: string): Promise<void> {
-    // id here is the Admin row PK (uuid), not the user id
-    const admin = await this.adminRepository.findOne({
+  async deleteAdmin(id: string): Promise<void> { 
+    const admin_user = await this.adminRepository.findOne({
       where: { id },
       relations: ['user'],
-    });
-
-    if (!admin) {
+    });     
+    if (!admin_user) {  
       throw new NotFoundException('Admin not found');
-    }
-
-    // Removing the Admin row cascades to the User row (onDelete: 'CASCADE')
-    await this.adminRepository.remove(admin);
+    }   
+    await this.usersService.deleteUser( admin_user?.user.id); 
   }
 
   // ==================== DASHBOARD STATISTICS ====================
