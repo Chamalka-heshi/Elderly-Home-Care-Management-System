@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 
 // ── Layout components (caregiver-specific) ──
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
-import Topbar                                      from "./components/Topbar";
+import DashboardTopbar from "../common/Dashboardtopbar";
 
 // ── Shared widgets from common ───
 import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
@@ -150,7 +150,7 @@ const CaregiverDashboard: React.FC = () => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Topbar
+          <DashboardTopbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
             onProfileClick={() => setShowProfile(true)}

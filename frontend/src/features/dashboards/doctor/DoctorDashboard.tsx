@@ -4,7 +4,7 @@ import { useAuth }     from "../../../auth/AuthContext";
 
 // ── Layout components  
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
-import Topbar                                      from "./components/Topbar";
+import DashboardTopbar from "../common/Dashboardtopbar";
 
 // ── Shared widgets from common 
 import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
@@ -123,7 +123,7 @@ const DoctorDashboard: React.FC = () => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-         <Topbar
+         <DashboardTopbar
             activeMenu={activeMenu}
             onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
             onProfileClick={() => navigate(`/${user!.role}/profile`)}
