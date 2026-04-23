@@ -6,14 +6,17 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Prescription, type PrescriptionStatus } from './entities/prescription.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
+import { Patient } from '../patients/entities/patient.entity';
 import { Appointment, AppointmentStatus } from '../appointments/entities/appointment.entity';
 import { CreatePrescriptionDto } from './dto/prescription.dto';
+import { MailService } from '../mail/mail.service';
 
 export interface PrescriptionListResult {
   data:  Prescription[];
@@ -29,6 +32,8 @@ export interface FamilyPrescriptionResult {
 
 @Injectable()
 export class PrescriptionService {
+  private readonly logger = new Logger(PrescriptionService.name);
+
   constructor(
     @InjectRepository(Prescription)
     private readonly repo: Repository<Prescription>,
@@ -39,8 +44,13 @@ export class PrescriptionService {
     @InjectRepository(FamilyMember)
     private readonly familyMemberRepo: Repository<FamilyMember>,
 
+    @InjectRepository(Patient)
+    private readonly patientRepo: Repository<Patient>,
+
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,
+
+    private readonly mailService: MailService,
   ) {}
 
   // ── helper: resolve doctors.id from users.id ────────────────────────────────
@@ -53,6 +63,16 @@ export class PrescriptionService {
     });
     if (!doctor) throw new ForbiddenException('No doctor profile found for this user.');
     return doctor.id;
+  }
+
+  // ── helper: get doctor full name from userId ─────────────────────────────────
+
+  private async resolveDoctorName(userId: string): Promise<string> {
+    const doctor = await this.doctorRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+    return doctor?.user?.fullName ?? 'Your Doctor';
   }
 
   // ── Create ──────────────────────────────────────────────────────────────────
@@ -116,7 +136,56 @@ export class PrescriptionService {
       });
     }
 
+    // ── Send prescription email to family member ──────────────────────────────
+    // Fire-and-forget: email failure must never break prescription creation
+    this.sendPrescriptionEmail(saved, userId).catch((err) => {
+      this.logger.error(
+        `Failed to send prescription email for prescription ${saved.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+
     return saved;
+  }
+
+  // ── Email dispatch helper ────────────────────────────────────────────────────
+
+  private async sendPrescriptionEmail(
+    prescription: Prescription,
+    doctorUserId: string,
+  ): Promise<void> {
+    if (!prescription.patientId) return;
+
+    // Load patient with family member + user (user is eager on FamilyMember)
+    const patient = await this.patientRepo.findOne({
+      where: { id: prescription.patientId },
+      relations: ['familyMember', 'familyMember.user'],
+    });
+
+    if (!patient?.familyMember?.user?.email) {
+      this.logger.warn(
+        `Prescription ${prescription.id}: no family member email found for patient ${prescription.patientId}`,
+      );
+      return;
+    }
+
+    const { fullName: familyMemberName, email } = patient.familyMember.user;
+    const doctorName = await this.resolveDoctorName(doctorUserId);
+
+    await this.mailService.sendPrescriptionNotification({
+      to:               email,
+      familyMemberName,
+      patientName:      prescription.patientName,
+      doctorName,
+      issuedDate:       prescription.issuedDate,
+      validUntil:       prescription.validUntil ?? undefined,
+      diagnosis:        prescription.diagnosis  ?? undefined,
+      notes:            prescription.notes      ?? undefined,
+      medicines:        prescription.medicines,
+    });
+
+    this.logger.log(
+      `Prescription email sent → ${email} (family member of patient ${prescription.patientName})`,
+    );
   }
 
   // ── List (doctor) ────────────────────────────────────────────────────────────
@@ -234,4 +303,3 @@ export class PrescriptionService {
     await this.repo.remove(rx);
   }
 }
-
