@@ -28,12 +28,15 @@ export class CreateCaregiverDto {
   @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
   contactNumber: string;
 
-  @IsOptional()
+  /**
+   * National Identity Card number — required for all caregiver accounts.
+   */
+  @IsNotEmpty()
   @IsString()
   @Matches(/^[0-9]{9}[vVxX]$|^[0-9]{12}$/, {
     message: 'NIC must be valid Sri Lankan format (9 digits + V/X or 12 digits)',
   })
-  nic?: string;
+  nic: string;
 
   @IsOptional()
   @IsString()

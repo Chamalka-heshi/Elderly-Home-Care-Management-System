@@ -138,13 +138,16 @@ export class CaregiversService {
     }
 
     // Update caregiver-specific fields
-    if (dto.address          !== undefined) caregiver.address         = dto.address;
-    if (dto.qualification    !== undefined) caregiver.qualification   = dto.qualification;
-    if (dto.experienceYears  !== undefined) caregiver.experienceYears = dto.experienceYears;
-    if (dto.specializations  !== undefined) caregiver.specializations = dto.specializations;
-    if (dto.emergencyContact !== undefined) caregiver.emergencyContact= dto.emergencyContact;
-    if (dto.availableShifts  !== undefined) caregiver.availableShifts = dto.availableShifts;
+    if (dto.address          !== undefined) caregiver.address          = dto.address;
+    if (dto.qualification    !== undefined) caregiver.qualification    = dto.qualification;
+    if (dto.experienceYears  !== undefined) caregiver.experienceYears  = dto.experienceYears;
+    if (dto.specializations  !== undefined) caregiver.specializations  = dto.specializations;
+    if (dto.emergencyContact !== undefined) caregiver.emergencyContact = dto.emergencyContact;
+    if (dto.availableShifts  !== undefined) caregiver.availableShifts  = dto.availableShifts;
 
-    return this.caregiverRepository.save(caregiver);
+    await this.caregiverRepository.save(caregiver);
+
+    // Re-fetch from DB so the returned entity has a fresh, consistent user relation
+    return this.findByUserId(userId) as Promise<Caregiver>;
   }
 }
