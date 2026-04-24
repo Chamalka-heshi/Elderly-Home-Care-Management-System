@@ -31,6 +31,7 @@ export type MenuLabel =
   | "Elderly Profile"
   | "Medical Reports"
   | "Prescription"
+  | "Care Plans"
   | "Care Updates"
   | "Appointments"
   | "Payments"
@@ -63,6 +64,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
     "Elderly Profile": "View patient details",
     "Medical Reports": "View doctor reports",
     "Prescription":    "View prescribed medications",
+    "Care Plans":      "Browse available care plans",
     "Care Updates":    "View caregiver notes",
     "Appointments":    "Book & manage appointments",
     "Payments":        "View and manage payments",
