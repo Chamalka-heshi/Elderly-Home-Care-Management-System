@@ -11,6 +11,8 @@ export type MenuLabel =
   | "Patient Management"
   | "Doctor Management"
   | "Caregiver Management"
+  | "Care Plan Management"
+  | "Payments Management"
   | "Contact Messages"
   | "Channeling Slot Management"
   | "Appointment Requests"
