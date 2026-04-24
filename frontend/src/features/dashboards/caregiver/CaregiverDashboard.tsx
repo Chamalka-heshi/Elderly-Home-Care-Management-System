@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 
 // ── Layout components (caregiver-specific) ──
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
-import DashboardTopbar from "../common/Dashboardtopbar";
+import DashboardTopbar from "../common/DashboardTopbar";
 
 // ── Shared widgets from common ───
 import FormModal, { type FieldConfig } from "../common/widgets/FormModal";

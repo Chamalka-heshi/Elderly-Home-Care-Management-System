@@ -6,13 +6,13 @@
  * family-member–specific menu items and pages.
  */
 
-import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth }     from "../../../auth/AuthContext";
 
 // ── Layout components (family-member-specific) ────────────────────────────────
 import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
-import DashboardTopbar from "../common/Dashboardtopbar";
+import DashboardTopbar from "../common/DashboardTopbar";
 
 // ── Shared widgets from common ────────────────────────────────────────────────
 import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
@@ -37,6 +37,7 @@ import CareUpdates         from "./pages/CareUpdates";
 import Appointments        from "./pages/Appointments";
 import Payments            from "./pages/Payments";
 import Settings            from "./pages/Settings";
+import CarePlans           from "./pages/CarePlans";
 
 // ── Menu items ────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: IconUsers,           label: "Elderly Profile" },
   { icon: IconClipboard,       label: "Medical Reports" },
   { icon: IconHeart,           label: "Prescription"    },
+  { icon: IconHeart,           label: "Care Plans"      },
   { icon: IconCalendar,        label: "Care Updates"    },
   { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Appointments" },
   { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Payments"  },
@@ -66,6 +68,7 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 
 const FamilyMemberDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user }  = useAuth();
 
   const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
@@ -74,6 +77,38 @@ const FamilyMemberDashboard: React.FC = () => {
 
   const [showContact,  setShowContact]  = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+
+  const menuToPath: Record<MenuLabel, string> = {
+    Dashboard: '/family',
+    'Elderly Profile': '/family/elderly-profile',
+    'Medical Reports': '/family/medical-reports',
+    Prescription: '/family/prescription',
+    'Care Plans': '/family/care-plans',
+    'Care Updates': '/family/care-updates',
+    Appointments: '/family/appointments',
+    Payments: '/family/payments',
+    Settings: '/family/settings',
+  };
+
+  const pathToMenu = useCallback((path: string): MenuLabel => {
+    if (path.includes('/care-plans')) return 'Care Plans';
+    if (path.includes('/appointments')) return 'Appointments';
+    if (path.includes('/care-updates')) return 'Care Updates';
+    if (path.includes('/payments')) return 'Payments';
+    if (path.includes('/settings')) return 'Settings';
+    if (path.includes('/prescription')) return 'Prescription';
+    if (path.includes('/medical-reports')) return 'Medical Reports';
+    if (path.includes('/elderly-profile')) return 'Elderly Profile';
+    return 'Dashboard';
+  }, []);
+
+  const handleFamilyMenuNavigation = useCallback(
+    (label: MenuLabel) => {
+      setActiveMenu(label);
+      navigate(menuToPath[label]);
+    },
+    [navigate],
+  );
 
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
@@ -95,6 +130,10 @@ const FamilyMemberDashboard: React.FC = () => {
       setModalLoading(false);
     }
   };
+
+  useEffect(() => {
+    setActiveMenu(pathToMenu(location.pathname));
+  }, [location.pathname, pathToMenu]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -123,7 +162,7 @@ const FamilyMemberDashboard: React.FC = () => {
           activeMenu={activeMenu}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
-          onNavigate={(label) => setActiveMenu(label)}
+          onNavigate={handleFamilyMenuNavigation}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -134,13 +173,14 @@ const FamilyMemberDashboard: React.FC = () => {
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-            {activeMenu === "Dashboard"       && <DashboardHome onNavigate={setActiveMenu} onContact={() => setShowContact(true)} />}
+            {activeMenu === "Dashboard"       && <DashboardHome onNavigate={handleFamilyMenuNavigation} onContact={() => setShowContact(true)} />}
             {activeMenu === "Elderly Profile" && <ElderlyProfile />}
             {activeMenu === "Medical Reports" && <MedicalReports />}
             {activeMenu === "Prescription"    && <Prescription />}
+            {activeMenu === "Care Plans"      && <CarePlans addToast={addToast} />}
             {activeMenu === "Care Updates"    && <CareUpdates />}
             {activeMenu === "Appointments"    && <Appointments />}
-            {activeMenu === "Payments"        && <Payments />}
+            {activeMenu === "Payments"        && <Payments addToast={addToast} />}
             {activeMenu === "Settings"        && <Settings />}
           </main>
         </div>
