@@ -36,6 +36,7 @@ const statusTone = (s: string) =>
   s === "Discharged"? "slate"   as const : "slate" as const;
 
 const QUICK_ACTIONS: { icon: React.FC<{ className?: string }>; title: string; desc: string; page: MenuLabel }[] = [
+  { icon: HeartIcon,     title: "Care Plans",               desc: "Browse available care packages.",              page: "Care Plans"      },
   { icon: HeartIcon,     title: "View Elderly Profiles",    desc: "See details of your linked patients.",        page: "Elderly Profile" },
   { icon: ClipboardIcon, title: "Check Medical Reports",    desc: "Read latest doctor-generated reports.",       page: "Medical Reports" },
   { icon: ClipboardIcon, title: "View Prescriptions",       desc: "See current medications for your patients.",  page: "Prescription"    },
