@@ -17,6 +17,9 @@ import { ContactModule } from './modules/contact/contact.module';
 import { PrescriptionsModule } from './modules/prescription/prescription.module';
 import { ChannelingSlotModule } from './modules/channeling-slot/channeling-slot.module';
 import { AppointmentModule } from './modules/appointments/appointment.module';
+import { CarePlanModule } from './modules/care-plan/care-plan.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -58,7 +61,10 @@ import { AppointmentModule } from './modules/appointments/appointment.module';
     ContactModule,
     PrescriptionsModule,
     ChannelingSlotModule,
-    AppointmentModule,         
+    AppointmentModule,
+    CarePlanModule,
+    BookingsModule,
+    PaymentsModule,
   ],
 
   providers: [
