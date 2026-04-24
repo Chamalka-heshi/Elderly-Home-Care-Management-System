@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 
 // ── NEW API IMPORTS ──────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
 import {
   IconLayoutDashboard, IconShield, IconUsers,
   IconHeart, IconStethoscope, IconUserPlus, IconSettings,
-  IconCheckCircle, IconAlertCircle, IconCalendar, IconInbox,
+  IconCheckCircle, IconAlertCircle, IconCalendar, IconInbox, IconCurrency,
   type IconProps,
 } from "../common/icons";
 
@@ -85,6 +85,8 @@ import AppointmentManagement from "./pages/ChannelingSlotManagement";
 import AppointmentRequests   from "./pages/AppointmentRequests";
 import ContactMessages    from "./pages/ContactMessages";
 import Settings           from "./pages/Settings";
+import PaymentsApproval   from "./pages/PaymentsApproval";
+import CarePlanManagement from "./pages/CarePlanManagement";
 
 
 
@@ -141,6 +143,7 @@ interface Toast { id: number; kind: "success" | "error"; message: string; }
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -154,6 +157,8 @@ const AdminDashboard: React.FC = () => {
     { icon: IconUserPlus,        label: "Caregiver Management"       },
     { icon: IconCalendar,        label: "Channeling Slot Management" },
     { icon: IconCalendar,        label: "Appointment Requests"       },
+    { icon: IconHeart,           label: "Care Plan Management"        },
+    { icon: IconCurrency,        label: "Payments Management"         },
     { icon: IconInbox,           label: "Contact Messages"           },
     { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
   ];
@@ -179,6 +184,43 @@ const AdminDashboard: React.FC = () => {
   // ── Loading flags 
   const [pageLoading,  setPageLoading]  = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+
+  const menuToPath: Record<MenuLabel, string> = {
+    Dashboard: '/admin',
+    'Admin Management': '/admin/admin-management',
+    'Family Management': '/admin/family-management',
+    'Patient Management': '/admin/patient-management',
+    'Doctor Management': '/admin/doctor-management',
+    'Caregiver Management': '/admin/caregiver-management',
+    'Channeling Slot Management': '/admin/channeling-slots',
+    'Appointment Requests': '/admin/appointments',
+    'Care Plan Management': '/admin/care-plans',
+    'Payments Management': '/admin/payments',
+    'Contact Messages': '/admin/contact-messages',
+    Settings: '/admin/settings',
+  };
+
+  const pathToMenu = useCallback((path: string): MenuLabel => {
+    if (path.includes('/payments')) return 'Payments Management';
+    if (path.includes('/care-plans')) return 'Care Plan Management';
+    if (path.includes('/appointments')) return 'Appointment Requests';
+    if (path.includes('/channeling-slots')) return 'Channeling Slot Management';
+    if (path.includes('/contact-messages')) return 'Contact Messages';
+    if (path.includes('/settings')) return 'Settings';
+    if (path.includes('/caregiver-management')) return 'Caregiver Management';
+    if (path.includes('/doctor-management')) return 'Doctor Management';
+    if (path.includes('/patient-management')) return 'Patient Management';
+    if (path.includes('/family-management')) return 'Family Management';
+    if (path.includes('/admin-management')) return 'Admin Management';
+    return 'Dashboard';
+  }, []);
+
+  const handleAdminMenuNavigation = useCallback((label: MenuLabel) => {
+    setActiveMenu(label);
+    const base = user?.role === 'super_admin' ? '/super_admin' : '/admin';
+    const target = menuToPath[label].replace('/admin', base);
+    navigate(target);
+  }, [navigate, user?.role]);
 
   // ── Helpers 
   const addToast = useCallback((kind: "success" | "error", message: string) => {
@@ -240,6 +282,10 @@ const AdminDashboard: React.FC = () => {
     else if (activeMenu === "Family Management")    loadFamilies();
     else if (activeMenu === "Patient Management")   loadPatients();
   }, [activeMenu]); 
+
+  useEffect(() => {
+    setActiveMenu(pathToMenu(location.pathname));
+  }, [location.pathname, pathToMenu]);
 
   // ── Form submit handlers 
   const handleCreateAdmin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -370,7 +416,7 @@ const AdminDashboard: React.FC = () => {
           activeMenu={activeMenu}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
-          onNavigate={(label) => setActiveMenu(label)}
+          onNavigate={handleAdminMenuNavigation}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -417,8 +463,14 @@ const AdminDashboard: React.FC = () => {
             {activeMenu === "Appointment Requests" && (
               <AppointmentRequests addToast={addToast} />
             )}
+            {!pageLoading && activeMenu === "Care Plan Management" && (
+              <CarePlanManagement addToast={addToast} />
+            )}
             {activeMenu === "Contact Messages" && (
               <ContactMessages addToast={addToast} />
+            )}
+            {!pageLoading && activeMenu === "Payments Management" && (
+              <PaymentsApproval addToast={addToast} />
             )}
             {!pageLoading && activeMenu === "Settings" && <Settings />}
           </main>
