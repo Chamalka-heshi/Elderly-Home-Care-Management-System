@@ -3,7 +3,7 @@ import {
   ParseUUIDPipe, HttpCode, HttpStatus, Req
 } from '@nestjs/common';
 import { ChannelingSlotService } from './channeling-slot.service';
-import { CreateChannelingSlotDto, UpdateChannelingSlotDto, QueryChannelingSlotsDto } from './dto/channeling-slot.dto';
+import { CreateChannelingSlotDto, UpdateChannelingSlotDto, UpdateDoctorSlotFeeDto, QueryChannelingSlotsDto } from './dto/channeling-slot.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 
@@ -33,6 +33,17 @@ export class ChannelingSlotController {
   @Roles(UserRole.DOCTOR)
   rejectSlot(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.rejectSlot(id, req.user.sub);
+  }
+
+  /** Doctor updates their own consultation fee on a specific slot. */
+  @Patch('my-slots/:id/fee')
+  @Roles(UserRole.DOCTOR)
+  updateMySlotFee(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateDoctorSlotFeeDto,
+  ) {
+    return this.service.updateDoctorSlotFee(id, req.user.sub, dto);
   }
 
   // ── Admin routes ──────────────────────────────────────────────────────────
