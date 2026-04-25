@@ -71,8 +71,6 @@ import {
   type IconProps,
 } from "../common/icons";
 
-// ── Shared UI from common 
-import { DashboardAmbientBg } from "../common/ui";
 
 // ── Pages (admin-specific) 
 import DashboardHome      from "./pages/DashboardHome";
@@ -156,7 +154,7 @@ const AdminDashboard: React.FC = () => {
     { icon: IconStethoscope,     label: "Doctor Management"          },
     { icon: IconUserPlus,        label: "Caregiver Management"       },
     { icon: IconCalendar,        label: "Channeling Slot Management" },
-    { icon: IconCalendar,        label: "Appointment Requests"       },
+    { icon: IconCalendar,        label: "Appointment Management"      },
     { icon: IconHeart,           label: "Care Plan Management"        },
     { icon: IconCurrency,        label: "Payments Management"         },
     { icon: IconInbox,           label: "Contact Messages"           },
@@ -193,7 +191,7 @@ const AdminDashboard: React.FC = () => {
     'Doctor Management': '/admin/doctor-management',
     'Caregiver Management': '/admin/caregiver-management',
     'Channeling Slot Management': '/admin/channeling-slots',
-    'Appointment Requests': '/admin/appointments',
+    'Appointment Management': '/admin/appointments',
     'Care Plan Management': '/admin/care-plans',
     'Payments Management': '/admin/payments',
     'Contact Messages': '/admin/contact-messages',
@@ -203,7 +201,7 @@ const AdminDashboard: React.FC = () => {
   const pathToMenu = useCallback((path: string): MenuLabel => {
     if (path.includes('/payments')) return 'Payments Management';
     if (path.includes('/care-plans')) return 'Care Plan Management';
-    if (path.includes('/appointments')) return 'Appointment Requests';
+    if (path.includes('/appointments')) return 'Appointment Management';
     if (path.includes('/channeling-slots')) return 'Channeling Slot Management';
     if (path.includes('/contact-messages')) return 'Contact Messages';
     if (path.includes('/settings')) return 'Settings';
@@ -393,7 +391,6 @@ const AdminDashboard: React.FC = () => {
   // ── Render 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <DashboardAmbientBg />
 
       <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2">
         {toasts.map((t) => (
@@ -460,7 +457,7 @@ const AdminDashboard: React.FC = () => {
             {activeMenu === "Channeling Slot Management" && (
               <AppointmentManagement addToast={addToast}/>
             )}
-            {activeMenu === "Appointment Requests" && (
+            {activeMenu === "Appointment Management" && (
               <AppointmentRequests addToast={addToast} />
             )}
             {!pageLoading && activeMenu === "Care Plan Management" && (
