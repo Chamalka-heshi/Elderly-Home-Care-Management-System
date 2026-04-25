@@ -10,6 +10,8 @@ import { Repository, QueryFailedError, Not, IsNull } from 'typeorm';
 import { Patient }          from './entities/patient.entity';
 import { FamilyMember }     from '../family/entities/family-member.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
+import { VitalRecord }      from '../caregivers/entities/vital-record.entity';
+import { Prescription }     from '../prescription/entities/prescription.entity';
 
 @Injectable()
 export class PatientsService {
@@ -18,6 +20,10 @@ export class PatientsService {
     private patientsRepository: Repository<Patient>,
     @InjectRepository(FamilyMember)
     private familyMemberRepository: Repository<FamilyMember>,
+    @InjectRepository(VitalRecord)
+    private vitalRecordRepository: Repository<VitalRecord>,
+    @InjectRepository(Prescription)
+    private prescriptionRepository: Repository<Prescription>,
   ) {}
 
   async create(
@@ -130,5 +136,36 @@ export class PatientsService {
     const patient = await this.findOneByFamily(patientId, fm.id);
     patient.paymentPlan = plan;
     return this.patientsRepository.save(patient);
+  }
+
+  /**
+   * GET /patients/:id/medical-history
+   * Returns: patient details + vital records + all prescriptions for a patient.
+   * Accessible by DOCTOR role.
+   */
+  async getMedicalHistory(patientId: string): Promise<{
+    patient: Patient;
+    vitalRecords: VitalRecord[];
+    prescriptions: Prescription[];
+  }> {
+    const patient = await this.patientsRepository.findOne({
+      where: { id: patientId },
+      relations: ['familyMember'],
+    });
+    if (!patient) throw new NotFoundException('Patient not found');
+
+    const [vitalRecords, prescriptions] = await Promise.all([
+      this.vitalRecordRepository.find({
+        where: { patientId },
+        order: { recordedAt: 'DESC' },
+      }),
+      this.prescriptionRepository.find({
+        where: { patientId },
+        order: { createdAt: 'DESC' },
+        relations: ['doctor', 'doctor.user'],
+      }),
+    ]);
+
+    return { patient, vitalRecords, prescriptions };
   }
 }
