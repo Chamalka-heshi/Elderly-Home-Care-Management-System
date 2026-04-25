@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo } from "react";
-import SignOutButton from "../../../../components/logoutbtn";
+import SignOutButton from "../../../../components/signoutbtn";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const SparkleIcon = () => (
