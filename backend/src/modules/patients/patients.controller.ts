@@ -16,6 +16,7 @@ import { UserRole }        from '../../common/enums/user-role.enum';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  /** GET /patients/assigned — patients for caregiver */
   /**
    * GET /patients/assigned
    * MUST be declared BEFORE GET :id so NestJS does not treat "assigned" as a UUID.
@@ -30,6 +31,18 @@ export class PatientsController {
     // TODO Phase 2: switch to this.patientsService.findAllWithPaymentPlan()
     const patients = await this.patientsService.findAll();
     return { patients, total: patients.length };
+  }
+
+  /**
+   * GET /patients/:id/medical-history
+   * MUST be declared BEFORE GET :id so NestJS does not treat the literal path as a UUID.
+   * Returns full patient details + vital records + prescriptions for that patient.
+   * Accessible by DOCTOR role.
+   */
+  @Get(':id/medical-history')
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  async getMedicalHistory(@Param('id', ParseUUIDPipe) id: string) {
+    return this.patientsService.getMedicalHistory(id);
   }
 
   /** GET /patients/:id — single patient */
