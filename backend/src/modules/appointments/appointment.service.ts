@@ -44,7 +44,6 @@ export class AppointmentService {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  /** Strip sensitive medical fields — used for admin responses */
   private stripMedicalDetails(patient: Patient): SafePatient {
     const safe: any = { ...patient };
     for (const field of MEDICAL_SENSITIVE_FIELDS) {
@@ -95,33 +94,33 @@ export class AppointmentService {
     if (!patient.isActive)
       throw new BadRequestException('Patient is not active');
 
-    // Check duplicate: same patient + same slot
+    // Check duplicate: same patient + same slot (ignore cancelled ones)
     const duplicate = await this.appointmentRepo.findOne({
-      where: {
-        slotId: dto.slotId,
-        patientId: dto.patientId,
-        status: AppointmentStatus.PENDING,
-      },
+      where: [
+        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PENDING_PAYMENT },
+        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PENDING },
+        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.CONFIRMED },
+      ],
     });
     if (duplicate)
       throw new BadRequestException('An appointment for this patient in this slot already exists');
 
-    // Check slot capacity
+    // Check slot capacity (count non-cancelled, non-pending_payment)
     const booked = await this.appointmentRepo.count({
-      where: {
-        slotId: dto.slotId,
-        status: AppointmentStatus.CONFIRMED,
-      },
+      where: [
+        { slotId: dto.slotId, status: AppointmentStatus.PENDING },
+        { slotId: dto.slotId, status: AppointmentStatus.CONFIRMED },
+      ],
     });
     if (booked >= slot.maxPatients)
       throw new BadRequestException('This slot is fully booked');
 
-    // Create appointment
+    // Create appointment — starts as PENDING_PAYMENT until payment is made
     const appointment = this.appointmentRepo.create({
       slotId: dto.slotId,
       patientId: dto.patientId,
       familyMemberId: familyMember.id,
-      status: AppointmentStatus.PENDING,
+      status: AppointmentStatus.PENDING_PAYMENT,
       notes: dto.notes ?? null,
     });
 
@@ -180,12 +179,14 @@ export class AppointmentService {
       .innerJoinAndSelect('appt.familyMember', 'fm')
       .innerJoinAndSelect('fm.user', 'fmUser')
       .where('slot.doctorId = :doctorId', { doctorId: doctor.id })
+      // Doctor only sees confirmed appointments (paid ones)
+      .andWhere('appt.status IN (:...statuses)', {
+        statuses: [AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED],
+      })
       .orderBy('slot.date', 'DESC')
       .addOrderBy('slot.startTime', 'ASC')
       .getMany();
 
-    // Doctor sees FULL medical details — augment each patient with computed age
-    // prescriptionId is already a plain column so it is included automatically
     return appointments.map((a) => {
       const safe = this.buildSafeAppointment(a, true) as any;
       if (safe.patient?.dateOfBirth) {
@@ -195,7 +196,6 @@ export class AppointmentService {
     });
   }
 
-  /** Compute age in whole years from a dateOfBirth string or Date */
   private computeAge(dateOfBirth: string | Date): number {
     const dob = new Date(dateOfBirth);
     const today = new Date();
@@ -228,7 +228,7 @@ export class AppointmentService {
     return this.appointmentRepo.save(appointment);
   }
 
-  // ── Admin: get all appointments (NO sensitive medical details) ──────────────
+  // ── Admin: get all appointments ──────────────────────────────────────────────
 
   async getAllAppointments(query: QueryAppointmentsDto): Promise<any[]> {
     const qb = this.appointmentRepo
@@ -246,8 +246,6 @@ export class AppointmentService {
     if (query.doctorId) qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
 
     const appointments = await qb.getMany();
-
-    // Admin sees NO sensitive medical details
     return appointments.map((a) => this.buildSafeAppointment(a, false));
   }
 
@@ -273,5 +271,28 @@ export class AppointmentService {
     if (!appointment) throw new NotFoundException('Appointment not found');
     await this.appointmentRepo.remove(appointment);
     return { message: 'Appointment deleted successfully' };
+  }
+
+  // ── Payment callback: confirm appointment after payment ─────────────────────
+
+  async confirmAfterPayment(id: string): Promise<void> {
+    const appointment = await this.appointmentRepo.findOne({ where: { id } });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+    if (appointment.status === AppointmentStatus.PENDING_PAYMENT) {
+      appointment.status = AppointmentStatus.PENDING;
+      await this.appointmentRepo.save(appointment);
+    }
+  }
+
+  async cancelAfterPaymentRejection(id: string): Promise<void> {
+    const appointment = await this.appointmentRepo.findOne({ where: { id } });
+    if (!appointment) return;
+    if (
+      appointment.status === AppointmentStatus.PENDING_PAYMENT ||
+      appointment.status === AppointmentStatus.PENDING
+    ) {
+      appointment.status = AppointmentStatus.CANCELLED;
+      await this.appointmentRepo.save(appointment);
+    }
   }
 }
