@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import SignOutButton from "../../../../components/signoutbtn";
+import SignOutButton from "../../../../components/logoutbtn";
 
 // ── Icons ──
 const SparkleIcon = () => (

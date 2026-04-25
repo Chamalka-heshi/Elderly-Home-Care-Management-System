@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchMultipart } from '../core/apiClient';
+import { apiFetch, apiFetchMultipart, API_BASE_URL } from '../core/apiClient';
 import type { User, UserRole } from '../../auth/AuthContext';
 import { isTokenExpired } from '../../auth/tokenUtils';
 import { signInWithGoogle, signOutFirebase } from '../../config/firebase';
@@ -94,6 +94,24 @@ export const signout = async (
   setUser: (u: User | null) => void,
   navigate: (p: string) => void,
 ) => {
+  // Grab the token before clearing storage — the backend needs it to
+  // identify the user and stamp lastLogoutAt.
+  const token = localStorage.getItem('token');
+  if (token) {
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch (err) {
+      // Network failure shouldn't block the client-side logout
+      console.warn('Backend logout request failed:', err);
+    }
+  }
+
   navigate('/');
   await signOutFirebase();
   localStorage.removeItem('token');

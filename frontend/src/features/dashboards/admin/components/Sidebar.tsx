@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import SignOutButton from "../../../../components/signoutbtn";
+import SignOutButton from "../../../../components/logoutbtn";
 import { IconSparkles, IconSearch, IconX } from "../../common/icons";
 import { useAuth } from "../../../../auth/AuthContext";
 
