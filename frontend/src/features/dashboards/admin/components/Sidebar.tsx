@@ -15,7 +15,7 @@ export type MenuLabel =
   | "Payments Management"
   | "Contact Messages"
   | "Channeling Slot Management"
-  | "Appointment Requests"
+  | "Appointment Management"
   | "Settings";
 
 export interface MenuItem {
