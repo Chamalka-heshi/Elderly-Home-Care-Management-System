@@ -152,6 +152,7 @@ export class DoctorsService {
         availableDays: true,
         availableTimeStart: true,
         availableTimeEnd: true,
+        nic: true,
         user: {
           id: true,
           fullName: true,
