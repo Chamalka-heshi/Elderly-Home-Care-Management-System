@@ -3,6 +3,10 @@ export type SlotStatus = 'pending' | 'active' | 'rejected' | 'cancelled' | 'comp
 export interface ChannelingSlot {
   id: string; doctorId: string; date: string; startTime: string; endTime: string;
   bookingCutoffMinutes: number; maxPatients: number; status: SlotStatus; notes: string | null;
+  /** Doctor's consultation fee for this slot (set by doctor, seeded from their profile). */
+  consultationFee: number | null;
+  /** Care-home service charge set by Admin. */
+  careHomeFee: number | null;
   doctor: { id: string; specialization: string; user: { fullName: string; isActive: boolean; }; };
 }
 
