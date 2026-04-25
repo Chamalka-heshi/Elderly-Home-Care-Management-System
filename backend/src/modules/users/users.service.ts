@@ -88,6 +88,10 @@ export class UsersService {
     await this.userRepository.update(userId, { avatarUrl });
   }
 
+  async setLastLogoutAt(userId: string, date: Date | null): Promise<void> {
+    await this.userRepository.update(userId, { lastLogoutAt: date });
+  }
+
   async setMustChangePassword(userId: string, value: boolean): Promise<void> {
     await this.userRepository.update(userId, { mustChangePassword: value });
   }
