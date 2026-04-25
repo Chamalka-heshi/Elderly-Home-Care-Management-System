@@ -54,6 +54,22 @@ export class ChannelingSlot {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  /**
+   * Care-home service charge set by Admin (added on top of the doctor fee).
+   * Admin can set/update this when creating or editing a slot.
+   */
+  @Column({ name: 'care_home_fee', nullable: true, type: 'decimal', precision: 10, scale: 2 })
+  careHomeFee: number | null;
+
+  /**
+   * Doctor's own consultation fee for this specific slot.
+   * Initialised from Doctor.consultationFee when the slot is created;
+   * the doctor can later update it via PATCH /channeling-slots/my-slots/:id/fee.
+   * Admin cannot change this field.
+   */
+  @Column({ name: 'consultation_fee', nullable: true, type: 'decimal', precision: 10, scale: 2 })
+  consultationFee: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
