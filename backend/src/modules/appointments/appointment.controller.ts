@@ -12,7 +12,7 @@ import {
   HttpStatus,
   Req,
 } from '@nestjs/common';
-import { AppointmentService }          from './appointment.service';
+import { AppointmentService } from './appointment.service';
 import {
   UpdateAppointmentStatusDto,
   QueryAppointmentsDto,
@@ -23,8 +23,11 @@ import { UserRole } from '../../common/enums/user-role.enum';
 /**
  * AppointmentController — doctor & admin routes only.
  *
- * All family-member appointment routes have moved to FamilyController
- * under /family/appointments.
+ * Family-member appointment routes live in FamilyController
+ * under /family/appointments  (POST, GET, PATCH /:id/cancel).
+ *
+ * There is exactly ONE controller and ONE service for appointments.
+ * The old AppointmentBookingController has been removed.
  */
 @Controller('appointments')
 export class AppointmentController {
@@ -32,14 +35,14 @@ export class AppointmentController {
 
   // ── Doctor routes ───────────────────────────────────────────────────────────
 
-  /** Get all appointments for this doctor's slots — FULL patient medical details */
+  /** Get all CONFIRMED/COMPLETED appointments for this doctor's slots */
   @Get('doctor')
   @Roles(UserRole.DOCTOR)
   getDoctorAppointments(@Req() req: any) {
     return this.service.getDoctorAppointments(req.user.sub);
   }
 
-  /** Doctor confirms / completes / cancels an appointment */
+  /** Doctor updates an appointment status (confirm / complete / cancel) */
   @Patch('doctor/:id/status')
   @Roles(UserRole.DOCTOR)
   updateStatusByDoctor(
