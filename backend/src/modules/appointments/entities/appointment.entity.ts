@@ -12,10 +12,11 @@ import { Patient } from '../../patients/entities/patient.entity';
 import { FamilyMember } from '../../family/entities/family-member.entity';
 
 export enum AppointmentStatus {
-  PENDING    = 'pending',
-  CONFIRMED  = 'confirmed',
-  CANCELLED  = 'cancelled',
-  COMPLETED  = 'completed',
+  PENDING_PAYMENT = 'pending_payment', // newly added — family created, awaiting payment
+  PENDING         = 'pending',         // paid (or admin-created); awaiting doctor confirmation
+  CONFIRMED       = 'confirmed',
+  CANCELLED       = 'cancelled',
+  COMPLETED       = 'completed',
 }
 
 @Entity('appointments')
@@ -51,7 +52,7 @@ export class Appointment {
   @Column({
     type: 'enum',
     enum: AppointmentStatus,
-    default: AppointmentStatus.PENDING,
+    default: AppointmentStatus.PENDING_PAYMENT,
   })
   status: AppointmentStatus;
 
