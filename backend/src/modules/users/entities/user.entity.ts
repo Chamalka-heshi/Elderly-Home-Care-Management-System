@@ -58,6 +58,12 @@ export class User {
   @Column({ type: 'text', nullable: true, name: 'avatar_url' })
   avatarUrl: string | null;
 
+  /** Set to the current time on every logout. The JWT guard rejects any
+   *  token whose `iat` (issued-at) is older than this value, instantly
+   *  invalidating all sessions without a separate blacklist table. */
+  @Column({ type: 'timestamptz', nullable: true, name: 'last_logout_at' })
+  lastLogoutAt: Date | null;
+
   // ── Timestamps ────────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
