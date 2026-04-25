@@ -113,6 +113,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   const [maxPatients, setMaxPatients] = useState(20);
   const [cutoff, setCutoff] = useState(15);
   const [notes, setNotes] = useState('');
+  const [careHomeFee, setCareHomeFee] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
 
   const selectedDoc = useMemo(() => activeDoctors.find((d) => d.id === doctorId), [activeDoctors, doctorId]);
@@ -167,6 +168,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
         bookingCutoffMinutes: cutoff,
         maxPatients,
         notes: notes || undefined,
+        careHomeFee: careHomeFee !== '' ? careHomeFee : undefined,
       });
       addToast('success', 'Channeling slot created successfully. Waiting for doctor approval.');
       onCreated();
@@ -179,8 +181,8 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-600 text-white">
               <IconCalendar className="h-5 w-5" />
@@ -195,7 +197,8 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-6">
+        <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-5 space-y-4">
+          {/* Doctor selector */}
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">Doctor <span className="text-red-500">*</span></label>
             <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className={inputCls} required>
@@ -223,12 +226,12 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
             )}
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Date <span className="text-red-500">*</span></label>
-            <input type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} required />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          {/* Date · Start · End in one row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Date <span className="text-red-500">*</span></label>
+              <input type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} required />
+            </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Start Time <span className="text-red-500">*</span></label>
               <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} required>
@@ -243,13 +246,14 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Cutoff · Max Patients · Care Home Fee in one row */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Booking Cutoff (min before start)</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Cutoff (min)</label>
               <input type="number" min={5} max={120} value={cutoff} onChange={(e) => setCutoff(Number(e.target.value))} className={inputCls} />
               {cutoffDisplay && (
-                <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
-                  <IconClock className="h-3 w-3" /> Bookings close at {cutoffDisplay}
+                <p className="mt-1 flex items-center gap-1 text-[10px] text-amber-600">
+                  <IconClock className="h-3 w-3" /> Closes {cutoffDisplay}
                 </p>
               )}
             </div>
@@ -257,18 +261,27 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Max Patients</label>
               <input type="number" min={1} max={200} value={maxPatients} onChange={(e) => setMaxPatients(Number(e.target.value))} className={inputCls} />
             </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Care Home Fee <span className="font-normal text-slate-400 text-[10px]">(LKR, opt.)</span></label>
+              <input
+                type="number" min={0} step={0.01} value={careHomeFee}
+                onChange={(e) => setCareHomeFee(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="e.g. 500" className={inputCls}
+              />
+            </div>
           </div>
 
+          {/* Notes */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes (optional)</label>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes <span className="font-normal text-slate-400">(optional)</span></label>
             <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Cardiology clinic only" className={`${inputCls} resize-none`} />
           </div>
 
-          <p className="rounded-xl bg-slate-50 px-4 py-2.5 text-[11px] text-slate-500 ring-1 ring-slate-100">
+          <p className="rounded-xl bg-slate-50 px-4 py-2 text-[11px] text-slate-500 ring-1 ring-slate-100">
             ℹ️ Doctors can be assigned slots on a maximum of <strong>3 days per week</strong>.
           </p>
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-3 pt-1 pb-1">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-700 disabled:opacity-60">
               {saving ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <IconPlus />}
@@ -296,6 +309,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   const [maxPatients, setMaxPatients] = useState(slot.maxPatients);
   const [cutoff, setCutoff] = useState(slot.bookingCutoffMinutes);
   const [notes, setNotes] = useState(slot.notes ?? '');
+  const [careHomeFee, setCareHomeFee] = useState<number | ''>(slot.careHomeFee ?? '');
   const [saving, setSaving] = useState(false);
 
   const doctorName = resolveDoctorName(slot, doctors);
@@ -320,7 +334,9 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
     try {
       setSaving(true);
       await channelingApi.updateChannelingSlot(slot.id, {
-        startTime, endTime, maxPatients, bookingCutoffMinutes: cutoff, notes: notes || undefined,
+        startTime, endTime, maxPatients, bookingCutoffMinutes: cutoff,
+        notes: notes || undefined,
+        careHomeFee: careHomeFee !== '' ? careHomeFee : undefined,
       });
       addToast('success', 'Channeling slot updated successfully');
       onUpdated();
@@ -332,11 +348,11 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white shadow-2xl my-4">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh]">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white">
               <IconEdit className="h-5 w-5" />
@@ -351,50 +367,41 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="divide-y divide-slate-100">
+        <form onSubmit={handleSubmit} className="overflow-y-auto">
 
-          {/* ── Doctor info (read-only) ── */}
-          <div className="px-6 py-4 space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Doctor Details</p>
-            <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-100">
-                <IconStethoscope className="h-5 w-5 text-emerald-700" />
+          {/* ── Doctor + Slot info (compact row) ── */}
+          <div className="px-6 py-4 grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100">
+                <IconStethoscope className="h-4 w-4 text-emerald-700" />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-slate-800 truncate">{doctorName}</p>
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800 text-sm truncate">{doctorName}</p>
                 <p className="text-xs text-slate-500">{doctorSpec}</p>
                 {doctorObj?.availableTimeStart && doctorObj?.availableTimeEnd && (
-                  <p className="mt-0.5 text-xs text-blue-600 font-medium">
-                    Preferred: {fmt12(doctorObj.availableTimeStart)} – {fmt12(doctorObj.availableTimeEnd)}
+                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
+                    {fmt12(doctorObj.availableTimeStart)} – {fmt12(doctorObj.availableTimeEnd)}
                   </p>
                 )}
               </div>
-              <span className="shrink-0 rounded-xl bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-100">
-                Pending
-              </span>
             </div>
-          </div>
-
-          {/* ── Slot identity (read-only) ── */}
-          <div className="px-6 py-4 space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Slot Details</p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5">
                 <p className="text-[11px] font-semibold text-slate-400">Date</p>
                 <p className="mt-0.5 text-sm font-bold text-slate-800">{fmtDate(slot.date)}</p>
               </div>
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-[11px] font-semibold text-slate-400">Slot ID</p>
-                <p className="mt-0.5 truncate text-xs font-mono text-slate-500">{slot.id.slice(0,18)}…</p>
+              <div className="rounded-xl bg-amber-50 px-3 py-2.5 flex items-center justify-center">
+                <span className="rounded-xl bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200">PENDING</span>
               </div>
             </div>
           </div>
 
           {/* ── Editable fields ── */}
-          <div className="space-y-4 px-6 py-5">
+          <div className="space-y-4 px-6 pb-5">
             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Edit Timings &amp; Capacity</p>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Start · End · Cutoff · Max in two rows */}
+            <div className="grid grid-cols-4 gap-3">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700">Start Time <span className="text-red-500">*</span></label>
                 <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} required>
@@ -407,14 +414,11 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
                   {validEndTimes.map((t) => <option key={t} value={t}>{fmt12(t)}</option>)}
                 </select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Booking Cutoff (min before)</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Cutoff (min)</label>
                 <input type="number" min={5} max={120} value={cutoff} onChange={(e) => setCutoff(Number(e.target.value))} className={inputCls} />
-                <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
-                  <IconClock className="h-3 w-3" /> Closes at {cutoffDisplay}
+                <p className="mt-1 flex items-center gap-1 text-[10px] text-amber-600">
+                  <IconClock className="h-2.5 w-2.5" /> {cutoffDisplay}
                 </p>
               </div>
               <div>
@@ -423,18 +427,31 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
               </div>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes (optional)</label>
-              <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Cardiology clinic only" className={`${inputCls} resize-none`} />
+            {/* Care Home Fee · Notes */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Care Home Fee (LKR) <span className="font-normal text-slate-400 text-[10px]">optional</span>
+                </label>
+                <input
+                  type="number" min={0} step={0.01} value={careHomeFee}
+                  onChange={(e) => setCareHomeFee(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="e.g. 500" className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes <span className="font-normal text-slate-400">(optional)</span></label>
+                <textarea rows={1} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Cardiology clinic only" className={`${inputCls} resize-none`} />
+              </div>
             </div>
 
-            <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-[11px] text-amber-700 ring-1 ring-amber-100">
+            <p className="rounded-xl bg-amber-50 px-4 py-2 text-[11px] text-amber-700 ring-1 ring-amber-100">
               ⚠️ Editing a pending slot will require the doctor to re-approve it.
             </p>
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex justify-end gap-3 px-6 py-4">
+          <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Cancel
             </button>
@@ -502,6 +519,25 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
       </div>
 
       {slot.notes && <p className="mt-2 text-xs italic text-slate-500 line-clamp-1">{slot.notes}</p>}
+
+      {/* Fee summary row */}
+      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+        {slot.consultationFee != null && (
+          <span className="rounded-lg bg-blue-50 px-2 py-0.5 text-blue-700 font-medium">
+            Dr. Fee: LKR {Number(slot.consultationFee).toLocaleString()}
+          </span>
+        )}
+        {slot.careHomeFee != null && (
+          <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-emerald-700 font-medium">
+            Care Home: LKR {Number(slot.careHomeFee).toLocaleString()}
+          </span>
+        )}
+        {(slot.consultationFee != null || slot.careHomeFee != null) && (
+          <span className="rounded-lg bg-slate-800 px-2 py-0.5 text-white font-semibold">
+            Total: LKR {(Number(slot.consultationFee ?? 0) + Number(slot.careHomeFee ?? 0)).toLocaleString()}
+          </span>
+        )}
+      </div>
 
       {!isCancelled && !isPast && !isRejected && (
         <div className="mt-3 flex justify-end gap-2">
