@@ -71,6 +71,13 @@ export class AuthController {
     };
   }
 
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Request() req: { user: JwtUser }) {
+    await this.authService.logout(req.user.sub);
+    return { message: 'Logged out successfully' };
+  }
+
   /* =========================================================
      AUTHENTICATED ROUTES — JWT enforced by global APP_GUARD
   ========================================================= */

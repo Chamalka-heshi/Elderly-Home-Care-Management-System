@@ -185,6 +185,13 @@ export class AuthService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // Logout — stamp lastLogoutAt so all existing tokens are rejected
+  // ──────────────────────────────────────────────────────────────────────────
+  async logout(userId: string): Promise<void> {
+    await this.usersService.setLastLogoutAt(userId, new Date());
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Delete Account
   // ──────────────────────────────────────────────────────────────────────────
   async deleteAccount(userId: string) {
