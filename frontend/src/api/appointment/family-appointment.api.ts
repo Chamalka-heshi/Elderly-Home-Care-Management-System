@@ -1,14 +1,11 @@
-import { apiFetch } from '../core/apiClient';
-import type { Appointment } from './appointment.types';
-
-export const createAppointment = (data: {
-  slotId: string;
-  patientId: string;
-  notes?: string;
-}) => apiFetch<Appointment>('/family/appointments', { method: 'POST', body: JSON.stringify(data) });
-
-export const getMyAppointments = () =>
-  apiFetch<Appointment[]>('/family/appointments');
-
-export const cancelMyAppointment = (id: string) =>
-  apiFetch<{ message: string }>(`/family/appointments/${id}/cancel`, { method: 'PATCH' });
+/**
+ * src/api/appointment/family-appointment.api.ts
+ * ─────────────────────────────────────────────
+ * Backward-compatibility re-export.
+ * All logic now lives in appointment.api.ts — import from there directly.
+ */
+export {
+  createAppointment,
+  getMyAppointments,
+  cancelMyAppointment,
+} from './appointment.api';
