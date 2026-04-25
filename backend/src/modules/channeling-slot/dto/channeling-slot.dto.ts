@@ -8,6 +8,7 @@ import {
   Max,
   Matches,
   IsUUID,
+  IsNumber,
 } from 'class-validator';
 import { SlotStatus } from '../entities/channeling-slot.entity';
 
@@ -46,6 +47,12 @@ export class CreateChannelingSlotDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /** Care-home charge added by admin. Optional at creation. */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  careHomeFee?: number;
 }
 
 export class UpdateChannelingSlotDto {
@@ -82,6 +89,19 @@ export class UpdateChannelingSlotDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /** Admin can add / update the care-home charge on any slot. */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  careHomeFee?: number;
+}
+
+/** Used by the doctor to update only the consultation fee on their slot. */
+export class UpdateDoctorSlotFeeDto {
+  @IsNumber()
+  @Min(0)
+  consultationFee: number;
 }
 
 export class QueryChannelingSlotsDto {

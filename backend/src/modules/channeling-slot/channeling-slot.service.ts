@@ -10,6 +10,7 @@ import { ChannelingSlot, SlotStatus } from './entities/channeling-slot.entity';
 import {
   CreateChannelingSlotDto,
   UpdateChannelingSlotDto,
+  UpdateDoctorSlotFeeDto,
   QueryChannelingSlotsDto,
 } from './dto/channeling-slot.dto';
 import { Doctor } from '../doctors/entities/doctor.entity';
@@ -100,6 +101,8 @@ export class ChannelingSlotService {
     const slot = this.slotRepo.create({
       ...dto,
       status: SlotStatus.PENDING,
+      // Seed the doctor's current consultation fee; doctor can update it later
+      consultationFee: doctor.consultationFee ?? null,
     });
 
     return this.slotRepo.save(slot);
@@ -205,6 +208,25 @@ export class ChannelingSlotService {
     if (newDate < today) throw new BadRequestException('Slot date must be today or in the future');
 
     Object.assign(slot, dto);
+    return this.slotRepo.save(slot);
+  }
+
+  /**
+   * Doctor updates the consultation fee for one of their own slots.
+   * Admin cannot call this — it is guarded at the controller level.
+   */
+  async updateDoctorSlotFee(
+    slotId: string,
+    userId: string,
+    dto: UpdateDoctorSlotFeeDto,
+  ): Promise<ChannelingSlot> {
+    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    if (!doctor) throw new NotFoundException('Doctor profile not found');
+
+    const slot = await this.slotRepo.findOne({ where: { id: slotId, doctorId: doctor.id } });
+    if (!slot) throw new NotFoundException('Slot not found or does not belong to this doctor');
+
+    slot.consultationFee = dto.consultationFee;
     return this.slotRepo.save(slot);
   }
 
