@@ -341,3 +341,11 @@ export const IconGoogle: React.FC<IconProps> = ({ className }) => (
     <path d="M24.48 9.554c3.57 0 6.762 1.226 9.282 3.634l6.946-6.946C36.428 2.384 30.984 0 24.48 0 15.147 0 6.998 5.382 3.026 13.39l7.83 6.19C12.774 13.832 18.14 9.554 24.48 9.554z" fill="#EA4335"/>
   </svg>
 );
+
+export const IconLogout: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round"strokeWidth={2}
+      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+    />
+  </svg>
+);
