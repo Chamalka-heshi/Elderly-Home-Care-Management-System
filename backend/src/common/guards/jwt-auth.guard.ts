@@ -60,6 +60,7 @@ export class JwtAuthGuard implements CanActivate {
       email: string;
       role: string;
       contactNumber: string;
+      iat: number;
     };
 
     try {
@@ -91,6 +92,19 @@ export class JwtAuthGuard implements CanActivate {
 
     if (!user.isActive) {
       throw new UnauthorizedException('This account has been deactivated');
+    }
+
+    // ── Step 6: Reject tokens issued before the last logout ───────────────
+    // `payload.iat` is seconds-since-epoch; lastLogoutAt is a Date.
+    // If the token was signed before the user last logged out, it means
+    // they've since signed out and this token must no longer be trusted.
+    if (
+      user.lastLogoutAt &&
+      payload.iat * 1000 < user.lastLogoutAt.getTime()
+    ) {
+      throw new UnauthorizedException(
+        'Token has been revoked — please log in again',
+      );
     }
 
     request.user = {
