@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 
+// Supported authentication views within the modal
 export type AuthMode = "login" | "signup" | "forgot";
 
+// Parameter types for AuthModal
 type Props = {
   open: boolean;
   mode: AuthMode;
@@ -10,6 +12,7 @@ type Props = {
   children: React.ReactNode;
 };
 
+// Reusable modal shell for authentication workflows
 export default function AuthModal({
   open,
   mode,
@@ -17,6 +20,7 @@ export default function AuthModal({
   onSwitchMode,
   children,
 }: Props) {
+  // Handle escape key and body scroll lock when modal is active
   useEffect(() => {
     if (!open) return;
 
@@ -36,6 +40,7 @@ export default function AuthModal({
 
   if (!open) return null;
 
+  // Header content configuration based on current mode
   const topLabel =
     mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Reset Password";
 
@@ -47,13 +52,13 @@ export default function AuthModal({
 
   return (
     <div className="fixed inset-0 z-[9999]">
-      {/* blur + dark overlay */}
+      {/* Darkened backdrop with blur effect */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-md"
         onClick={onClose}
       />
 
-      {/* modal container */}
+      {/* Centered modal container */}
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
         <div
           className="
@@ -64,7 +69,7 @@ export default function AuthModal({
           "
           onClick={(e) => e.stopPropagation()}
         >
-          {/* top bar */}
+          {/* Header Bar: Status and Navigation actions */}
           <div className="flex items-center justify-between border-b border-slate-200/60 bg-white/40 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
@@ -72,6 +77,7 @@ export default function AuthModal({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Quick toggle between Login/Signup */}
               <button
                 type="button"
                 onClick={() => onSwitchMode(switchTarget)}
@@ -83,6 +89,7 @@ export default function AuthModal({
                 {switchLabel}
               </button>
 
+              {/* Close Action */}
               <button
                 type="button"
                 onClick={onClose}
@@ -97,7 +104,7 @@ export default function AuthModal({
             </div>
           </div>
 
-          {/* body */}
+          {/* Modal Content: Injected Auth Card */}
           {children}
         </div>
       </div>

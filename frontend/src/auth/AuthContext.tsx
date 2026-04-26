@@ -1,7 +1,9 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from "react";
 
-export type UserRole = 'super_admin' | 'admin' | 'doctor' | 'caregiver' | 'family';
+// Supported system roles for access control
+export type UserRole = "super_admin" | "admin" | "doctor" | "caregiver" | "family";
 
+// Core user profile structure
 export interface User {
   id: string;
   fullName: string;
@@ -12,14 +14,17 @@ export interface User {
   avatarUrl?: string | null;
 }
 
+// Internal context state definition
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
 }
 
+// Global authentication context
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   setUser: () => {},
 });
 
+// Custom hook for accessing authentication state
 export const useAuth = () => useContext(AuthContext);
