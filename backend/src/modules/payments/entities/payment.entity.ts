@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Booking } from '../../bookings/entities/booking.entity';
+import { Appointment } from '../../appointments/entities/appointment.entity';
 import { FamilyMember } from '../../family/entities/family-member.entity';
 
 export enum PaymentMethod {
@@ -16,10 +17,10 @@ export enum PaymentMethod {
 }
 
 export enum PaymentStatus {
-  PENDING = 'pending',
-  PAID = 'paid',
+  PENDING          = 'pending',
+  PAID             = 'paid',
   PENDING_APPROVAL = 'pending_approval',
-  REJECTED = 'rejected',
+  REJECTED         = 'rejected',
 }
 
 @Entity('payments')
@@ -27,17 +28,25 @@ export class Payment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // ── Care-plan booking reference (nullable) ──────────────────────────────────
   @Column({ name: 'booking_id', type: 'uuid', nullable: true })
   bookingId: string | null;
-
-  @Column({ name: 'appointment_id', type: 'uuid', nullable: true })
-  appointmentId: string | null;
 
   @ManyToOne(() => Booking, { eager: true, onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'booking_id' })
   booking: Booking | null;
 
-  // Family member id resolved from JWT user context.
+  // ── Doctor appointment reference (nullable) ─────────────────────────────────
+  // Exactly ONE of bookingId / appointmentId is set per payment row.
+  @Column({ name: 'appointment_id', type: 'uuid', nullable: true })
+  appointmentId: string | null;
+
+  @ManyToOne(() => Appointment, { eager: false, onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'appointment_id' })
+  appointment: Appointment | null;
+
+  // ── Family member (payer) ───────────────────────────────────────────────────
+  // userId here stores the FamilyMember.id (not User.id) for the FK to work.
   @Column({ name: 'user_id' })
   userId: string;
 
