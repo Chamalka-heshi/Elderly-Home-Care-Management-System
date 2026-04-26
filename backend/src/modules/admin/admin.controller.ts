@@ -11,6 +11,7 @@ import {
   Request,
   HttpStatus,
 } from '@nestjs/common';
+import * as generator from 'generate-password';
 import { AdminService } from './admin.service';
 import { DoctorsService } from '../doctors/doctors.service';
 import { CaregiversService } from '../caregivers/caregivers.service';
@@ -36,9 +37,20 @@ export class AdminController {
   ) {}
 
   // ─── Helper ───────────────────────────────────────────────────────────────
-  /** Temporary password = fixed prefix + contact number */
-  private buildTempPassword(contactNumber: string): string {
-    return `CareHome@${contactNumber}`;
+  /**
+   * Generates a cryptographically random temporary password using the
+   * generate-password package. strict: true guarantees at least one character
+   * from each requested category (uppercase, lowercase, number, symbol).
+   */
+  private generateTempPassword(): string {
+    return generator.generate({
+      length: 12,
+      numbers: true,
+      uppercase: true,
+      lowercase: true,
+      symbols: true,
+      strict: true,
+    });
   }
 
   // ============ DASHBOARD STATISTICS ============
@@ -53,21 +65,19 @@ export class AdminController {
   @Roles(UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createAdmin(@Body() createAdminDto: CreateAdminDto) {
-    const tempPassword = this.buildTempPassword(createAdminDto.contactNumber);
+    const tempPassword = this.generateTempPassword();
 
-    // create() expects the DTO + an injected password
     const admin = await this.adminService.create({
       ...createAdminDto,
       password: tempPassword,
     });
     await this.usersService.setMustChangePassword(admin.user.id, true);
 
-    // Email credentials (non-blocking)
     await this.mailService.sendAccountCredentials(
       createAdminDto.email,
       createAdminDto.fullName,
       'Admin',
-      createAdminDto.contactNumber,
+      tempPassword,
     );
 
     return {
@@ -115,7 +125,7 @@ export class AdminController {
   @Post('doctors')
   @HttpCode(HttpStatus.CREATED)
   async createDoctor(@Body() createDoctorDto: CreateDoctorDto) {
-    const tempPassword = this.buildTempPassword(createDoctorDto.contactNumber!);
+    const tempPassword = this.generateTempPassword();
 
     const doctor = await this.doctorsService.create({
       ...createDoctorDto,
@@ -128,7 +138,7 @@ export class AdminController {
       createDoctorDto.email,
       createDoctorDto.fullName,
       'Doctor',
-      createDoctorDto.contactNumber!,
+      tempPassword,
     );
 
     return {
@@ -212,7 +222,7 @@ export class AdminController {
   @Post('caregivers')
   @HttpCode(HttpStatus.CREATED)
   async createCaregiver(@Body() createCaregiverDto: CreateCaregiverDto) {
-    const tempPassword = this.buildTempPassword(createCaregiverDto.contactNumber!);
+    const tempPassword = this.generateTempPassword();
 
     const caregiver = await this.caregiversService.create({
       ...createCaregiverDto,
@@ -225,7 +235,7 @@ export class AdminController {
       createCaregiverDto.email,
       createCaregiverDto.fullName,
       'Caregiver',
-      createCaregiverDto.contactNumber!,
+      tempPassword,
     );
 
     return {

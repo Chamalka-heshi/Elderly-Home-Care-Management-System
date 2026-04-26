@@ -1,5 +1,10 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const AUTH_ENDPOINTS = ['/auth/login', '/auth/firebase'];
+const AUTH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/firebase',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
 
 export const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem('token');

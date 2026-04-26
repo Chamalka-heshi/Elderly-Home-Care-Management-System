@@ -49,6 +49,72 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface FirstLoginChangePasswordRequest {
+  newPassword: string;
+  confirmPassword: string;
+}
+
+// ── Forgot-password flow ─────────────────────────────────────────────────────
+
+export interface CheckEmailResponse {
+  maskedContact: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+  contactNumber: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  tempPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  token: string;
+  user: User;
+}
+
+/**
+ * Step 1a — Check whether the email is registered; returns the masked contact number.
+ * Used to display a hint (e.g. "Your number: ****789") before the user submits.
+ */
+export const checkEmailForReset = async (email: string): Promise<CheckEmailResponse> => {
+  const params = new URLSearchParams({ email });
+  return apiFetch<CheckEmailResponse>(`/auth/forgot-password/check-email?${params}`, {
+    method: 'GET',
+  });
+};
+
+/**
+ * Step 1b — Verify email + full contact number; backend generates and emails the temp password.
+ */
+export const forgotPasswordApi = async (
+  data: ForgotPasswordRequest,
+): Promise<{ message: string }> => {
+  return apiFetch<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+/**
+ * Step 2 — Submit the temp password + new password; backend returns a JWT on success.
+ * The caller should store the session and redirect to the dashboard.
+ */
+export const resetPasswordApi = async (
+  data: ResetPasswordRequest,
+): Promise<{ message: string }> => {
+  return apiFetch<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+// ── Standard auth ────────────────────────────────────────────────────────────
+
 export const signin = async (data: SigninRequest): Promise<AuthResponse> => {
   const res = await apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
@@ -94,8 +160,6 @@ export const signout = async (
   setUser: (u: User | null) => void,
   navigate: (p: string) => void,
 ) => {
-  // Grab the token before clearing storage — the backend needs it to
-  // identify the user and stamp lastLogoutAt.
   const token = localStorage.getItem('token');
   if (token) {
     try {
@@ -107,7 +171,6 @@ export const signout = async (
         },
       });
     } catch (err) {
-      // Network failure shouldn't block the client-side logout
       console.warn('Backend logout request failed:', err);
     }
   }
@@ -129,6 +192,12 @@ export const getStoredUser = (): User | null => {
 
 export const changePasswordApi = (data: ChangePasswordRequest) =>
   apiFetch<{ message: string }>('/auth/change-password', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+export const firstLoginChangePasswordApi = (data: FirstLoginChangePasswordRequest) =>
+  apiFetch<{ message: string }>('/auth/first-login-change-password', {
     method: 'PATCH',
     body: JSON.stringify(data),
   });

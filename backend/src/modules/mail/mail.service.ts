@@ -58,27 +58,19 @@ export class MailService implements OnModuleInit {
 
   // ── Generic sender ────────────────────────────────────────────────────────
 
-  /**
-   * Generic mail sender — delegates to the shared transporter.
-   * Used by other services so they don't need their own nodemailer instance.
-   */
   async sendMail(options: nodemailer.SendMailOptions): Promise<void> {
     await this.transporter.sendMail(options);
   }
 
   // ── Account credentials ───────────────────────────────────────────────────
 
-  /**
-   * Sends login credentials to a newly created Admin / Doctor / Caregiver.
-   * Password pattern: "CareHome@" + contactNumber  (e.g. CareHome@0771234567)
-   */
   async sendAccountCredentials(
-    email:         string,
-    fullName:      string,
-    role:          string,
-    contactNumber: string,
+    email:             string,
+    fullName:          string,
+    role:              string,
+    temporaryPassword: string,
   ): Promise<void> {
-    const html = this.buildCredentialsHtml({ fullName, email, role, contactNumber });
+    const html = this.buildCredentialsHtml({ fullName, email, role, temporaryPassword });
 
     try {
       await this.transporter.sendMail({
@@ -89,18 +81,45 @@ export class MailService implements OnModuleInit {
       });
       this.logger.log(`Credentials email sent → ${email} (${role})`);
     } catch (err) {
-      // Log but don't throw — account creation should succeed even if SMTP is down
       this.logger.error(
         `Failed to send credentials email → ${email}: ${this.errMsg(err)}`,
       );
     }
   }
 
-  // ── Contact reply ─────────────────────────────────────────────────────────
+  // ── Password reset ────────────────────────────────────────────────────────
 
   /**
-   * Sends an admin reply to a contact-form submitter.
+   * Sends the temporary password to the user's registered email address
+   * when they initiate a forgot-password reset.
    */
+  async sendPasswordResetEmail(
+    email:         string,
+    fullName:      string,
+    tempPassword:  string,
+  ): Promise<void> {
+    const html = this.buildPasswordResetHtml({ fullName, email, tempPassword });
+
+    try {
+      await this.transporter.sendMail({
+        from:    this.defaultFromAddress,
+        to:      `"${fullName}" <${email}>`,
+        subject: `${this.systemName} — Your Temporary Password`,
+        html,
+      });
+      this.logger.log(`Password-reset email sent → ${email}`);
+    } catch (err) {
+      // Log but don't throw — the caller handles errors gracefully
+      this.logger.error(
+        `Failed to send password-reset email → ${email}: ${this.errMsg(err)}`,
+      );
+      // Re-throw so the controller can surface a proper error to the client
+      throw err;
+    }
+  }
+
+  // ── Contact reply ─────────────────────────────────────────────────────────
+
   async sendReplyEmail(
     recipientName:  string,
     recipientEmail: string,
@@ -126,7 +145,6 @@ export class MailService implements OnModuleInit {
       });
       this.logger.log(`Reply email sent → ${recipientEmail}`);
     } catch (err) {
-      // Fire-and-forget — reply is persisted in DB regardless of SMTP outcome
       this.logger.error(
         `Failed to send reply email → ${recipientEmail}: ${this.errMsg(err)}`,
       );
@@ -135,10 +153,6 @@ export class MailService implements OnModuleInit {
 
   // ── Prescription notification ─────────────────────────────────────────────
 
-  /**
-   * Sends a prescription summary email to the family member linked to the patient.
-   * Called by PrescriptionService after a doctor successfully creates a prescription.
-   */
   async sendPrescriptionNotification(opts: {
     to:               string;
     familyMemberName: string;
@@ -161,7 +175,6 @@ export class MailService implements OnModuleInit {
       });
       this.logger.log(`Prescription notification sent → ${opts.to}`);
     } catch (err) {
-      // Log but don't throw — prescription is already saved; email is best-effort
       this.logger.error(
         `Failed to send prescription notification → ${opts.to}: ${this.errMsg(err)}`,
       );
@@ -170,13 +183,94 @@ export class MailService implements OnModuleInit {
 
   // ── HTML builders ─────────────────────────────────────────────────────────
 
-  private buildCredentialsHtml(opts: {
-    fullName:      string;
-    email:         string;
-    role:          string;
-    contactNumber: string;
+  private buildPasswordResetHtml(opts: {
+    fullName:     string;
+    email:        string;
+    tempPassword: string;
   }): string {
-    const { fullName, email, role, contactNumber } = opts;
+    const { fullName, email, tempPassword } = opts;
+    const year = new Date().getFullYear();
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Password Reset – ${this.systemName}</title>
+  <style>
+    body        { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f1f5f9; margin:0; padding:0; }
+    .wrapper    { max-width:560px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); }
+    .header     { background:linear-gradient(135deg,#059669 0%,#047857 100%); padding:32px 40px; text-align:center; }
+    .header h1  { color:#fff; margin:0; font-size:22px; font-weight:800; letter-spacing:-.5px; }
+    .header p   { color:rgba(255,255,255,.85); margin:6px 0 0; font-size:14px; }
+    .body       { padding:36px 40px; }
+    .body p     { color:#475569; font-size:15px; line-height:1.7; margin:0 0 16px; }
+    .cred-box   { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px 24px; margin:24px 0; }
+    .cred-table { width:100%; border-collapse:collapse; }
+    .cred-table tr + tr td { padding-top:12px; }
+    .cred-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:90px; white-space:nowrap; vertical-align:middle; padding-right:10px; }
+    .cred-value { font-size:14px; font-weight:600; color:#0f172a; word-break:break-all; vertical-align:middle; }
+    .pw-value   { font-family:monospace; font-size:18px; font-weight:800; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:8px 16px; letter-spacing:2px; display:inline-block; }
+    .btn        { display:inline-block; background:linear-gradient(135deg,#059669,#047857); color:#fff !important; padding:13px 28px; border-radius:10px; text-decoration:none; font-weight:700; font-size:14px; margin:8px 0 20px; }
+    .warning    { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:14px 18px; color:#9a3412; font-size:13px; line-height:1.6; }
+    .footer     { background:#f8fafc; padding:20px 40px; text-align:center; color:#94a3b8; font-size:12px; border-top:1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <div class="header">
+      <h1>🏥 ${this.systemName}</h1>
+      <p>Password Reset Request</p>
+    </div>
+
+    <div class="body">
+      <p>Hello <strong>${fullName}</strong>,</p>
+      <p>
+        We received a password reset request for your account.
+        Use the temporary password below to set a new password. It will expire once used.
+      </p>
+
+      <div class="cred-box">
+        <table class="cred-table">
+          <tr>
+            <td class="cred-label">Email</td>
+            <td class="cred-value">${email}</td>
+          </tr>
+          <tr>
+            <td class="cred-label">Temp Password</td>
+            <td class="cred-value">
+              <span class="pw-value">${tempPassword}</span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+
+      <div class="warning">
+        ⚠️ <strong>Security notice:</strong> This temporary password is valid for a
+        single use only. After entering it, you will be prompted to choose a new
+        personal password. If you did not request a password reset, please contact
+        support immediately — someone may have access to your account.
+      </div>
+    </div>
+
+    <div class="footer">
+      © ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
+    </div>
+
+  </div>
+</body>
+</html>`;
+  }
+
+  private buildCredentialsHtml(opts: {
+    fullName:          string;
+    email:             string;
+    role:              string;
+    temporaryPassword: string;
+  }): string {
+    const { fullName, email, role, temporaryPassword } = opts;
     const year = new Date().getFullYear();
 
     return `<!DOCTYPE html>
@@ -194,13 +288,11 @@ export class MailService implements OnModuleInit {
     .body       { padding:36px 40px; }
     .body p     { color:#475569; font-size:15px; line-height:1.7; margin:0 0 16px; }
     .cred-box   { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px 24px; margin:24px 0; }
-    .cred-row   { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-    .cred-row:last-child { margin-bottom:0; }
-    .cred-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:90px; flex-shrink:0; }
-    .cred-value { font-size:14px; font-weight:600; color:#0f172a; word-break:break-all; }
-    .pw-hint    { background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; padding:14px 18px; margin:0 0 24px; }
-    .pw-hint p  { color:#065f46; font-size:13px; margin:0; }
-    .pw-hint strong { display:block; font-size:15px; letter-spacing:.3px; margin-top:6px; color:#047857; }
+    .cred-table { width:100%; border-collapse:collapse; }
+    .cred-table tr + tr td { padding-top:12px; }
+    .cred-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:90px; white-space:nowrap; vertical-align:middle; padding-right:10px; }
+    .cred-value { font-size:14px; font-weight:600; color:#0f172a; word-break:break-all; vertical-align:middle; }
+    .pw-value   { font-family:monospace; font-size:16px; font-weight:800; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:6px 12px; letter-spacing:.5px; }
     .btn        { display:inline-block; background:linear-gradient(135deg,#059669,#047857); color:#fff !important; padding:13px 28px; border-radius:10px; text-decoration:none; font-weight:700; font-size:14px; margin:8px 0 20px; }
     .warning    { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:14px 18px; color:#9a3412; font-size:13px; }
     .footer     { background:#f8fafc; padding:20px 40px; text-align:center; color:#94a3b8; font-size:12px; border-top:1px solid #e2e8f0; }
@@ -208,49 +300,38 @@ export class MailService implements OnModuleInit {
 </head>
 <body>
   <div class="wrapper">
-
     <div class="header">
       <h1>🏥 ${this.systemName}</h1>
       <p>Your ${role} account is ready</p>
     </div>
-
     <div class="body">
       <p>Hello <strong>${fullName}</strong>,</p>
       <p>
         An administrator has created a <strong>${role}</strong> account for you on the
-        ${this.systemName}. Your login credentials are below.
+        ${this.systemName}. Your one-time login credentials are below.
       </p>
-
       <div class="cred-box">
-        <div class="cred-row">
-          <span class="cred-label">Email</span>
-          <span class="cred-value">${email}</span>
-        </div>
-        <div class="cred-row">
-          <span class="cred-label">Password</span>
-          <span class="cred-value">CareHome@${contactNumber}</span>
-        </div>
+        <table class="cred-table">
+          <tr>
+            <td class="cred-label">Email</td>
+            <td class="cred-value">${email}</td>
+          </tr>
+          <tr>
+            <td class="cred-label">Password</td>
+            <td class="cred-value"><span class="pw-value">${temporaryPassword}</span></td>
+          </tr>
+        </table>
       </div>
-
-      <div class="pw-hint">
-        <p>
-          Your temporary password follows this pattern:
-          <strong>CareHome@ + your contact number</strong>
-        </p>
-      </div>
-
       <a href="${this.appUrl}/login" class="btn">Login to ${this.systemName} →</a>
-
       <div class="warning">
-        ⚠️ <strong>Action required:</strong> You will be asked to set a new password
-        immediately after your first login. Please do not share these credentials with anyone.
+        ⚠️ <strong>Action required:</strong> You will be asked to set a new personal
+        password immediately after your first login. This temporary password will stop
+        working once you change it. Do <strong>not</strong> share these credentials with anyone.
       </div>
     </div>
-
     <div class="footer">
       © ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
     </div>
-
   </div>
 </body>
 </html>`;
@@ -312,8 +393,6 @@ export class MailService implements OnModuleInit {
       <table width="600" cellpadding="0" cellspacing="0"
              style="background:#ffffff;border-radius:16px;overflow:hidden;
                     box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:600px;">
-
-        <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);padding:32px 40px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-.5px;">
@@ -324,8 +403,6 @@ export class MailService implements OnModuleInit {
             </p>
           </td>
         </tr>
-
-        <!-- Greeting -->
         <tr>
           <td style="padding:32px 40px 0;">
             <p style="margin:0 0 8px;font-size:16px;color:#0f172a;">
@@ -337,8 +414,6 @@ export class MailService implements OnModuleInit {
             </p>
           </td>
         </tr>
-
-        <!-- Summary card -->
         <tr>
           <td style="padding:24px 40px 0;">
             <table width="100%" cellpadding="0" cellspacing="0"
@@ -361,8 +436,6 @@ export class MailService implements OnModuleInit {
             </table>
           </td>
         </tr>
-
-        <!-- Medicines table -->
         <tr>
           <td style="padding:28px 40px 0;">
             <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;
@@ -386,8 +459,6 @@ export class MailService implements OnModuleInit {
             </table>
           </td>
         </tr>
-
-        <!-- Notice -->
         <tr>
           <td style="padding:24px 40px 0;">
             <table width="100%" cellpadding="0" cellspacing="0"
@@ -402,8 +473,6 @@ export class MailService implements OnModuleInit {
             </table>
           </td>
         </tr>
-
-        <!-- Footer -->
         <tr>
           <td style="padding:28px 40px;text-align:center;border-top:1px solid #e2e8f0;margin-top:28px;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
@@ -411,7 +480,6 @@ export class MailService implements OnModuleInit {
             </p>
           </td>
         </tr>
-
       </table>
     </td></tr>
   </table>
@@ -429,6 +497,7 @@ export class MailService implements OnModuleInit {
     const { recipientName, reply, originalMsg, phonePrimary, systemEmail } = opts;
     const safeReply = reply.replace(/\n/g, '<br>');
     const safeMsg   = originalMsg.replace(/\n/g, '<br>');
+    const year = new Date().getFullYear();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -443,8 +512,6 @@ export class MailService implements OnModuleInit {
       <table width="600" cellpadding="0" cellspacing="0"
              style="background:#ffffff;border-radius:10px;overflow:hidden;
                     box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:600px;">
-
-        <!-- Header -->
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:.5px;">
@@ -452,11 +519,8 @@ export class MailService implements OnModuleInit {
             </h1>
           </td>
         </tr>
-
-        <!-- Body -->
         <tr>
           <td style="padding:36px 40px;">
-
             <p style="margin:0 0 8px;font-size:16px;color:#111827;">
               Dear <strong>${recipientName}</strong>,
             </p>
@@ -464,8 +528,6 @@ export class MailService implements OnModuleInit {
               Thank you for contacting us. Our team has reviewed your enquiry and
               provided the following response:
             </p>
-
-            <!-- Reply box -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="background:#eff6ff;border-left:4px solid #2563eb;
@@ -476,10 +538,7 @@ export class MailService implements OnModuleInit {
                 </td>
               </tr>
             </table>
-
             <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
-
-            <!-- Original message -->
             <p style="margin:0 0 6px;font-size:12px;color:#9ca3af;
                       text-transform:uppercase;letter-spacing:.6px;">
               Your original message
@@ -494,11 +553,9 @@ export class MailService implements OnModuleInit {
                 </td>
               </tr>
             </table>
-
             <p style="margin:28px 0 8px;font-size:14px;color:#374151;">
               If you have any further questions, please don't hesitate to reach out:
             </p>
-
             <table cellpadding="0" cellspacing="0">
               <tr>
                 <td style="padding:4px 0;font-size:14px;color:#374151;">
@@ -512,25 +569,20 @@ export class MailService implements OnModuleInit {
                 </td>
               </tr>
             </table>
-
             <p style="margin:32px 0 0;font-size:14px;color:#374151;">
               Warm regards,<br>
               <strong>${this.systemName} Team</strong>
             </p>
-
           </td>
         </tr>
-
-        <!-- Footer -->
         <tr>
           <td style="background:#f9fafb;padding:18px 40px;text-align:center;
                      border-top:1px solid #e5e7eb;">
             <p style="margin:0;font-size:12px;color:#9ca3af;">
-              This is an automated response — please do not reply directly to this email.
+              © ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
             </p>
           </td>
         </tr>
-
       </table>
     </td></tr>
   </table>

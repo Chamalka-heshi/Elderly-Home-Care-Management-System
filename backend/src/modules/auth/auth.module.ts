@@ -11,6 +11,7 @@ import { DoctorsModule } from '../doctors/doctors.module';
 import { CaregiversModule } from '../caregivers/caregivers.module';
 import { PatientsModule } from '../patients/patients.module';
 import { AdminModule } from '../admin/admin.module';
+import { MailModule } from '../mail/mail.module';
 
 // JwtModule is globally registered via JwtConfigModule (imported in AppModule).
 @Module({
@@ -23,6 +24,7 @@ import { AdminModule } from '../admin/admin.module';
     CaregiversModule,
     PatientsModule,
     AdminModule,
+    MailModule,   // ← added for forgot-password email delivery
   ],
   controllers: [AuthController],
   providers: [AuthService, FirebaseAdminService],

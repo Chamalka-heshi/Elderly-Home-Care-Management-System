@@ -2,13 +2,20 @@
  * ForceChangePassword.tsx
  * ─────────────────────────────────────────────────────────────────────────────
  * Shown after first login of any admin-created account (Admin / Doctor / Caregiver).
- * Layout is identical to LoginCard and SignupCard — two-column with left image.
+ *
+ * The user only needs to enter:
+ *   1. A new password
+ *   2. Confirm new password
+ *
+ * The temporary password emailed to them is NOT required here — the backend
+ * verifies mustChangePassword === true before accepting this request, so the
+ * temporary secret never needs to be typed again.
  */
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
-import { changePasswordApi } from "../../../api/auth/auth.api";
+import { firstLoginChangePasswordApi } from "../../../api/auth/auth.api";
 import sideImg from "../../../assets/Home/Login Art.png";
 
 // ── strength helper ───────────────────────────────────────────────────────────
@@ -21,16 +28,14 @@ const getStrength = (pw: string) => {
 
 // ── component ─────────────────────────────────────────────────────────────────
 const ForceChangePassword: React.FC = () => {
-  const navigate        = useNavigate();
+  const navigate          = useNavigate();
   const { user, setUser } = useAuth();
 
-  const [currentPw,   setCurrentPw]   = useState("");
   const [newPw,       setNewPw]       = useState("");
   const [confirmPw,   setConfirmPw]   = useState("");
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState("");
   const [success,     setSuccess]     = useState(false);
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew,     setShowNew]     = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -45,14 +50,13 @@ const ForceChangePassword: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!currentPw)          { setError("Please enter your temporary password.");                          return; }
-    if (newPw.length < 8)    { setError("New password must be at least 8 characters.");                   return; }
-    if (newPw !== confirmPw) { setError("New passwords do not match.");                                    return; }
-    if (newPw === currentPw) { setError("New password must differ from the temporary password.");          return; }
+
+    if (newPw.length < 8)    { setError("New password must be at least 8 characters.");  return; }
+    if (newPw !== confirmPw) { setError("Passwords do not match.");                       return; }
 
     setLoading(true);
     try {
-      await changePasswordApi({ currentPassword: currentPw, newPassword: newPw });
+      await firstLoginChangePasswordApi({ newPassword: newPw, confirmPassword: confirmPw });
       if (user) setUser({ ...user, mustChangePassword: false });
       setSuccess(true);
       setTimeout(() => navigate(`/${user?.role}`, { replace: true }), 2000);
@@ -66,14 +70,13 @@ const ForceChangePassword: React.FC = () => {
   if (!user) return null;
 
   return (
-    // Page shell — same gradient background used by LoginPage / SignupPage
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50/20 to-slate-100 p-4">
       <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_32px_80px_rgba(0,0,0,0.12)]">
 
         {/* ── Two-column grid ── */}
         <div className="grid items-stretch lg:grid-cols-2">
 
-          {/* LEFT IMAGE — identical markup to LoginCard / SignupCard */}
+          {/* LEFT IMAGE */}
           <div className="relative hidden lg:block">
             <img src={sideImg} alt="Care Home" className="h-full w-full object-cover" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/35 via-black/10 to-transparent" />
@@ -99,7 +102,7 @@ const ForceChangePassword: React.FC = () => {
 
             <h1 className="mt-4 text-2xl font-black tracking-tight text-slate-900">Set your password</h1>
             <p className="mt-2 text-sm text-slate-600">
-              Your account requires a new password before you can continue.
+              Your account requires a new personal password before you can continue.
             </p>
 
             {/* Welcome hint */}
@@ -108,10 +111,8 @@ const ForceChangePassword: React.FC = () => {
                 👋 Welcome, <span className="font-extrabold">{user.fullName}</span>
               </p>
               <p className="mt-0.5 text-xs font-medium text-emerald-700">
-                Temporary password:{" "}
-                <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono font-bold">
-                  CareHome@{user.contactNumber || "<your contact number>"}
-                </span>
+                You logged in with your temporary password. Now set a new personal
+                password — you won't need to enter the temporary one again.
               </p>
             </div>
 
@@ -125,32 +126,11 @@ const ForceChangePassword: React.FC = () => {
             {/* Success */}
             {success && (
               <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                <span>✓</span><span>Password updated! Redirecting to your dashboard…</span>
+                <span>✓</span><span>Password set! Redirecting to your dashboard…</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
-
-              {/* Temporary password */}
-              <div>
-                <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-slate-700">
-                  Temporary Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCurrent ? "text" : "password"}
-                    value={currentPw}
-                    onChange={(e) => { setCurrentPw(e.target.value); setError(""); }}
-                    placeholder="Enter your temporary password"
-                    disabled={loading || success}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60 disabled:cursor-not-allowed disabled:bg-slate-50"
-                  />
-                  <button type="button" onClick={() => setShowCurrent(v => !v)} disabled={loading || success}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-70">
-                    {showCurrent ? "👁️" : "👁️‍🗨️"}
-                  </button>
-                </div>
-              </div>
 
               {/* New password */}
               <div>
@@ -163,20 +143,29 @@ const ForceChangePassword: React.FC = () => {
                     value={newPw}
                     onChange={(e) => { setNewPw(e.target.value); setError(""); }}
                     placeholder="Minimum 8 characters"
+                    autoFocus
                     disabled={loading || success}
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60 disabled:cursor-not-allowed disabled:bg-slate-50"
                   />
-                  <button type="button" onClick={() => setShowNew(v => !v)} disabled={loading || success}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-70">
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(v => !v)}
+                    disabled={loading || success}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-70"
+                  >
                     {showNew ? "👁️" : "👁️‍🗨️"}
                   </button>
                 </div>
+
                 {/* Strength bar */}
                 {newPw.length > 0 && (
                   <div className="mt-2 space-y-1">
                     <div className="flex gap-1">
                       {[1, 2, 3, 4].map(i => (
-                        <div key={i} className={`h-1.5 flex-1 rounded-full transition-all ${i <= strength.bars ? strength.color : "bg-slate-200"}`} />
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-all ${i <= strength.bars ? strength.color : "bg-slate-200"}`}
+                        />
                       ))}
                     </div>
                     <p className="text-xs text-slate-500">{strength.label}</p>
@@ -198,8 +187,12 @@ const ForceChangePassword: React.FC = () => {
                     disabled={loading || success}
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60 disabled:cursor-not-allowed disabled:bg-slate-50"
                   />
-                  <button type="button" onClick={() => setShowConfirm(v => !v)} disabled={loading || success}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-70">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(v => !v)}
+                    disabled={loading || success}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm transition hover:bg-slate-50 disabled:opacity-70"
+                  >
                     {showConfirm ? "👁️" : "👁️‍🗨️"}
                   </button>
                 </div>
@@ -213,13 +206,13 @@ const ForceChangePassword: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={loading || success}
+                disabled={loading || success || !passwordsMatch}
                 className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-extrabold text-white shadow-[0_16px_30px_rgba(16,185,129,0.25)] transition hover:-translate-y-0.5 hover:shadow-[0_26px_50px_rgba(16,185,129,0.32)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Updating…
+                    Saving…
                   </span>
                 ) : success ? "Done ✓" : "Set New Password →"}
               </button>

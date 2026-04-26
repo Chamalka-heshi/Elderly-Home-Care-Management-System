@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { FamilyService } from '../family/family.service';
@@ -20,6 +21,7 @@ import { LoginDto } from './dto/login.dto';
 import { CreatePatientDto } from '../patients/dto/create-patient.dto';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { FirebaseAdminService } from './firebase/firebase-admin.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -34,6 +36,7 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     private readonly firebaseAdmin: FirebaseAdminService,
     private readonly adminService: AdminService,
+    private readonly mailService: MailService,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -303,7 +306,7 @@ export class AuthService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Change Password
+  // Change Password (regular — requires current password)
   // ──────────────────────────────────────────────────────────────────────────
   async changePassword(userId: string, currentPw: string, newPw: string): Promise<void> {
     const user = await this.usersService.findById(userId);
@@ -320,6 +323,153 @@ export class AuthService {
     await this.usersService.setMustChangePassword(userId, false);
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // First-Login Password Change — no current-password check needed.
+  // Only allowed when mustChangePassword === true to prevent abuse.
+  // ──────────────────────────────────────────────────────────────────────────
+  async firstLoginChangePassword(userId: string, newPw: string): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.mustChangePassword) {
+      throw new UnauthorizedException(
+        'This endpoint is only available on first login.',
+      );
+    }
+
+    await this.usersService.updatePassword(userId, newPw);
+    await this.usersService.setMustChangePassword(userId, false);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — Step 1: Check email & return masked contact number
+  // ──────────────────────────────────────────────────────────────────────────
+  async checkEmailForReset(email: string): Promise<{ maskedContact: string }> {
+    const user = await this.usersService.findByEmail(email.trim().toLowerCase());
+
+    if (!user || !user.isActive) {
+      // Generic message — don't reveal whether the email exists
+      throw new NotFoundException('No account found with this email address.');
+    }
+
+    if (!user.contactNumber || user.contactNumber.trim().length < 3) {
+      throw new BadRequestException(
+        'No contact number is associated with this account. Please contact support.',
+      );
+    }
+
+    // Mask all but the last 3 digits: "+947123456789" → "**********789"
+    const contact = user.contactNumber.trim();
+    const last3   = contact.slice(-3);
+    const masked  = '*'.repeat(contact.length - 3) + last3;
+
+    return { maskedContact: masked };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — Step 2: Verify email + contact, send temp password email
+  // ──────────────────────────────────────────────────────────────────────────
+  async forgotPassword(email: string, contactNumber: string): Promise<{ message: string }> {
+    const normEmail   = email.trim().toLowerCase();
+    const normContact = contactNumber.trim();
+
+    const user = await this.usersService.findByEmail(normEmail);
+    if (!user || !user.isActive) {
+      throw new NotFoundException('No account found with this email address.');
+    }
+
+    // Verify by comparing last 3 digits — tolerant of formatting differences
+    if (!user.contactNumber || user.contactNumber.trim().length < 3) {
+      throw new BadRequestException('Contact number not on record. Please contact support.');
+    }
+
+    const storedLast3   = user.contactNumber.trim().slice(-3);
+    const submittedLast3 = normContact.slice(-3);
+
+    if (storedLast3 !== submittedLast3) {
+      throw new UnauthorizedException(
+        'The contact number you entered does not match our records.',
+      );
+    }
+
+    // Generate a random 10-character alphanumeric temp password
+    const tempPassword = crypto.randomBytes(6).toString('hex'); // 12 hex chars, e.g. "a3f7c1b2d4e9"
+
+    // Hash and save as the user's current password; flag them for mandatory change
+    const hashed = await bcrypt.hash(tempPassword, 10);
+    user.password          = hashed;
+    user.mustChangePassword = true;
+    await this.userRepository.save(user);
+
+    // Send the temp password by email
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.fullName,
+      tempPassword,
+    );
+
+    return {
+      message:
+        'A temporary password has been sent to your email address. ' +
+        'Please check your inbox and use it to set a new password.',
+    };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — Step 3: Verify temp password, set new password, return JWT
+  // ──────────────────────────────────────────────────────────────────────────
+  async resetPassword(
+    email:       string,
+    tempPassword: string,
+    newPassword:  string,
+    confirmPassword: string,
+  ): Promise<{ token: string; user: any }> {
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('New password and confirmation do not match.');
+    }
+
+    const normEmail = email.trim().toLowerCase();
+    const user      = await this.usersService.findByEmail(normEmail);
+
+    if (!user || !user.isActive) {
+      throw new NotFoundException('No account found with this email address.');
+    }
+
+    // The temp password was stored (hashed) in the password field when forgotPassword was called
+    const isValid = await bcrypt.compare(tempPassword, user.password);
+    if (!isValid) {
+      throw new UnauthorizedException('The temporary password you entered is incorrect.');
+    }
+
+    // Set the new password and clear the forced-change flag
+    const hashedNew = await bcrypt.hash(newPassword, 10);
+    user.password           = hashedNew;
+    user.mustChangePassword  = false;
+    // Invalidate any outstanding sessions so the new password is the only way in
+    user.lastLogoutAt       = new Date();
+    await this.userRepository.save(user);
+
+    // Issue a fresh JWT so the user lands on their dashboard directly
+    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
+
+    return {
+      token,
+      user: {
+        id:                 user.id,
+        fullName:           user.fullName,
+        email:              user.email,
+        role:               user.role,
+        contactNumber:      user.contactNumber,
+        mustChangePassword: false,
+      },
+    };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Private helpers
   // ──────────────────────────────────────────────────────────────────────────
   private generateToken(
     userId: string,
