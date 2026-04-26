@@ -22,6 +22,28 @@ export class PaymentsController {
     return { payments, total: payments.length };
   }
 
+  /**
+   * GET /payments/doctor
+   * Returns all payments made for this doctor's channeling slots.
+   * Shows only the consultation-fee portion (not the care-home fee).
+   */
+  @Get('doctor')
+  @Roles(UserRole.DOCTOR)
+  async getDoctorPayments(@Req() req: any) {
+    const payments = await this.paymentsService.getDoctorPayments(req.user.sub);
+    const totalIncome = payments
+      .filter((p) => p.status === 'paid')
+      .reduce((sum, p) => sum + Number(p.consultationFee), 0);
+    return { payments, total: payments.length, totalIncome };
+  }
+
+  @Get('all')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getAllPayments() {
+    const payments = await this.paymentsService.getAllPayments();
+    return { payments, total: payments.length };
+  }
+
   @Get('pending')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getPendingPayments() {
