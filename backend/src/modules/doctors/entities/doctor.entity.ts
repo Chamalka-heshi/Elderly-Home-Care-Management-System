@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,10 +6,13 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Prescription } from '../../prescription/entities/prescription.entity';
+
+import { User }           from '../../users/entities/user.entity';
+import { Prescription }   from '../../prescription/entities/prescription.entity';
 import { ChannelingSlot } from '../../channeling-slot/entities/channeling-slot.entity';
 
+
+// Extends the core user identity with professional credentials, clinical specializations, and operational availability.
 @Entity('doctors')
 export class Doctor {
   @PrimaryGeneratedColumn('uuid')
@@ -52,13 +54,13 @@ export class Doctor {
 
   @OneToMany(() => Prescription, (prescription) => prescription.doctor, {
     cascade: false,
-    eager: false,
+    eager:   false,
   })
   prescriptions: Prescription[];
 
   @OneToMany(() => ChannelingSlot, (slot) => slot.doctor, {
     cascade: false,
-    eager: false,
+    eager:   false,
   })
   channelingSlots: ChannelingSlot[];
 }

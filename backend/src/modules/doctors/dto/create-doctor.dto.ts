@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   IsEmail,
   IsNotEmpty,
@@ -10,6 +9,8 @@ import {
   Matches,
 } from 'class-validator';
 
+
+// Validates the administrative payload for registering new clinical staff, enforcing strict identity and credential formats.
 export class CreateDoctorDto {
   @IsNotEmpty()
   @IsString()
@@ -19,18 +20,11 @@ export class CreateDoctorDto {
   @IsNotEmpty()
   email: string;
 
-  /**
-   * Contact number is required — it forms the user's temporary password:
-   * CareHome@<contactNumber>. It is emailed to them on account creation.
-   */
   @IsNotEmpty()
   @IsString()
   @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
   contactNumber: string;
 
-  /**
-   * National Identity Card number — required for all doctor accounts.
-   */
   @IsNotEmpty()
   @IsString()
   @Matches(/^[0-9]{9}[vVxX]$|^[0-9]{12}$/, {
@@ -55,7 +49,6 @@ export class CreateDoctorDto {
   @Min(0)
   experienceYears: number;
 
-  // Renamed from 'department' to match the entity field
   @IsOptional()
   @IsString()
   hospitalAffiliation?: string;
@@ -83,7 +76,6 @@ export class CreateDoctorDto {
   })
   availableTimeEnd?: string;
 
-  // Internal — set by auth.service before calling doctorsService.create().
-  // Never accepted from the HTTP request body.
+  // This field is populated internally during the registration flow and is not exposed to the public API.
   password?: string;
 }

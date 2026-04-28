@@ -1,11 +1,8 @@
-/* eslint-disable prettier/prettier */
-// modules/prescription/prescription.controller.ts
 import {
   Controller,
   Get,
   Post,
   Patch,
-  Delete,
   Body,
   Param,
   Query,
@@ -15,6 +12,7 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
 } from '@nestjs/common';
+
 import { GetUser }               from '../../common/decorators/current-user.decorator';
 import { Roles }                 from '../../common/decorators/roles.decorator';
 import { UserRole }              from '../../common/enums/user-role.enum';
@@ -22,28 +20,26 @@ import { PrescriptionService }   from './prescription.service';
 import { CreatePrescriptionDto } from './dto/prescription.dto';
 import type { PrescriptionStatus } from './entities/prescription.entity';
 
-/**
- * PrescriptionsController — doctor routes only.
- *
- * Family-member prescription routes have moved to FamilyController
- * under /family/prescriptions.
- */
+
+// Manages the issuance and lifecycle of medical prescriptions by clinical staff, ensuring secure patient record associations.
 @Controller('prescriptions')
 export class PrescriptionsController {
   constructor(private readonly service: PrescriptionService) {}
 
-  // ── Doctor endpoints ──────────────────────────────────────────────────────────
-
+  // Doctor Management
+  // Permits authorized doctors to issue new clinical instructions and medication orders for specific patients.
   @Post()
   @Roles(UserRole.DOCTOR)
   @HttpCode(HttpStatus.CREATED)
-  create(
+  async create(
     @GetUser('sub') userId: string,
     @Body() dto: CreatePrescriptionDto,
   ) {
-    return this.service.create(userId, dto);
+    const prescription = await this.service.create(userId, dto);
+    return { message: 'Prescription created successfully', prescription };
   }
 
+  // Retrieves a paginated list of all prescriptions issued by the authenticated doctor, with optional status and patient filtering.
   @Get()
   @Roles(UserRole.DOCTOR)
   findAll(
@@ -56,6 +52,7 @@ export class PrescriptionsController {
     return this.service.findAll(userId, status, patientId, page, limit);
   }
 
+  // Returns granular details for a specific prescription record, verifying that it belongs to the requesting professional.
   @Get(':id')
   @Roles(UserRole.DOCTOR)
   findOne(
@@ -65,31 +62,25 @@ export class PrescriptionsController {
     return this.service.findOne(id, userId);
   }
 
+  // Terminates an active medication course prematurely due to clinical findings or patient reaction.
   @Patch(':id/discontinue')
   @Roles(UserRole.DOCTOR)
-  discontinue(
+  async discontinue(
     @GetUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.discontinue(id, userId);
+    const prescription = await this.service.discontinue(id, userId);
+    return { message: 'Prescription discontinued successfully', prescription };
   }
 
+  // Marks a medication cycle as fully executed, updating the patient's active treatment record.
   @Patch(':id/complete')
   @Roles(UserRole.DOCTOR)
-  complete(
+  async complete(
     @GetUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.complete(id, userId);
-  }
-
-  @Delete(':id')
-  @Roles(UserRole.DOCTOR)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(
-    @GetUser('sub') userId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<void> {
-    return this.service.remove(id, userId);
+    const prescription = await this.service.complete(id, userId);
+    return { message: 'Prescription marked as completed successfully', prescription };
   }
 }

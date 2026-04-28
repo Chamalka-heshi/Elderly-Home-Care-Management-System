@@ -1,12 +1,20 @@
-// src/modules/prescription/dto/prescription.dto.ts
 import {
-  IsString, IsNumber, IsOptional, IsArray, IsInt,
-  ValidateNested, IsNotEmpty, IsIn, IsDateString, Min, Max,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsInt,
+  ValidateNested,
+  IsNotEmpty,
+  IsIn,
+  IsDateString,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// ── Medicine DTO ──────────────────────────────────────────────────────────────
-
+// Medicine DTO
+// Validates individual medication entries, enforcing strict dosage, frequency, and duration constraints for patient safety.
 export class CreateMedicineDto {
   @IsString()
   @IsNotEmpty()
@@ -30,16 +38,12 @@ export class CreateMedicineDto {
   instructions?: string;
 }
 
-// ── Create Prescription ───────────────────────────────────────────────────────
-// doctorId is injected by the service from the JWT — NOT sent by the client.
-// patientId is a plain string reference — no patient table FK required.
-
+// Create Prescription DTO
+// Captures all clinical and administrative data required to issue a new medical instruction, including nested medication details.
 export class CreatePrescriptionDto {
-  // Appointment this prescription is for (optional — auto-completes appointment)
   @IsOptional()
   appointmentId?: string;
 
-  // Patient details (stored as plain strings — no patient table FK)
   @IsString()
   @IsOptional()
   patientId: string;
@@ -53,7 +57,6 @@ export class CreatePrescriptionDto {
   @Max(130)
   patientAge: number;
 
-  // Clinical
   @IsDateString()
   issuedDate: string;
 
@@ -69,15 +72,15 @@ export class CreatePrescriptionDto {
   @IsOptional()
   notes?: string;
 
-  // Medicines
+  // The collection of specific medications and treatments prescribed during the session.
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateMedicineDto)
   medicines: CreateMedicineDto[];
 }
 
-// ── Update Prescription ───────────────────────────────────────────────────────
-
+// Update Prescription DTO
+// Allows for clinical modifications to existing instructions while maintaining historical audit trails and status consistency.
 export class UpdatePrescriptionDto {
   @IsDateString()
   @IsOptional()
@@ -102,10 +105,9 @@ export class UpdatePrescriptionDto {
   medicines?: CreateMedicineDto[];
 }
 
-// ── Query DTO ─────────────────────────────────────────────────────────────────
-
+// Prescription Query DTO
+// Supports efficient retrieval of medical records through status, patient, and chronological pagination filters.
 export class PrescriptionQueryDto {
-  // patientId filter — plain string, no UUID format enforced
   @IsString()
   @IsOptional()
   patientId?: string;
@@ -128,8 +130,7 @@ export class PrescriptionQueryDto {
   limit?: number;
 }
 
-// ── Response shape ────────────────────────────────────────────────────────────
-
+// Defines the unified response structure for paginated clinical data across the professional and family portals.
 export interface PrescriptionListResponse<T> {
   data:  T[];
   total: number;
