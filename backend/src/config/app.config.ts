@@ -1,15 +1,9 @@
 import { registerAs } from '@nestjs/config';
 
-/**
- * Typed application configuration.
- *
- * Loaded once at startup via ConfigModule.forRoot({ load: [appConfig] }).
- * Inject with:  @Inject(appConfig.KEY) private config: ConfigType<typeof appConfig>
- *
- * All required env vars are validated here — the app will refuse to start
- * rather than silently use an undefined secret.
- */
+
+// Defines a strongly-typed configuration schema that centralizes environment variables for database, security, and external services.
 export const appConfig = registerAs('app', () => {
+  // Enforces the presence of critical environment variables to prevent runtime failures due to missing credentials.
   const required = (key: string): string => {
     const value = process.env[key];
     if (!value) {
@@ -24,34 +18,34 @@ export const appConfig = registerAs('app', () => {
   return {
     nodeEnv: process.env.NODE_ENV || 'development',
 
-    /** JWT — used by JwtModule */
+    // Secure Identity Configuration
     jwt: {
-      secret: required('JWT_SECRET'),
+      secret:    required('JWT_SECRET'),
       expiresIn: required('JWT_EXPIRATION'),
     },
 
-    /** CORS — restrict to your front-end origin in production */
+    // Network Security Configuration
     cors: {
       origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     },
 
-    /** PostgreSQL */
+    // Persistent Storage Configuration
     db: {
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT ?? '5432', 10),
+      host:     process.env.DB_HOST || 'localhost',
+      port:     parseInt(process.env.DB_PORT ?? '5432', 10),
       username: required('DB_USERNAME'),
       password: required('DB_PASSWORD'),
-      name: required('DB_NAME'),
+      name:     required('DB_NAME'),
     },
 
-    /** Firebase Admin SDK */
+    // Federated Identity Configuration
     firebase: {
-      projectId: process.env.FIREBASE_PROJECT_ID,
+      projectId:   process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey:  process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     },
 
-    /** Nodemailer — SMTP credentials for sending account-creation emails */
+    // Automated Notification Configuration
     mail: {
       host:    process.env.SMTP_HOST    || 'smtp.gmail.com',
       port:    parseInt(process.env.SMTP_PORT ?? '587', 10),

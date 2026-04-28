@@ -4,68 +4,57 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService }    from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Reflector } from '@nestjs/core';
-import { UsersService } from '../../modules/users/users.service';
+import { Reflector }     from '@nestjs/core';
+
+import { UsersService }  from '../../modules/users/users.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
+
+// Secures application endpoints by validating incoming JSON Web Tokens, enforcing session integrity, and verifying account active status.
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    private readonly jwtService: JwtService,
+    private readonly jwtService:    JwtService,
     private readonly configService: ConfigService,
-    private readonly usersService: UsersService,
-    private readonly reflector: Reflector,
+    private readonly usersService:  UsersService,
+    private readonly reflector:     Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // ── Step 0: Skip JWT for routes marked @Public() ──────────────────────
+    // Permits access to routes explicitly marked as public via the @Public() decorator.
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
-    if (isPublic) {
-      return true;
-    }
+    if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
-
-    // ── Step 1: Extract the raw Authorization header ─────────────────────
     const authHeader: string | undefined = request.headers['authorization'];
 
-    if (!authHeader) {
-      throw new UnauthorizedException('Authorization header is missing');
-    }
+    if (!authHeader) throw new UnauthorizedException('Authorization header is missing');
 
-    // ── Step 2: Split "Bearer <token>" and validate the format ───────────
     const parts = authHeader.split(' ');
-
     if (parts.length !== 2 || parts[0] !== 'Bearer') {
-      throw new UnauthorizedException(
-        'Authorization header must be in the format: Bearer <token>',
-      );
+      throw new UnauthorizedException('Authorization header must be in the format: Bearer <token>');
     }
 
     const token = parts[1];
+    if (!token || token.trim() === '') throw new UnauthorizedException('JWT token is missing');
 
-    if (!token || token.trim() === '') {
-      throw new UnauthorizedException('JWT token is missing');
-    }
-
-    // ── Step 3: Cryptographically verify the token ───────────────────────
     let payload: {
-      sub: string;
-      email: string;
-      role: string;
+      sub:           string;
+      email:         string;
+      role:          string;
       contactNumber: string;
-      iat: number;
+      iat:           number;
     };
 
     try {
       const secret = this.configService.get<string>('app.jwt.secret');
-      payload = await this.jwtService.verifyAsync(token, { secret });
+      payload      = await this.jwtService.verifyAsync(token, { secret });
     } catch (err: any) {
       throw new UnauthorizedException(
         err?.name === 'TokenExpiredError'
@@ -74,39 +63,30 @@ export class JwtAuthGuard implements CanActivate {
       );
     }
 
-    // ── Step 4: Validate required claims are present ─────────────────────
     if (!payload.sub || !payload.email || !payload.role) {
-      throw new UnauthorizedException(
-        'Token payload is incomplete — required claims missing',
-      );
+      throw new UnauthorizedException('Token payload is incomplete — required claims missing');
     }
 
-    // ── Step 5: DB check — confirm user still exists and is active ────────
+    // Verifies that the identity within the token corresponds to an existing and operational user account.
     const user = await this.usersService.findById(payload.sub);
 
     if (!user) {
-      throw new UnauthorizedException(
-        'User associated with this token no longer exists',
-      );
+      throw new UnauthorizedException('User associated with this token no longer exists');
     }
 
     if (!user.isActive) {
       throw new UnauthorizedException('This account has been deactivated');
     }
 
-    // ── Step 6: Reject tokens issued before the last logout ───────────────
-    // `payload.iat` is seconds-since-epoch; lastLogoutAt is a Date.
-    // If the token was signed before the user last logged out, it means
-    // they've since signed out and this token must no longer be trusted.
+    // Prevents the reuse of legacy tokens issued prior to the most recent logout event to ensure session termination.
     if (
       user.lastLogoutAt &&
       payload.iat * 1000 < user.lastLogoutAt.getTime()
     ) {
-      throw new UnauthorizedException(
-        'Token has been revoked — please log in again',
-      );
+      throw new UnauthorizedException('Token has been revoked — please log in again');
     }
 
+    // Injects the validated identity payload into the request object for downstream consumption by controllers and decorators.
     request.user = {
       sub:           payload.sub,
       email:         payload.email,
