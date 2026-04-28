@@ -6,7 +6,7 @@ import { useAuth } from "../../../auth/AuthContext";
 // Auth services
 import { signin, googleAuth, isAuthenticated, getCurrentRole } from "../../../api/auth/auth.api";
 import type { SigninRequest } from "../../../api/auth/auth.api";
-import sideImg from "../../../assets/Home/Login Art.png";
+import sideImg from "../../../assets/landing/auth-side-art.png";
 import { IconGoogle } from "../../dashboards/common/icons";
 
 // Constants

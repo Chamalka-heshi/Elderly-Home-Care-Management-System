@@ -1,14 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import Navbar from '../../components/Navbar/navbar';
-import Footer from '../../components/Footer/footer';
-import image from '../../assets/Home/c_image.png';
-import './ContactPage.css';
-
-// ─── NEW API IMPORTS ──────────────────────────────────────────────────────────
-import { getContactInfo, submitContactMessage } from '../../api/contact/public-contact.api';
-import type { ContactInfo } from '../../api/contact/contact.types';
-
-// ─── Types ────────────────────────────────────────────────────────────────
+import React, { useMemo, useState, useEffect, useCallback } from "react";
+import Navbar from "../../components/Navbar/navbar";
+import Footer from "../../components/Footer/footer";
+import image from "../../assets/landing/contact-hero.png";
+import "./ContactPage.css";
+import { getContactInfo, submitContactMessage } from "../../api/contact/public-contact.api";
+import type { ContactInfo } from "../../api/contact/contact.types";
 
 interface FormData {
   fullName: string;
@@ -17,48 +13,34 @@ interface FormData {
   message: string;
 }
 
-type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
+type SubmitState = "idle" | "submitting" | "success" | "error";
 
-// ─── Validation helpers ───────────────────────────────────────────────────
-
+// Validation logic for form fields
 const validators = {
   fullName: (v: string) =>
-    !v.trim() ? 'Full name is required' : v.trim().length < 2 ? 'Name is too short' : '',
+    !v.trim() ? "Full name is required" : v.trim().length < 2 ? "Name is too short" : "",
   email: (v: string) => {
-    if (!v.trim()) return 'Email is required';
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? '' : 'Enter a valid email address';
+    if (!v.trim()) return "Email is required";
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "" : "Enter a valid email address";
   },
   phone: (v: string) => {
-    if (!v.trim()) return '';
-    return /^[+\d][\d\s\-().]{6,19}$/.test(v) ? '' : 'Enter a valid phone number';
+    if (!v.trim()) return "";
+    return /^[+\d][\d\s\-().]{6,19}$/.test(v) ? "" : "Enter a valid phone number";
   },
   message: (v: string) =>
-    !v.trim() ? 'Message is required' : v.trim().length < 10 ? 'Message is too short' : '',
+    !v.trim() ? "Message is required" : v.trim().length < 10 ? "Message is too short" : "",
 };
 
-/**
- * Resolves a Google Maps embed URL from the stored mapUrl or address fields.
- *
- * Priority:
- * 1. Already a proper embed URL  → use directly.
- * 2. Full google.com/maps URL    → inject output=embed.
- * 3. Short URL (maps.app.goo.gl) → browsers block iframe redirect chains,
- * so fall through to address-based embed. The short URL is still used for
- * the click-out link via handleMapClick.
- * 4. Fallback: build embed from addressLine1 + city.
- */
-
-// ─── Component ────────────────────────────────────────────────────────────
-
+// Main contact page component handling info fetching and form submission
 const ContactPage: React.FC = () => {
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(true);
 
   const [formData, setFormData] = useState<FormData>({
-    fullName: '',
-    email: '',
-    phone: '',
-    message: '',
+    fullName: "",
+    email: "",
+    phone: "",
+    message: "",
   });
 
   const [touched, setTouched] = useState<Record<keyof FormData, boolean>>({
@@ -68,10 +50,10 @@ const ContactPage: React.FC = () => {
     message: false,
   });
 
-  const [submitState, setSubmitState] = useState<SubmitState>('idle');
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [charCount, setCharCount] = useState(0);
 
-  // ── Derived validation ──────────────────────────────────────────────────
+  // Derived validation results for the form
   const errors = useMemo<Record<keyof FormData, string>>(
     () => ({
       fullName: validators.fullName(formData.fullName),
@@ -87,23 +69,22 @@ const ContactPage: React.FC = () => {
     [errors],
   );
 
-  // ── Fetch contact info ──────────────────────────────────────────────────
+  // Retrieve public contact information on mount
   useEffect(() => {
     getContactInfo()
       .then(setContactInfo)
       .catch((err) => {
-        console.error('Failed to load contact info:', err);
+        console.error("Failed to load contact info:", err);
         setContactInfo(null);
       })
       .finally(() => setInfoLoading(false));
   }, []);
 
-  // ── Handlers ────────────────────────────────────────────────────────────
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       setFormData((prev) => ({ ...prev, [name]: value }));
-      if (name === 'message') setCharCount(value.length);
+      if (name === "message") setCharCount(value.length);
     },
     [],
   );
@@ -115,12 +96,13 @@ const ContactPage: React.FC = () => {
     [],
   );
 
+  // Process form submission to the contact API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ fullName: true, email: true, phone: true, message: true });
     if (!isFormValid) return;
 
-    setSubmitState('submitting');
+    setSubmitState("submitting");
     try {
       await submitContactMessage({
         fullName: formData.fullName,
@@ -128,23 +110,21 @@ const ContactPage: React.FC = () => {
         phone: formData.phone || undefined,
         message: formData.message,
       });
-      setSubmitState('success');
-      setFormData({ fullName: '', email: '', phone: '', message: '' });
+      setSubmitState("success");
+      setFormData({ fullName: "", email: "", phone: "", message: "" });
       setTouched({ fullName: false, email: false, phone: false, message: false });
       setCharCount(0);
     } catch {
-      setSubmitState('error');
+      setSubmitState("error");
     }
   };
 
-  // Opens the stored mapUrl (short or full) in a new tab securely
   const handleMapClick = () => {
     if (contactInfo?.mapUrl) {
-      window.open(contactInfo.mapUrl, '_blank', 'noopener,noreferrer');
+      window.open(contactInfo.mapUrl, "_blank", "noopener,noreferrer");
     }
   };
 
-  // ── Utilities ────────────────────────────────────────────────────────────
   const Skeleton = () => <div className="cp-skeleton" />;
 
   const fieldClass = (name: keyof FormData, base: string) => {
@@ -159,13 +139,13 @@ const ContactPage: React.FC = () => {
     <div className="cp-root">
       <Navbar />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* Hero Section: Contact Branding */}
       <section
         className="cp-hero"
         style={{
           backgroundImage: `url(${image})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       >
         <div className="cp-hero__overlay" />
@@ -197,15 +177,14 @@ const ContactPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── MAIN ────────────────────────────────────────────── */}
+      {/* Main Content: Form and Information Cards */}
       <main className="cp-main">
         <div className="cp-grid">
-
-          {/* ── FORM CARD ───────────────────────────────────── */}
+          {/* Contact Form Card */}
           <section id="contact-form" className="cp-card">
             <div className="cp-card__stripe" />
 
-            {submitState === 'success' ? (
+            {submitState === "success" ? (
               <div className="cp-success">
                 <div className="cp-success__icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -218,7 +197,7 @@ const ContactPage: React.FC = () => {
                 </p>
                 <button
                   className="cp-btn cp-btn--primary"
-                  onClick={() => setSubmitState('idle')}
+                  onClick={() => setSubmitState("idle")}
                 >
                   Send Another
                 </button>
@@ -233,8 +212,6 @@ const ContactPage: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} noValidate className="cp-form">
-
-                  {/* Row: Full Name + Email */}
                   <div className="cp-form__row">
                     <div className="cp-field">
                       <label htmlFor="fullName" className="cp-field__label">Full Name</label>
@@ -249,9 +226,9 @@ const ContactPage: React.FC = () => {
                           placeholder="Jane Smith"
                           required
                           autoComplete="name"
-                          aria-describedby={touched.fullName && errors.fullName ? 'fullName-error' : undefined}
+                          aria-describedby={touched.fullName && errors.fullName ? "fullName-error" : undefined}
                           aria-invalid={touched.fullName && !!errors.fullName}
-                          className={fieldClass('fullName', 'cp-field__input')}
+                          className={fieldClass("fullName", "cp-field__input")}
                         />
                         {touched.fullName && !errors.fullName && (
                           <span className="cp-field__tick" aria-hidden>✓</span>
@@ -277,9 +254,9 @@ const ContactPage: React.FC = () => {
                           placeholder="example@email.com"
                           required
                           autoComplete="email"
-                          aria-describedby={touched.email && errors.email ? 'email-error' : undefined}
+                          aria-describedby={touched.email && errors.email ? "email-error" : undefined}
                           aria-invalid={touched.email && !!errors.email}
-                          className={fieldClass('email', 'cp-field__input')}
+                          className={fieldClass("email", "cp-field__input")}
                         />
                         {touched.email && !errors.email && (
                           <span className="cp-field__tick" aria-hidden>✓</span>
@@ -293,7 +270,6 @@ const ContactPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Phone */}
                   <div className="cp-field">
                     <label htmlFor="phone" className="cp-field__label">
                       Phone <span className="cp-field__optional">(optional)</span>
@@ -308,9 +284,9 @@ const ContactPage: React.FC = () => {
                         onBlur={handleBlur}
                         placeholder="+94 77 777 7777"
                         autoComplete="tel"
-                        aria-describedby={touched.phone && errors.phone ? 'phone-error' : undefined}
+                        aria-describedby={touched.phone && errors.phone ? "phone-error" : undefined}
                         aria-invalid={touched.phone && !!errors.phone}
-                        className={fieldClass('phone', 'cp-field__input')}
+                        className={fieldClass("phone", "cp-field__input")}
                       />
                       {touched.phone && !errors.phone && formData.phone && (
                         <span className="cp-field__tick" aria-hidden>✓</span>
@@ -323,14 +299,13 @@ const ContactPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Message */}
                   <div className="cp-field">
                     <div className="cp-field__label-row">
                       <label htmlFor="message" className="cp-field__label">Message</label>
                       <span
                         className={`cp-field__count ${
-                          charDanger  ? 'cp-field__count--danger'  :
-                          charWarning ? 'cp-field__count--warning' : ''
+                          charDanger  ? "cp-field__count--danger"  :
+                          charWarning ? "cp-field__count--warning" : ""
                         }`}
                       >
                         {charCount}/2000
@@ -346,9 +321,9 @@ const ContactPage: React.FC = () => {
                       required
                       rows={5}
                       maxLength={2000}
-                      aria-describedby={touched.message && errors.message ? 'message-error' : undefined}
+                      aria-describedby={touched.message && errors.message ? "message-error" : undefined}
                       aria-invalid={touched.message && !!errors.message}
-                      className={fieldClass('message', 'cp-field__textarea')}
+                      className={fieldClass("message", "cp-field__textarea")}
                     />
                     {touched.message && errors.message && (
                       <span id="message-error" className="cp-field__error" role="alert">
@@ -357,7 +332,7 @@ const ContactPage: React.FC = () => {
                     )}
                   </div>
 
-                  {submitState === 'error' && (
+                  {submitState === "error" && (
                     <div className="cp-alert cp-alert--error" role="alert">
                       <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" style={{ flexShrink: 0 }}>
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -368,14 +343,14 @@ const ContactPage: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={submitState === 'submitting'}
+                    disabled={submitState === "submitting"}
                     className="cp-btn cp-btn--submit"
-                    aria-busy={submitState === 'submitting'}
+                    aria-busy={submitState === "submitting"}
                   >
-                    {submitState === 'submitting' ? (
+                    {submitState === "submitting" ? (
                       <><span className="cp-spinner" aria-hidden />Sending…</>
                     ) : (
-                      'Send Message'
+                      "Send Message"
                     )}
                     <span className="cp-btn__shine" aria-hidden />
                   </button>
@@ -384,10 +359,9 @@ const ContactPage: React.FC = () => {
             )}
           </section>
 
-          {/* ── INFO CARDS ──────────────────────────────────── */}
+          {/* Contact Information Sidebar */}
           <aside className="cp-info" aria-label="Contact information">
-
-            {/* Call */}
+            {/* Primary Phone Support */}
             <div className="cp-info-card cp-info-card--green">
               <div className="cp-info-card__icon">
                 <svg viewBox="0 0 20 20" fill="currentColor">
@@ -405,7 +379,7 @@ const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Email */}
+            {/* Email Support */}
             <div className="cp-info-card cp-info-card--purple">
               <div className="cp-info-card__icon">
                 <svg viewBox="0 0 20 20" fill="currentColor">
@@ -424,17 +398,16 @@ const ContactPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Physical Address and Mapping */}
             <div className="cp-info-card cp-info-card--neutral">
               <div className="cp-info-card__icon">
                 <svg viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
               </div>
-
               <div className="cp-info-card__content">
                 <h3 className="cp-info-card__title">Visit Us</h3>
                 <p className="cp-info-card__sub">Come and meet us</p>
-
                 {infoLoading ? (
                   <Skeleton />
                 ) : contactInfo?.addressLine1 ? (
@@ -456,7 +429,7 @@ const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Hours */}
+            {/* Availability and Operating Hours */}
             <div className="cp-info-card cp-info-card--hours">
               <div className="cp-info-card__icon">
                 <svg viewBox="0 0 20 20" fill="currentColor">
@@ -468,7 +441,7 @@ const ContactPage: React.FC = () => {
                 <p className="cp-info-card__sub">When we're available</p>
                 {infoLoading ? <Skeleton /> : (
                   <p className="cp-info-card__address">
-                    {contactInfo?.openHours ?? '—'}
+                    {contactInfo?.openHours ?? "—"}
                     <br />
                     <span className="cp-badge cp-badge--green">Emergency line open 24/7</span>
                   </p>

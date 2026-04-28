@@ -1,10 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-import * as channelingApi from '../../../../api/channeling/admin-channeling.api';
-import { getAllDoctors } from '../../../../api/users/admin-users.api';
-import type { ChannelingSlot, SlotStatus } from '../../../../api/channeling/channeling.types';
-import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen } from '../../../../api/channeling/channeling.types';
-
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as channelingApi from "../../../../api/channeling/admin-channeling.api";
+import { getAllDoctors } from "../../../../api/users/admin-users.api";
+import type { ChannelingSlot, SlotStatus } from "../../../../api/channeling/channeling.types";
+import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen } from "../../../../api/channeling/channeling.types";
 import {
   IconCalendar,
   IconClock,
@@ -15,9 +13,9 @@ import {
   IconFilter,
   IconStethoscope,
   IconEdit,
-} from '../../common/icons';
+} from "../../common/icons";
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => new Date().toISOString().split("T")[0];
 
 // Doctor name resolver - admin API returns flat Doctor objects (fullName at top level)
 function resolveDoctorName(slot: ChannelingSlot, doctors: any[]): string {
@@ -29,36 +27,37 @@ function resolveDoctorName(slot: ChannelingSlot, doctors: any[]): string {
 
   // Fallback: look up from the separately-fetched doctors array
   const found = doctors.find((d) => d.id === slot.doctorId);
-  return found?.fullName || 'Unknown Doctor';
+  return found?.fullName || "Unknown Doctor";
 }
 
 function resolveDoctorSpecialization(slot: ChannelingSlot, doctors: any[]): string {
   const fromSlot = slot.doctor?.specialization;
   if (fromSlot) return fromSlot;
   const found = doctors.find((d) => d.id === slot.doctorId);
-  return found?.specialization || '—';
+  return found?.specialization || "—";
 }
 
+// Renders a visual status indicator with dynamic colors and animations
 function statusBadge(slot: ChannelingSlot) {
-  if (slot.status === 'cancelled')
+  if (slot.status === "cancelled")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-100">
         <span className="h-1.5 w-1.5 rounded-full bg-red-400" /> Cancelled
       </span>
     );
-  if (slot.status === 'completed')
+  if (slot.status === "completed")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Completed
       </span>
     );
-  if (slot.status === 'rejected')
+  if (slot.status === "rejected")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-100">
         <span className="h-1.5 w-1.5 rounded-full bg-red-400" /> Rejected
       </span>
     );
-  if (slot.status === 'pending')
+  if (slot.status === "pending")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-100">
         <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> Pending
@@ -89,47 +88,48 @@ function statusBadge(slot: ChannelingSlot) {
 
 const TIMES = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2);
-  const m = i % 2 === 0 ? '00' : '30';
-  return `${String(h).padStart(2, '0')}:${m}`;
+  const m = i % 2 === 0 ? "00" : "30";
+  return `${String(h).padStart(2, "0")}:${m}`;
 });
 
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10';
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10";
 
-// ─── ADD SLOT MODAL ────────────────────────────────────────────────────────
 interface AddSlotModalProps {
   doctors: any[];
   onClose: () => void;
   onCreated: () => void;
-  addToast: (kind: 'success' | 'error', msg: string) => void;
+  addToast: (kind: "success" | "error", msg: string) => void;
 }
 
+// Modal form for creating new channeling sessions for medical staff
 const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated, addToast }) => {
   const activeDoctors = doctors.filter((d) => d.isActive);
-  const [doctorId, setDoctorId] = useState('');
-  const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('10:00');
+  const [doctorId, setDoctorId] = useState("");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("10:00");
   const [maxPatients, setMaxPatients] = useState(20);
   const [cutoff, setCutoff] = useState(15);
-  const [notes, setNotes] = useState('');
-  const [careHomeFee, setCareHomeFee] = useState<number | ''>('');
+  const [notes, setNotes] = useState("");
+  const [careHomeFee, setCareHomeFee] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
 
   const selectedDoc = useMemo(() => activeDoctors.find((d) => d.id === doctorId), [activeDoctors, doctorId]);
 
+  // Safely parse doctor's predefined availability from various backend formats
   const parsedAvailableDays = useMemo(() => {
     if (!selectedDoc || !selectedDoc.availableDays) return [];
     let rawData: any = selectedDoc.availableDays;
     if (Array.isArray(rawData)) return rawData;
-    if (typeof rawData === 'string') {
+    if (typeof rawData === "string") {
       try { rawData = JSON.parse(rawData); } catch (e) {}
-      try { if (typeof rawData === 'string') rawData = JSON.parse(rawData); } catch (e) {}
+      try { if (typeof rawData === "string") rawData = JSON.parse(rawData); } catch (e) {}
       if (Array.isArray(rawData)) return rawData;
-      if (typeof rawData === 'string') {
+      if (typeof rawData === "string") {
         return String(selectedDoc.availableDays)
-          .replace(/[\[\]"'\\]/g, '')
-          .split(',')
+          .replace(/[\[\]"'\\]/g, "")
+          .split(",")
           .map((s: string) => s.trim())
           .filter(Boolean);
       }
@@ -141,24 +141,26 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   const validEndTimes = useMemo(() => TIMES.filter((t) => t > startTime), [startTime]);
 
   useEffect(() => {
-    if (endTime <= startTime) setEndTime(validEndTimes[0] ?? '23:30');
+    if (endTime <= startTime) setEndTime(validEndTimes[0] ?? "23:30");
   }, [startTime, endTime, validEndTimes]);
 
+  // Visual feedback for when booking window will automatically close
   const cutoffDisplay = useMemo(() => {
     if (!date || !startTime) return null;
-    return bookingCutoffDate(date, startTime, cutoff).toLocaleString('en-GB', {
-      hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
+    return bookingCutoffDate(date, startTime, cutoff).toLocaleString("en-GB", {
+      hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
     });
   }, [date, startTime, cutoff]);
 
+  // Handle channeling slot creation with validation and toast feedback
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!doctorId || !date || !startTime || !endTime) {
-      addToast('error', 'Please fill all required fields');
+      addToast("error", "Please fill all required fields");
       return;
     }
     if (endTime <= startTime) {
-      addToast('error', 'End time must be after start time');
+      addToast("error", "End time must be after start time");
       return;
     }
     try {
@@ -168,12 +170,12 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
         bookingCutoffMinutes: cutoff,
         maxPatients,
         notes: notes || undefined,
-        careHomeFee: careHomeFee !== '' ? careHomeFee : undefined,
+        careHomeFee: careHomeFee !== "" ? careHomeFee : undefined,
       });
-      addToast('success', 'Channeling slot created successfully. Waiting for doctor approval.');
+      addToast("success", "Channeling slot created successfully. Waiting for doctor approval.");
       onCreated();
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to create slot');
+      addToast("error", err instanceof Error ? err.message : "Failed to create slot");
     } finally {
       setSaving(false);
     }
@@ -182,6 +184,8 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh]">
+        
+        {/* Modal Header: Navigation and contextual help */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-600 text-white">
@@ -198,7 +202,6 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-5 space-y-4">
-          {/* Doctor selector */}
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">Doctor <span className="text-red-500">*</span></label>
             <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className={inputCls} required>
@@ -209,15 +212,16 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
             </select>
 
             {selectedDoc && (
+              /* Doctor Preference Context: Helpful hint for aligning with their schedule */
               <div className="mt-2 flex items-center gap-2 rounded-xl bg-blue-50/70 px-3 py-2 text-[11px] text-blue-800 ring-1 ring-blue-100/50">
                 <IconClock className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                 {hasAvailability ? (
                   <span>
                     <strong className="font-semibold text-blue-900 mr-1">Preferred:</strong>
-                    {parsedAvailableDays.length > 0 ? parsedAvailableDays.join(', ') : 'Any day'}
+                    {parsedAvailableDays.length > 0 ? parsedAvailableDays.join(", ") : "Any day"}
                     {selectedDoc.availableTimeStart && selectedDoc.availableTimeEnd
                       ? ` (${fmt12(selectedDoc.availableTimeStart)} - ${fmt12(selectedDoc.availableTimeEnd)})`
-                      : ''}
+                      : ""}
                   </span>
                 ) : (
                   <span className="italic text-blue-600/70">No availability set by this doctor yet.</span>
@@ -226,7 +230,6 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
             )}
           </div>
 
-          {/* Date · Start · End in one row */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Date <span className="text-red-500">*</span></label>
@@ -246,7 +249,6 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
             </div>
           </div>
 
-          {/* Cutoff · Max Patients · Care Home Fee in one row */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Cutoff (min)</label>
@@ -265,13 +267,12 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">Care Home Fee <span className="font-normal text-slate-400 text-[10px]">(LKR, opt.)</span></label>
               <input
                 type="number" min={0} step={0.01} value={careHomeFee}
-                onChange={(e) => setCareHomeFee(e.target.value === '' ? '' : Number(e.target.value))}
+                onChange={(e) => setCareHomeFee(e.target.value === "" ? "" : Number(e.target.value))}
                 placeholder="e.g. 500" className={inputCls}
               />
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">Notes <span className="font-normal text-slate-400">(optional)</span></label>
             <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Cardiology clinic only" className={`${inputCls} resize-none`} />
@@ -285,7 +286,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-700 disabled:opacity-60">
               {saving ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <IconPlus />}
-              {saving ? 'Creating…' : 'Create Slot'}
+              {saving ? "Creating…" : "Create Slot"}
             </button>
           </div>
         </form>
@@ -294,22 +295,22 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
   );
 };
 
-// ─── EDIT SLOT MODAL ───────────────────────────────────────────────────────
 interface EditSlotModalProps {
   slot: ChannelingSlot;
   doctors: any[];
   onClose: () => void;
   onUpdated: () => void;
-  addToast: (kind: 'success' | 'error', msg: string) => void;
+  addToast: (kind: "success" | "error", msg: string) => void;
 }
 
+// Modal for modifying existing channeling slots that are still pending
 const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, onUpdated, addToast }) => {
   const [startTime, setStartTime] = useState(slot.startTime);
   const [endTime, setEndTime] = useState(slot.endTime);
   const [maxPatients, setMaxPatients] = useState(slot.maxPatients);
   const [cutoff, setCutoff] = useState(slot.bookingCutoffMinutes);
-  const [notes, setNotes] = useState(slot.notes ?? '');
-  const [careHomeFee, setCareHomeFee] = useState<number | ''>(slot.careHomeFee ?? '');
+  const [notes, setNotes] = useState(slot.notes ?? "");
+  const [careHomeFee, setCareHomeFee] = useState<number | "">(slot.careHomeFee ?? "");
   const [saving, setSaving] = useState(false);
 
   const doctorName = resolveDoctorName(slot, doctors);
@@ -318,30 +319,31 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
 
   const validEndTimes = useMemo(() => TIMES.filter((t) => t > startTime), [startTime]);
   useEffect(() => {
-    if (endTime <= startTime) setEndTime(validEndTimes[0] ?? '23:30');
+    if (endTime <= startTime) setEndTime(validEndTimes[0] ?? "23:30");
   }, [startTime, endTime, validEndTimes]);
 
   const cutoffDisplay = useMemo(() =>
-    bookingCutoffDate(slot.date, startTime, cutoff).toLocaleString('en-GB', {
-      hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
+    bookingCutoffDate(slot.date, startTime, cutoff).toLocaleString("en-GB", {
+      hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
     }),
     [slot.date, startTime, cutoff]
   );
 
+  // Apply updates with logic re-triggering doctor re-approval
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (endTime <= startTime) return addToast('error', 'End time must be after start time');
+    if (endTime <= startTime) return addToast("error", "End time must be after start time");
     try {
       setSaving(true);
       await channelingApi.updateChannelingSlot(slot.id, {
         startTime, endTime, maxPatients, bookingCutoffMinutes: cutoff,
         notes: notes || undefined,
-        careHomeFee: careHomeFee !== '' ? careHomeFee : undefined,
+        careHomeFee: careHomeFee !== "" ? careHomeFee : undefined,
       });
-      addToast('success', 'Channeling slot updated successfully');
+      addToast("success", "Channeling slot updated successfully");
       onUpdated();
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to update slot');
+      addToast("error", err instanceof Error ? err.message : "Failed to update slot");
     } finally {
       setSaving(false);
     }
@@ -351,7 +353,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh]">
 
-        {/* ── Header ── */}
+        {/* Modal Header: Edit context */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white">
@@ -368,8 +370,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto">
-
-          {/* ── Doctor + Slot info (compact row) ── */}
+          {/* Slot Metadata Card: Permanent details display */}
           <div className="px-6 py-4 grid grid-cols-2 gap-3">
             <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
               <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100">
@@ -396,11 +397,9 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
             </div>
           </div>
 
-          {/* ── Editable fields ── */}
           <div className="space-y-4 px-6 pb-5">
             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Edit Timings &amp; Capacity</p>
 
-            {/* Start · End · Cutoff · Max in two rows */}
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700">Start Time <span className="text-red-500">*</span></label>
@@ -427,7 +426,6 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
               </div>
             </div>
 
-            {/* Care Home Fee · Notes */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -435,7 +433,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
                 </label>
                 <input
                   type="number" min={0} step={0.01} value={careHomeFee}
-                  onChange={(e) => setCareHomeFee(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => setCareHomeFee(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="e.g. 500" className={inputCls}
                 />
               </div>
@@ -450,14 +448,13 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
             </p>
           </div>
 
-          {/* ── Footer ── */}
           <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Cancel
             </button>
             <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-60">
               {saving ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <IconEdit />}
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? "Saving…" : "Save Changes"}
             </button>
           </div>
         </form>
@@ -466,28 +463,27 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   );
 };
 
-// ─── SLOT CARD ─────────────────────────────────────────────────────────────
 interface SlotCardProps {
   slot: ChannelingSlot;
-  doctors: any[]; // ← ADDED
+  doctors: any[];
   onEdit: (slot: ChannelingSlot) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
+// Individual slot record display with conditional action triggers
 const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, onDelete }) => {
   const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
   const isPast = slotEnd < new Date();
-  const isCancelled = slot.status === 'cancelled';
-  const isRejected = slot.status === 'rejected';
+  const isCancelled = slot.status === "cancelled";
+  const isRejected = slot.status === "rejected";
 
-  // FIX: Always resolved from doctors array as fallback
   const doctorName = resolveDoctorName(slot, doctors);
   const doctorSpec = resolveDoctorSpecialization(slot, doctors);
 
   return (
     <div className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md ${
-      isCancelled || isRejected ? 'border-red-100 opacity-70' : isPast ? 'border-slate-200 opacity-80' : 'border-slate-200 hover:-translate-y-0.5'
+      isCancelled || isRejected ? "border-red-100 opacity-70" : isPast ? "border-slate-200 opacity-80" : "border-slate-200 hover:-translate-y-0.5"
     }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
@@ -495,7 +491,6 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
             <IconStethoscope className="h-5 w-5 text-emerald-700" />
           </div>
           <div className="min-w-0">
-            {/* FIX: doctorName always resolved */}
             <p className="truncate text-sm font-bold text-slate-800">{doctorName}</p>
             <p className="truncate text-xs text-slate-500">{doctorSpec}</p>
           </div>
@@ -520,7 +515,6 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
 
       {slot.notes && <p className="mt-2 text-xs italic text-slate-500 line-clamp-1">{slot.notes}</p>}
 
-      {/* Fee summary row */}
       <div className="mt-2 flex flex-wrap gap-2 text-xs">
         {slot.consultationFee != null && (
           <span className="rounded-lg bg-blue-50 px-2 py-0.5 text-blue-700 font-medium">
@@ -541,8 +535,8 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
 
       {!isCancelled && !isPast && !isRejected && (
         <div className="mt-3 flex justify-end gap-2">
-          {/* Only show Edit & Delete when still pending — once doctor approves (active), lock those actions */}
-          {slot.status !== 'active' && (
+          {/* Lock modifications for active/live slots */}
+          {slot.status !== "active" && (
             <>
               <button onClick={() => onEdit(slot)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
                 <IconEdit className="h-3.5 w-3.5" /> Edit
@@ -568,21 +562,21 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
   );
 };
 
-// ─── WEEKLY STRIP ──────────────────────────────────────────────────────────
 interface WeeklyStripProps {
   slots: ChannelingSlot[];
   doctors: any[];
 }
 
+// Visual calendar strip showing slot distribution over the upcoming week
 const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>("");
   const activeDoctors = doctors.filter((d) => d.isActive);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() + i); return d.toISOString().split('T')[0];
+    const d = new Date(); d.setDate(d.getDate() + i); return d.toISOString().split("T")[0];
   }), []);
 
   const relevantSlots = useMemo(() => slots.filter((s) =>
-    (s.status === 'active' || s.status === 'pending') &&
+    (s.status === "active" || s.status === "pending") &&
     days.includes(s.date) &&
     (selectedDoctorId ? s.doctorId === selectedDoctorId : true)
   ), [slots, days, selectedDoctorId]);
@@ -613,19 +607,18 @@ const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
           const isToday = day === today();
           return (
             <div key={day} className="min-h-[90px]">
-              <div className={`mb-1 rounded-xl px-2 py-1.5 text-center ${isToday ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-600'}`}>
-                <p className="text-[10px] font-semibold">{new Date(day + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short' })}</p>
-                <p className="text-xs font-bold">{new Date(day + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+              <div className={`mb-1 rounded-xl px-2 py-1.5 text-center ${isToday ? "bg-emerald-600 text-white" : "bg-slate-50 text-slate-600"}`}>
+                <p className="text-[10px] font-semibold">{new Date(day + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short" })}</p>
+                <p className="text-xs font-bold">{new Date(day + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</p>
               </div>
               <div className="space-y-0.5">
                 {daySlots.map((s) => {
-                  // FIX: Tooltip uses resolved name
                   const name = resolveDoctorName(s, doctors);
                   return (
                     <div
                       key={s.id}
                       title={`${name} · ${fmt12(s.startTime)}–${fmt12(s.endTime)}`}
-                      className={`truncate rounded-lg px-1.5 py-1 text-[10px] font-semibold ring-1 ${s.status === 'pending' ? 'bg-amber-50 text-amber-800 ring-amber-100' : 'bg-emerald-50 text-emerald-800 ring-emerald-100'}`}
+                      className={`truncate rounded-lg px-1.5 py-1 text-[10px] font-semibold ring-1 ${s.status === "pending" ? "bg-amber-50 text-amber-800 ring-amber-100" : "bg-emerald-50 text-emerald-800 ring-emerald-100"}`}
                     >
                       {fmt12(s.startTime)}
                     </div>
@@ -643,9 +636,9 @@ const WeeklyStrip: React.FC<WeeklyStripProps> = ({ slots, doctors }) => {
   );
 };
 
-// ─── MAIN PAGE ─────────────────────────────────────────────────────────────
-interface Props { addToast: (kind: 'success' | 'error', message: string) => void; }
+interface Props { addToast: (kind: "success" | "error", message: string) => void; }
 
+// Main administrative dashboard for managing doctor channeling session times
 const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
   const [slots, setSlots] = useState<ChannelingSlot[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -653,15 +646,16 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<ChannelingSlot | null>(null);
 
-  const [filterDoctor, setFilterDoctor] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'' | SlotStatus>('');
-  const [filterFromDate, setFilterFromDate] = useState('');
-  const [filterToDate, setFilterToDate] = useState('');
+  const [filterDoctor, setFilterDoctor] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"" | SlotStatus>("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const addToastRef = useRef(addToast);
   useEffect(() => { addToastRef.current = addToast; }, [addToast]);
 
+  // Synchronize slot and doctor data from the backend with current filters
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -677,7 +671,7 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
       setSlots(slotsData.slots);
       setDoctors(doctorsData.doctors);
     } catch (err) {
-      addToastRef.current('error', err instanceof Error ? err.message : 'Failed to load data');
+      addToastRef.current("error", err instanceof Error ? err.message : "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -686,41 +680,44 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleCancelSlot = async (id: string) => {
-    if (!window.confirm('Cancel this channeling slot?')) return;
+    if (!window.confirm("Cancel this channeling slot?")) return;
     try {
       const res = await channelingApi.cancelChannelingSlot(id);
-      addToast('success', res.message);
+      addToast("success", res.message);
       loadData();
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to cancel slot');
+      addToast("error", err instanceof Error ? err.message : "Failed to cancel slot");
     }
   };
 
   const handleDeleteSlot = async (id: string) => {
-    if (!window.confirm('Permanently delete this slot?')) return;
+    if (!window.confirm("Permanently delete this slot?")) return;
     try {
       const res = await channelingApi.deleteChannelingSlot(id);
-      addToast('success', res.message);
+      addToast("success", res.message);
       setSlots((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to delete slot');
+      addToast("error", err instanceof Error ? err.message : "Failed to delete slot");
     }
   };
 
   const handleSlotCreated = () => { loadData(); setShowAddModal(false); };
   const handleSlotUpdated = () => { loadData(); setEditingSlot(null); };
 
+  // Calculate live statistical highlights for the dashboard metrics
   const stats = useMemo(() => {
-    const upcomingActive = slots.filter((s) => s.status === 'active' && s.date >= today());
+    const upcomingActive = slots.filter((s) => s.status === "active" && s.date >= today());
     const bookingOpen = upcomingActive.filter(isBookingOpen);
     const uniqueDoctors = new Set(upcomingActive.map((s) => s.doctorId)).size;
     return { total: slots.length, upcomingActive: upcomingActive.length, bookingOpen: bookingOpen.length, uniqueDoctors };
   }, [slots]);
 
-  const filterInputCls = 'rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10';
+  const filterInputCls = "rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10";
 
   return (
     <div className="space-y-6">
+      
+      {/* Hero Section: Branding and Primary Call to Action */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Channeling Slot Management</h1>
@@ -731,12 +728,13 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
         </button>
       </div>
 
+      {/* KPI Stats Grid: Real-time system performance and capacity */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: 'Total Slots', value: stats.total, color: 'slate' },
-          { label: 'Upcoming Active', value: stats.upcomingActive, color: 'emerald' },
-          { label: 'Booking Open', value: stats.bookingOpen, color: 'green' },
-          { label: 'Doctors Scheduled', value: stats.uniqueDoctors, color: 'blue' },
+          { label: "Total Slots", value: stats.total, color: "slate" },
+          { label: "Upcoming Active", value: stats.upcomingActive, color: "emerald" },
+          { label: "Booking Open", value: stats.bookingOpen, color: "green" },
+          { label: "Doctors Scheduled", value: stats.uniqueDoctors, color: "blue" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold text-slate-500">{label}</p>
@@ -747,26 +745,28 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
 
       <WeeklyStrip slots={slots} doctors={doctors} />
 
+      {/* Main List View: Filterable and searchable channeling session database */}
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-slate-800">All Slots</h3>
           <button onClick={() => setShowFilters((f) => !f)} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-            <IconFilter /> Filters {showFilters ? '▲' : '▼'}
+            <IconFilter /> Filters {showFilters ? "▲" : "▼"}
           </button>
         </div>
 
         {showFilters && (
+          /* Filter Palette: Granular refinements for the data set */
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-slate-600">Doctor</label>
-              <select value={filterDoctor} onChange={(e) => setFilterDoctor(e.target.value)} className={filterInputCls + ' w-full'}>
+              <select value={filterDoctor} onChange={(e) => setFilterDoctor(e.target.value)} className={filterInputCls + " w-full"}>
                 <option value="">All Doctors</option>
                 {doctors.filter((d) => d.isActive).map((d) => <option key={d.id} value={d.id}>{d.fullName}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-slate-600">Status</label>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as '' | SlotStatus)} className={filterInputCls + ' w-full'}>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as "" | SlotStatus)} className={filterInputCls + " w-full"}>
                 <option value="">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="active">Active</option>
@@ -777,21 +777,23 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-slate-600">From Date</label>
-              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className={filterInputCls + ' w-full'} />
+              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className={filterInputCls + " w-full"} />
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-slate-600">To Date</label>
-              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className={filterInputCls + ' w-full'} />
+              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className={filterInputCls + " w-full"} />
             </div>
           </div>
         )}
 
         <div className="mt-5">
           {loading ? (
+            /* Loading State Backdrop */
             <div className="flex items-center justify-center py-16">
               <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
             </div>
           ) : slots.length === 0 ? (
+            /* Empty State Visualization */
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-16 text-center">
               <div className="grid h-16 w-16 place-items-center rounded-2xl bg-slate-100">
                 <IconCalendar className="h-8 w-8 text-slate-400" />
@@ -799,9 +801,9 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
               <p className="mt-4 text-sm font-semibold text-slate-600">No channeling slots found</p>
             </div>
           ) : (
+            /* Primary Slot Record Grid */
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {slots.map((slot) => (
-                // FIX: doctors passed into SlotCard
                 <SlotCard key={slot.id} slot={slot} doctors={doctors} onEdit={setEditingSlot} onCancel={handleCancelSlot} onDelete={handleDeleteSlot} />
               ))}
             </div>
@@ -813,7 +815,6 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
         <AddSlotModal doctors={doctors} onClose={() => setShowAddModal(false)} onCreated={handleSlotCreated} addToast={addToast} />
       )}
       {editingSlot && (
-        // FIX: doctors passed into EditSlotModal
         <EditSlotModal slot={editingSlot} doctors={doctors} onClose={() => setEditingSlot(null)} onUpdated={handleSlotUpdated} addToast={addToast} />
       )}
     </div>

@@ -1,7 +1,3 @@
-/**
- * src/features/dashboards/common/DangerZoneTab.tsx
- */
-
 import React from "react";
 import { SectionCard, PrimaryBtn } from "./ui";
 import { IconAlert } from "./icons";
@@ -11,6 +7,7 @@ interface Props {
   deleteButton?:  React.ReactNode;
 }
 
+// Visual container for destructive or irreversible actions to prevent accidental data loss
 const DangerZoneTab: React.FC<Props> = ({
   deleteNote,
   deleteButton,
@@ -18,7 +15,6 @@ const DangerZoneTab: React.FC<Props> = ({
   <div className="space-y-6">
     <SectionCard title="Danger Zone" subtitle="These actions are permanent and cannot be undone.">
 
-      {/* ── Delete account ── */}
       <div className="rounded-2xl border border-red-200/60 bg-red-50/60 p-5 backdrop-blur">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
@@ -31,12 +27,14 @@ const DangerZoneTab: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* Trigger a secondary confirmation before performing the final account deletion */}
           {deleteButton ?? (
             <PrimaryBtn
               tone="red"
               type="button"
               onClick={() => {
                 if (window.confirm("Are you absolutely sure? This action cannot be undone.")) {
+                  // Final deletion logic to be handled by the parent component
                 }
               }}
             >

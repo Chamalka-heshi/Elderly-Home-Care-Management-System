@@ -1,19 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, ChangeEvent } from "react";
-import {
-  checkEmailForReset,
-  forgotPasswordApi,
-  resetPasswordApi,
-} from "../../../api/auth/auth.api";
-import sideImg from "../../../assets/Home/Login Art.png";
+import { checkEmailForReset, forgotPasswordApi, resetPasswordApi } from "../../../api/auth/auth.api";
+import sideImg from "../../../assets/landing/auth-side-art.png";
 
+// Configuration constants
+const MIN_PASSWORD_LENGTH = 8;
+const REDIRECT_DELAY = 2000;
+
+// Parameter types for ForgotPasswordCard
 type Props = {
   onGoLogin: () => void;
 };
 
 type Step = "verify" | "set-password" | "success";
 
-// ── Password-strength helper ──────────────────────────────────────────────────
+// Password-strength calculation based on length and complexity
 const getStrength = (pw: string) => {
   if (pw.length >= 16) return { label: "Strong",   color: "bg-emerald-500", bars: 4 };
   if (pw.length >= 12) return { label: "Good",     color: "bg-emerald-400", bars: 3 };
@@ -21,7 +22,7 @@ const getStrength = (pw: string) => {
   return { label: "Too short", color: "bg-red-400", bars: pw.length > 0 ? 1 : 0 };
 };
 
-// ── Tiny shared components ────────────────────────────────────────────────────
+// Internal sub-components for consistent UI elements
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-slate-700">
     {children}
@@ -58,7 +59,6 @@ const PrimaryBtn: React.FC<
   </button>
 );
 
-// ── EyeToggle ─────────────────────────────────────────────────────────────────
 const EyeToggle: React.FC<{ show: boolean; onToggle: () => void }> = ({ show, onToggle }) => (
   <button
     type="button"
@@ -70,30 +70,30 @@ const EyeToggle: React.FC<{ show: boolean; onToggle: () => void }> = ({ show, on
   </button>
 );
 
-// ── Main component ─────────────────────────────────────────────────────────────
+// Multi-step password recovery interface
 export default function ForgotPasswordCard({ onGoLogin }: Props) {
-  // ── shared state ──────────────────────────────────────────────────────────
-  const [step,         setStep]         = useState<Step>("verify");
-  const [error,        setError]        = useState("");
-  const [loading,      setLoading]      = useState(false);
+  // Shared state for flow control
+  const [step, setStep] = useState<Step>("verify");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // ── step 1 state ──────────────────────────────────────────────────────────
-  const [email,         setEmail]         = useState("");
+  // Step 1: Identity verification state
+  const [email, setEmail] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [maskedContact, setMaskedContact] = useState<string | null>(null);
-  const [emailChecked,  setEmailChecked]  = useState(false);
+  const [emailChecked, setEmailChecked] = useState(false);
   const [emailChecking, setEmailChecking] = useState(false);
 
-  // ── step 2 state ──────────────────────────────────────────────────────────
-  const [tempPassword,     setTempPassword]     = useState("");
-  const [newPassword,      setNewPassword]      = useState("");
-  const [confirmPassword,  setConfirmPassword]  = useState("");
-  const [showTemp,         setShowTemp]         = useState(false);
-  const [showNew,          setShowNew]          = useState(false);
-  const [showConfirm,      setShowConfirm]      = useState(false);
+  // Step 2: Password reset state
+  const [tempPassword, setTempPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showTemp, setShowTemp] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const strength = getStrength(newPassword);
 
-  // ── Step 1: check email on blur ───────────────────────────────────────────
+  // Check email existence to provide early feedback and masked contact info
   const handleEmailBlur = useCallback(async () => {
     const trimmed = email.trim();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
@@ -119,21 +119,29 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
     }
   }, [email]);
 
-  // ── Step 1 submit: verify email + contact → send temp password email ──────
+  // Submit identity details to request a temporary password
   const onSubmitVerify = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    const trimmedEmail   = email.trim();
+    const trimmedEmail = email.trim();
     const trimmedContact = contactNumber.trim();
 
-    if (!trimmedEmail) { setError("Please enter your email address."); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Please enter a valid email address."); return;
+    if (!trimmedEmail) {
+      setError("Please enter your email address.");
+      return;
     }
-    if (!trimmedContact) { setError("Please enter your contact number."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!trimmedContact) {
+      setError("Please enter your contact number.");
+      return;
+    }
     if (trimmedContact.length < 7) {
-      setError("Please enter a valid contact number."); return;
+      setError("Please enter a valid contact number.");
+      return;
     }
 
     setLoading(true);
@@ -151,14 +159,30 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
     }
   };
 
-  // ── Step 2 submit: verify temp password + set new password → go to login ──
+  // Submit the temporary password and chosen new password
   const onSubmitReset = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    if (!tempPassword) { setError("Please enter the temporary password from your email."); return; }
-    if (newPassword.length < 8) { setError("New password must be at least 8 characters."); return; }
-    if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
+    if (!tempPassword) {
+      setError("Please enter the temporary password from your email.");
+      return;
+    }
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(newPassword)) {
+      setError("Password must include uppercase, lowercase, number & special character.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -170,22 +194,20 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
       });
       setStep("success");
     } catch (err: any) {
-      setError(
-        err?.message ?? "An error occurred. Please try again."
-      );
+      setError(err?.message ?? "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Redirect to login 2 s after success ─────────────────────────────────
+  // Redirect to login after successful password update
   useEffect(() => {
     if (step !== "success") return;
-    const t = setTimeout(onGoLogin, 2000);
+    const t = setTimeout(onGoLogin, REDIRECT_DELAY);
     return () => clearTimeout(t);
   }, [step, onGoLogin]);
 
-    // ── Shared error banner ───────────────────────────────────────────────────
+  // Utility components for shared layouts
   const ErrorBanner = () =>
     error ? (
       <div className="mt-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -194,10 +216,13 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
       </div>
     ) : null;
 
-  // ── Side image panel (shared across all steps) ───────────────────────────
   const SideImage = () => (
     <div className="relative hidden lg:block">
-      <img src={sideImg} alt="Care Home" className="h-full w-full object-cover" />
+      <img 
+        src={sideImg} 
+        alt="Care Home" 
+        className="h-full w-full object-cover" 
+      />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/35 via-black/10 to-transparent" />
       <div className="absolute bottom-5 left-5 right-5">
         <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-3 text-white backdrop-blur-xl shadow-[0_18px_40px_rgba(2,6,23,0.35)]">
@@ -211,7 +236,6 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
     </div>
   );
 
-  // ── Logo ──────────────────────────────────────────────────────────────────
   const Logo = () => (
     <div className="inline-flex items-center gap-2">
       <span className="h-6 w-6 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_10px_20px_rgba(16,185,129,0.28)]" />
@@ -219,7 +243,6 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
     </div>
   );
 
-  // ── Step indicator ────────────────────────────────────────────────────────
   const StepPips = ({ current }: { current: 1 | 2 }) => (
     <div className="mt-4 flex items-center gap-1.5">
       {[1, 2].map((n) => (
@@ -239,15 +262,15 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
     </div>
   );
 
-  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="grid items-stretch lg:grid-cols-2">
+      {/* Side Hero Panel */}
       <SideImage />
 
       <div className="p-5 sm:p-7">
         <Logo />
 
-        {/* ── STEP 1: Email + Contact Number on one page ─────────────────── */}
+        {/* STEP 1: Identity Verification */}
         {step === "verify" && (
           <>
             <StepPips current={1} />
@@ -262,7 +285,6 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
             <ErrorBanner />
 
             <form onSubmit={onSubmitVerify} className="mt-4 space-y-3.5">
-
               {/* Email field */}
               <div>
                 <Label>Email address</Label>
@@ -280,7 +302,6 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
                     onBlur={handleEmailBlur}
                     autoComplete="email"
                   />
-                  {/* Inline status badge */}
                   {emailChecking && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent inline-block" />
@@ -323,6 +344,7 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
                 Verify &amp; Send Temporary Password →
               </PrimaryBtn>
 
+              {/* Login redirection */}
               <p className="pt-1 text-center text-sm font-semibold text-slate-600">
                 Remember your password?{" "}
                 <button
@@ -337,7 +359,7 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
           </>
         )}
 
-        {/* ── STEP 2: Enter temp password + set new password ──────────────── */}
+        {/* STEP 2: Password Reset */}
         {step === "set-password" && (
           <>
             <StepPips current={2} />
@@ -345,7 +367,7 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
               Set your new password
             </h1>
 
-            {/* Success info card */}
+            {/* Success notification info */}
             <div className="mt-2 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
               <span className="mt-0.5 shrink-0">📧</span>
               <div>
@@ -361,8 +383,7 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
             <ErrorBanner />
 
             <form onSubmit={onSubmitReset} className="mt-4 space-y-3.5">
-
-              {/* Temp password */}
+              {/* Temp password field */}
               <div>
                 <Label>Temporary password (from email)</Label>
                 <div className="relative">
@@ -381,14 +402,14 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
                 </div>
               </div>
 
-              {/* Divider */}
+              {/* Section Divider */}
               <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                 <div className="h-px flex-1 bg-slate-200" />
                 NOW CHOOSE YOUR NEW PASSWORD
                 <div className="h-px flex-1 bg-slate-200" />
               </div>
 
-              {/* New password */}
+              {/* New password field */}
               <div>
                 <Label>New password</Label>
                 <div className="relative">
@@ -423,7 +444,7 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
                 )}
               </div>
 
-              {/* Confirm password */}
+              {/* Password confirmation */}
               <div>
                 <Label>Confirm new password</Label>
                 <div className="relative">
@@ -445,7 +466,7 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
                 )}
                 {confirmPassword.length > 0 &&
                   newPassword === confirmPassword &&
-                  newPassword.length >= 8 && (
+                  newPassword.length >= MIN_PASSWORD_LENGTH && (
                     <p className="mt-1 text-xs font-bold text-emerald-600">✓ Passwords match</p>
                   )}
               </div>
@@ -453,12 +474,11 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
               <PrimaryBtn type="submit" loading={loading}>
                 Reset Password &amp; Sign In →
               </PrimaryBtn>
-
             </form>
           </>
         )}
 
-        {/* ── SUCCESS ────────────────────────────────────────────────────── */}
+        {/* SUCCESS State: Final confirmation */}
         <style>{`@keyframes shrinkBar { from { width: 100%; } to { width: 0%; } }`}</style>
         {step === "success" && (
           <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
@@ -480,4 +500,4 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
       </div>
     </div>
   );
-}
+}

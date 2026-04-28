@@ -5,20 +5,21 @@ import {
   rejectPayment,
 } from '../../../../api/payments/admin-payment.api';
 import type { Payment, PaymentStatus } from '../../../../api/payments/payment.types';
-import { IconCheck, IconCurrency, IconX, IconFilter } from '../../common/icons';
+import { IconCheck, IconCurrency, IconX, IconFilter, IconRefresh, IconSpinner } from '../../common/icons';
 import { useAuth } from '../../../../auth/AuthContext';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// Format ISO timestamps into localized date and time for administrative transaction logs
 const fmtDT = (v: string) =>
   new Date(v).toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 
+// Display monetary values in LKR with appropriate formatting for accounting clarity
 const fmtLKR = (n: number) =>
   new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', maximumFractionDigits: 2 }).format(n);
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+// Configuration for visual status indicators to help admins quickly identify payment states
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; cls: string; dot: string }> = {
   paid:             { label: 'Paid',             cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100', dot: 'bg-emerald-500'  },
   pending_approval: { label: 'Pending Approval', cls: 'bg-amber-50 text-amber-700 ring-amber-100',       dot: 'bg-amber-400 animate-pulse' },
@@ -36,7 +37,7 @@ const StatusBadge: React.FC<{ status: PaymentStatus }> = ({ status }) => {
   );
 };
 
-// ── Method badge ──────────────────────────────────────────────────────────────
+// Distinguish between bank transfers and digital card payments for audit purposes
 const MethodBadge: React.FC<{ method: string }> = ({ method }) =>
   method === 'bank_transfer' ? (
     <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
@@ -48,7 +49,7 @@ const MethodBadge: React.FC<{ method: string }> = ({ method }) =>
     </span>
   );
 
-// ── Payment type label ────────────────────────────────────────────────────────
+// Identify whether a payment is for a medical appointment or a care plan subscription
 const TypeBadge: React.FC<{ payment: Payment }> = ({ payment }) =>
   payment.appointmentId ? (
     <span className="inline-flex items-center gap-1 rounded-lg bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
@@ -60,7 +61,6 @@ const TypeBadge: React.FC<{ payment: Payment }> = ({ payment }) =>
     </span>
   );
 
-// ── Confirm modal ─────────────────────────────────────────────────────────────
 interface ConfirmModalProps {
   action: 'approve' | 'reject';
   payerName: string;
@@ -68,6 +68,8 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onClose: () => void;
 }
+
+// Safety check modal to prevent accidental approval or rejection of high-value transactions
 const ConfirmModal: React.FC<ConfirmModalProps> = ({ action, payerName, amount, onConfirm, onClose }) => (
   <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
     <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -104,7 +106,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ action, payerName, amount, 
   </div>
 );
 
-// ── Payment detail drawer ─────────────────────────────────────────────────────
+// Sliding drawer providing deep-dive details for a specific transaction and its associated metadata
 const PaymentDrawer: React.FC<{ payment: Payment; onClose: () => void }> = ({ payment, onClose }) => (
   <div className="fixed inset-0 z-[90] flex items-center justify-end bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
     <div
@@ -114,13 +116,10 @@ const PaymentDrawer: React.FC<{ payment: Payment; onClose: () => void }> = ({ pa
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur px-6 py-4">
         <h3 className="text-sm font-bold text-slate-800">Payment Details</h3>
         <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <IconX className="h-4 w-4" />
         </button>
       </div>
       <div className="flex-1 space-y-4 p-6">
-        {/* Amount & Status */}
         <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 text-center">
           <p className="text-xs font-semibold text-slate-500">Amount</p>
           <p className="mt-1 text-3xl font-bold text-slate-800">{fmtLKR(Number(payment.amount))}</p>
@@ -130,14 +129,12 @@ const PaymentDrawer: React.FC<{ payment: Payment; onClose: () => void }> = ({ pa
           </div>
         </div>
 
-        {/* Payer */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paid By (Family Member)</p>
           <p className="mt-1.5 text-sm font-bold text-slate-800">{payment.user?.user?.fullName ?? '—'}</p>
           <p className="text-xs text-slate-500">{payment.user?.user?.email ?? ''}</p>
         </div>
 
-        {/* Type & reference */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment For</p>
           <div className="mt-1.5">
@@ -176,7 +173,6 @@ const PaymentDrawer: React.FC<{ payment: Payment; onClose: () => void }> = ({ pa
           )}
         </div>
 
-        {/* Dates */}
         <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
           <div>
             <p className="font-semibold text-slate-400">Created</p>
@@ -196,11 +192,11 @@ const PaymentDrawer: React.FC<{ payment: Payment; onClose: () => void }> = ({ pa
   </div>
 );
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 interface Props {
   addToast: (kind: 'success' | 'error', message: string) => void;
 }
 
+// Financial management interface to oversee revenue streams and manually verify bank-transfer evidence
 const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
   const { user } = useAuth();
   const [payments, setPayments]             = useState<Payment[]>([]);
@@ -216,6 +212,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
 
   const canManage = user?.role === 'admin' || user?.role === 'super_admin';
 
+  // Load all system payments to maintain a comprehensive financial ledger for the facility
   const load = useCallback(async () => {
     if (!canManage) return;
     try {
@@ -231,7 +228,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
+  // Derive high-level financial metrics to give admins an immediate snapshot of facility revenue
   const stats = useMemo(() => {
     const all             = payments;
     const pendingApproval = all.filter(p => p.status === 'pending_approval');
@@ -249,7 +246,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
     };
   }, [payments]);
 
-  // ── Filtered payments ──────────────────────────────────────────────────────
   const displayed = useMemo(() => {
     return payments.filter(p => {
       if (filterStatus && p.status !== filterStatus) return false;
@@ -258,7 +254,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
     });
   }, [payments, filterStatus, filterMethod]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  // Execute the final approval or rejection of a payment after administrative confirmation
   const handleConfirm = async () => {
     if (!confirmAction) return;
     const { id, action } = confirmAction;
@@ -292,7 +288,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
   return (
     <div className="space-y-6">
 
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Payments Management</h1>
@@ -305,9 +300,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
             onClick={load}
             className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <IconRefresh className="h-4 w-4" />
             Refresh
           </button>
           <button
@@ -319,7 +312,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
         </div>
       </div>
 
-      {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500">Total Revenue Collected</p>
@@ -363,7 +355,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
         </div>
       </div>
 
-      {/* Pending-approval alert */}
       {stats.pendingApproval > 0 && (
         <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white text-sm font-bold">
@@ -380,7 +371,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
         </div>
       )}
 
-      {/* Filters */}
       {showFilters && (
         <div className="flex flex-wrap gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div>
@@ -422,7 +412,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
         </div>
       )}
 
-      {/* Table */}
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-bold text-slate-800">
@@ -438,7 +427,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+            <IconSpinner className="h-10 w-10 text-emerald-500" />
           </div>
         ) : displayed.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -465,7 +454,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                   const isPendingApproval = payment.status === 'pending_approval';
                   const isProcessing      = processingId === payment.id;
 
-                  // Derive human-readable context
                   const payerName  = payment.user?.user?.fullName ?? '—';
                   const payerEmail = payment.user?.user?.email ?? '';
                   const patientName = payment.appointment?.patient?.fullName
@@ -481,7 +469,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                         isPendingApproval ? 'bg-amber-50/30' : ''
                       }`}
                     >
-                      {/* Payer */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-blue-50 text-base">
@@ -494,7 +481,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                         </div>
                       </td>
 
-                      {/* Payment for */}
                       <td className="px-5 py-3.5">
                         <TypeBadge payment={payment} />
                         {patientName && (
@@ -508,7 +494,6 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                         )}
                       </td>
 
-                      {/* Amount */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1 text-base font-bold text-slate-800">
                           <IconCurrency className="h-4 w-4 text-emerald-600" />
@@ -516,23 +501,19 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                         </div>
                       </td>
 
-                      {/* Method */}
                       <td className="px-5 py-3.5">
                         <MethodBadge method={payment.paymentMethod} />
                       </td>
 
-                      {/* Status */}
                       <td className="px-5 py-3.5">
                         <StatusBadge status={payment.status} />
                       </td>
 
-                      {/* Date */}
                       <td className="px-5 py-3.5 text-xs text-slate-500">
                         <p>{new Date(payment.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                         <p className="text-slate-400">{new Date(payment.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
                       </td>
 
-                      {/* Actions */}
                       <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           {isPendingApproval && (
@@ -577,12 +558,10 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
         )}
       </div>
 
-      {/* Detail drawer */}
       {selectedPayment && (
         <PaymentDrawer payment={selectedPayment} onClose={() => setSelectedPayment(null)} />
       )}
 
-      {/* Confirm modal */}
       {confirmAction && (
         <ConfirmModal
           action={confirmAction.action}

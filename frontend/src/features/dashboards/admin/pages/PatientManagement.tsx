@@ -2,15 +2,9 @@ import React from "react";
 // ── NEW API IMPORT ──
 import type { Patient } from "../../../../api/patients/patient.types";
 
+import { IconTrash } from "../../common/icons";
 import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
-
-const TrashIcon = ({ className = "h-4 w-4" }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
 
 // Updated to use the boolean isActive field from the backend
 const statusTone = (isActive: boolean) =>
@@ -76,7 +70,7 @@ const PatientManagement: React.FC<Props> = ({ patients, loading, onDelete }) => 
                       onClick={() => onDelete(id)}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:shadow-md"
                     >
-                      <TrashIcon /> Delete
+                      <IconTrash className="h-4 w-4" /> Delete
                     </button>
                   </td>
                 </tr>

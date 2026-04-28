@@ -1,17 +1,3 @@
-/**
- * src/features/dashboards/common/PasswordTab.tsx
- * ─────────────────────────────────────────────────
- * The "Change Password" tab content is byte-for-byte identical between
- * AdminProfile and DoctorProfile, so we extract it here as a single
- * shared component. Both profiles simply render <PasswordTab />.
- *
- * Props:
- *  currentPw / newPw / confirmPw — controlled field values
- *  setters                        — state setters for each field
- *  pwLoading                      — true while the API call is in-flight
- *  onSubmit                       — form submit handler
- */
-
 import React from "react";
 import { SectionCard, GlassInput, PrimaryBtn, FieldLabel } from "./ui";
 import { IconLock, IconCheck } from "./icons";
@@ -27,11 +13,12 @@ interface Props {
   onSubmit:     (e: React.FormEvent) => void;
 }
 
+// Standardized password update form used across multiple profile types to ensure security consistency
 const PasswordTab: React.FC<Props> = ({
   currentPw, newPw, confirmPw, pwLoading,
   setCurrentPw, setNewPw, setConfirmPw, onSubmit,
 }) => {
-  // Password-strength helpers — derived from newPw length
+  // Map password length to qualitative strength categories to guide user toward more secure choices
   const pwStrength =
     newPw.length >= 16 ? "Strong"   :
     newPw.length >= 12 ? "Good"     :
@@ -51,7 +38,6 @@ const PasswordTab: React.FC<Props> = ({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
 
-      {/* ── Change-password form (3/5 columns on large screens) ── */}
       <div className="lg:col-span-3">
         <SectionCard
           title="Change Password"
@@ -85,7 +71,7 @@ const PasswordTab: React.FC<Props> = ({
                 autoComplete="new-password"
               />
 
-              {/* Strength meter — only visible when the user has started typing */}
+              {/* Visualize password strength as the user types to provide immediate security feedback */}
               {newPw && (
                 <div className="mt-2">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
@@ -122,7 +108,6 @@ const PasswordTab: React.FC<Props> = ({
         </SectionCard>
       </div>
 
-      {/* ── Tips sidebar (2/5 columns) ── */}
       <div className="lg:col-span-2">
         <div className="sticky top-24">
           <SectionCard title="Password Tips" subtitle="Keep your account secure.">

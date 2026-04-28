@@ -1,36 +1,21 @@
-/**
- * src/api/payments/admin-payment.api.ts
- * ───────────────────────────────────────
- * Payment API calls available to admins / super-admins.
- */
 import { apiFetch } from '../core/apiClient';
 import type { Payment } from './payment.types';
 
-/** Get all bank-transfer payments currently awaiting approval. */
+// Retrieve pending bank-transfer payments to allow admins to verify and approve incoming funds
 export const getPendingPayments = () =>
   apiFetch<{ payments: Payment[]; total: number }>('/payments/pending');
 
-/** Get all payments (full history) — admin only. */
+// Fetch the complete payment history to support financial auditing and revenue tracking
 export const getAllPayments = () =>
   apiFetch<{ payments: Payment[]; total: number }>('/payments/all');
 
-/**
- * Approve a pending bank-transfer payment.
- * Side-effects on backend:
- *   - booking payment  → sets Booking.status = ACTIVE
- *   - appointment pay  → sets Appointment.status = PENDING (awaiting doctor confirmation)
- */
+// Verify and approve manual bank transfers to finalize patient bookings and activate services
 export const approvePayment = (id: string) =>
   apiFetch<{ message: string; payment: Payment }>(`/payments/${id}/approve`, {
     method: 'PATCH',
   });
 
-/**
- * Reject a pending bank-transfer payment.
- * Side-effects on backend:
- *   - booking payment  → sets Booking.status = CANCELLED
- *   - appointment pay  → sets Appointment.status = CANCELLED
- */
+// Reject invalid or unconfirmed payment proof to maintain the integrity of the facility's billing system
 export const rejectPayment = (id: string) =>
   apiFetch<{ message: string; payment: Payment }>(`/payments/${id}/reject`, {
     method: 'PATCH',

@@ -1,37 +1,18 @@
-/**
- * src/features/dashboards/common/AvatarUpload.tsx
- * ─────────────────────────────────────────────────
- * Reusable avatar block used by all profile pages.
- *
- * Behaviour:
- *  - Shows the user's avatar image when `avatarUrl` is set (Google OAuth OR custom upload).
- *  - Falls back to coloured initials when no avatar exists.
- *  - Camera-icon overlay triggers a hidden <input type="file"> for upload.
- *  - Shows a "Remove photo" button when a custom avatar is present.
- *  - Emits `onSuccess(dataUrl)` / `onError(msg)` so the parent can toast.
- */
-
 import React, { useRef, useState } from "react";
 import { uploadAvatar, removeAvatar } from "../../../api/auth/auth.api";
 import { useAuth } from "../../../auth/AuthContext";
 
 interface Props {
-  /** Initials to show as fallback (e.g. "JD") */
   initials: string;
-  /** Tailwind accent colour class — e.g. "emerald" | "blue" | "violet" */
   accent?: string;
-  /** Large (profile card) vs small (sticky header) */
   size?: "lg" | "sm";
-  /** Called after a successful upload with the new data-URL */
   onSuccess?: (avatarUrl: string) => void;
-  /** Called when upload or removal fails */
   onError?: (message: string) => void;
-  /** Called after a successful removal */
   onRemoved?: () => void;
-  /** Whether the upload/remove controls are interactive (profile card = true, header = false) */
   interactive?: boolean;
 }
 
+// Icons
 const CameraIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path
@@ -48,6 +29,7 @@ const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+// Reusable avatar component with built-in upload/removal logic to standardize profile management
 const AvatarUpload: React.FC<Props> = ({
   initials,
   accent = "emerald",
@@ -71,11 +53,11 @@ const AvatarUpload: React.FC<Props> = ({
     ? "h-4 w-4 -bottom-1 -right-1 border-2"
     : "h-3 w-3 -bottom-0.5 -right-0.5 border-2";
 
+  // Handle image file selection and perform async upload to persist the new profile picture
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Client-side guard
     if (file.size > 5 * 1024 * 1024) {
       onError?.("Image must be smaller than 5 MB.");
       e.target.value = "";
@@ -86,7 +68,6 @@ const AvatarUpload: React.FC<Props> = ({
       setUploading(true);
       const { avatarUrl: newUrl } = await uploadAvatar(file);
 
-      // Update auth context + localStorage
       if (user) {
         const updated = { ...user, avatarUrl: newUrl };
         setUser(updated);
@@ -102,6 +83,7 @@ const AvatarUpload: React.FC<Props> = ({
     }
   };
 
+  // Remove the custom avatar to revert to initials fallback and sync state with the backend
   const handleRemove = async () => {
     try {
       setUploading(true);
@@ -123,9 +105,7 @@ const AvatarUpload: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {/* Avatar circle */}
       <div className="relative">
-        {/* Image or initials */}
         <div
           className={[
             "grid place-items-center overflow-hidden font-bold text-white shadow-lg",
@@ -141,7 +121,6 @@ const AvatarUpload: React.FC<Props> = ({
               alt="Profile avatar"
               className="h-full w-full object-cover"
               onError={(e) => {
-                // If image fails to load (e.g. broken Google URL), fall back to initials
                 (e.target as HTMLImageElement).style.display = "none";
               }}
             />
@@ -150,7 +129,6 @@ const AvatarUpload: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Online dot */}
         <span
           className={[
             "absolute rounded-full border-white bg-emerald-500",
@@ -158,7 +136,6 @@ const AvatarUpload: React.FC<Props> = ({
           ].join(" ")}
         />
 
-        {/* Camera overlay — only in interactive (profile card) mode */}
         {interactive && (
           <button
             type="button"
@@ -179,7 +156,6 @@ const AvatarUpload: React.FC<Props> = ({
           </button>
         )}
 
-        {/* Hidden file input */}
         <input
           ref={fileRef}
           type="file"
@@ -189,7 +165,6 @@ const AvatarUpload: React.FC<Props> = ({
         />
       </div>
 
-      {/* Remove button — only when a custom avatar exists and interactive */}
       {interactive && avatarUrl && (
         <button
           type="button"
@@ -202,7 +177,6 @@ const AvatarUpload: React.FC<Props> = ({
         </button>
       )}
 
-      {/* Upload hint */}
       {interactive && !avatarUrl && (
         <button
           type="button"

@@ -5,9 +5,9 @@ import "./homePage.css";
 import Navbar from "../../components/Navbar/navbar";
 import Footer from "../../components/Footer/footer";
 
-import heroImg from "../../assets/Home/hero.jpg";
-import aboutImg from "../../assets/Home/about.jpg";
-import bestCareImg from "../../assets/Home/best-care.jpg";
+import heroImg from "../../assets/landing/home-hero.jpg";
+import aboutImg from "../../assets/landing/home-about.jpg";
+import bestCareImg from "../../assets/landing/home-value-prop.jpg";
 
 import AuthModal, { type AuthMode } from "../../components/auth/AuthModal";
 import LoginCard from "../auth/Login/LoginCard";

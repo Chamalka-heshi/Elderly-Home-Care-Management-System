@@ -1,5 +1,5 @@
-
 import React from "react";
+import { IconX } from "../../common/icons";
 
 export interface FieldConfig {
   name:        string;
@@ -7,9 +7,9 @@ export interface FieldConfig {
   type?:       string;
   placeholder?: string;
   required?:   boolean;
-  textarea?:   boolean;                            // render <textarea> when true
-  options?:    { value: string; label: string }[]; // render <select> when provided
-  hint?:       string;                             // helper text shown beneath the field
+  textarea?:   boolean;                            
+  options?:    { value: string; label: string }[]; 
+  hint?:       string;                             
 }
 
 interface Props {
@@ -21,29 +21,23 @@ interface Props {
   fields:   FieldConfig[];
 }
 
-const XIcon = () => (
-  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
 const inputBase =
   "w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 " +
   "outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10";
 
+// Reusable modal component for rendering dynamic forms based on a declarative field configuration
 const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, fields }) => {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      {/* Backdrop — click to dismiss */}
+      {/* Dim the background to focus user attention on the active modal form */}
       <button
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-label="Close modal"
       />
 
-      {/* Panel */}
       <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-white/90 p-6 shadow-2xl backdrop-blur-xl max-h-[90vh] overflow-y-auto">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900">{title}</h3>
@@ -52,7 +46,7 @@ const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, f
             onClick={onClose}
             className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 transition"
           >
-            <XIcon />
+            <IconX className="h-5 w-5" />
           </button>
         </div>
 
@@ -64,7 +58,7 @@ const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, f
                 {f.required && <span className="ml-0.5 text-red-500">*</span>}
               </span>
 
-              {/* Select */}
+              {/* Dynamically render the appropriate input type based on the field configuration */}
               {f.options ? (
                 <select
                   name={f.name}
@@ -77,7 +71,6 @@ const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, f
                   ))}
                 </select>
               ) : f.textarea ? (
-                /* Textarea */
                 <textarea
                   name={f.name}
                   placeholder={f.placeholder}
@@ -86,7 +79,6 @@ const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, f
                   className={inputBase + " resize-y"}
                 />
               ) : (
-                /* Standard input */
                 <input
                   type={f.type ?? "text"}
                   name={f.name}
@@ -97,7 +89,6 @@ const FormModal: React.FC<Props> = ({ title, open, loading, onClose, onSubmit, f
                 />
               )}
 
-              {/* Optional hint text */}
               {f.hint && (
                 <p className="text-[11px] font-medium text-slate-400">{f.hint}</p>
               )}

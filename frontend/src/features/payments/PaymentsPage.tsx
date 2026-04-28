@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar';
 import Footer from '../../components/Footer/footer';
-import heroImage from '../../assets/Home/pa_image.png';
+import heroImage from '../../assets/landing/payments-hero.png';
 import { getActiveCarePlans } from '../../api/care-plans/family-care-plan.api';
 import type { CarePlan } from '../../api/care-plans/care-plan.types';
 import Badge from '../dashboards/common/widgets/Badge';

@@ -3,46 +3,16 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as contactApi from '../../../../api/contact/admin-contact.api';
 import type { ContactMessage } from '../../../../api/contact/contact.types';
 
-// ── Tiny icons ────────────────────────────────────────────────────────────
+import { IconInbox, IconReply, IconTrash, IconBack, IconClock, IconSpinner } from '../../common/icons';
 
-const IconInbox = ({ className = 'h-5 w-5' }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0-4 4H8l-4-4m16 0H4" />
-  </svg>
-);
-const IconReply = ({ className = 'h-5 w-5' }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6 6-6" />
-  </svg>
-);
-const IconTrash = ({ className = 'h-4 w-4' }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
-const IconBack = ({ className = 'h-5 w-5' }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-  </svg>
-);
-const IconClock = ({ className = 'h-4 w-4' }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-
+// Format ISO timestamps into user-friendly localized strings for administrative review
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 
+// Visual indicator of message response status to guide administrative workflow prioritization
 const StatusBadge: React.FC<{ status: 'pending' | 'replied' }> = ({ status }) =>
   status === 'replied' ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
@@ -56,8 +26,7 @@ const StatusBadge: React.FC<{ status: 'pending' | 'replied' }> = ({ status }) =>
     </span>
   );
 
-// ── Message list item ─────────────────────────────────────────────────────
-
+// Summary view of a contact message to allow quick scanning of the administrative inbox
 const MessageRow: React.FC<{
   msg: ContactMessage;
   onClick: () => void;
@@ -67,12 +36,10 @@ const MessageRow: React.FC<{
     onClick={onClick}
     className="group flex cursor-pointer items-start gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
   >
-    {/* Avatar */}
     <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
       {msg.fullName.charAt(0).toUpperCase()}
     </div>
 
-    {/* Body */}
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-slate-900">{msg.fullName}</p>
@@ -86,7 +53,6 @@ const MessageRow: React.FC<{
       </div>
     </div>
 
-    {/* Delete */}
     <button
       onClick={(e) => { e.stopPropagation(); onDelete(); }}
       className="flex-shrink-0 rounded-xl p-2 text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
@@ -97,8 +63,7 @@ const MessageRow: React.FC<{
   </div>
 );
 
-// ── Detail / reply panel ──────────────────────────────────────────────────
-
+// Expanded view and interaction panel for responding to specific inquiries from public users
 const MessageDetail: React.FC<{
   msg: ContactMessage;
   onBack: () => void;
@@ -106,12 +71,13 @@ const MessageDetail: React.FC<{
   onDelete: () => void;
   addToast: (kind: 'success' | 'error', text: string) => void;
 }> = ({ msg, onBack, onReplied, onDelete, addToast }) => {
-  const [reply, setReply]       = useState('');
-  const [sending, setSending]   = useState(false);
-  const textRef                 = useRef<HTMLTextAreaElement>(null);
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { textRef.current?.focus(); }, []);
 
+  // Process the reply to update the message status and record the administrative response
   const handleReply = async () => {
     if (!reply.trim()) return;
     setSending(true);
@@ -128,7 +94,6 @@ const MessageDetail: React.FC<{
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
@@ -147,9 +112,7 @@ const MessageDetail: React.FC<{
         </div>
       </div>
 
-      {/* Message card */}
       <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
-        {/* Sender info */}
         <div className="flex items-start gap-4">
           <div className="grid h-12 w-12 flex-shrink-0 place-items-center rounded-full bg-emerald-100 text-base font-bold text-emerald-700">
             {msg.fullName.charAt(0).toUpperCase()}
@@ -171,7 +134,6 @@ const MessageDetail: React.FC<{
         </div>
       </div>
 
-      {/* Existing reply */}
       {msg.status === 'replied' && msg.reply && (
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6 shadow-sm">
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-emerald-600">
@@ -181,7 +143,6 @@ const MessageDetail: React.FC<{
         </div>
       )}
 
-      {/* Reply form — only if not yet replied */}
       {msg.status === 'pending' && (
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
           <p className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-800">
@@ -204,7 +165,7 @@ const MessageDetail: React.FC<{
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sending ? (
-                <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Sending…</>
+                <><IconSpinner className="h-4 w-4" /> Sending…</>
               ) : (
                 <><IconReply className="h-4 w-4" /> Send Reply</>
               )}
@@ -216,31 +177,30 @@ const MessageDetail: React.FC<{
   );
 };
 
-// ── Main page ─────────────────────────────────────────────────────────────
-
 interface Props {
   addToast: (kind: 'success' | 'error', message: string) => void;
 }
 
+// Main inbox container to manage the collection of messages sent via the public contact interface
 const ContactMessages: React.FC<Props> = ({ addToast }) => {
-  const [messages, setMessages]     = useState<ContactMessage[]>([]);
-  const [total, setTotal]           = useState(0);
-  const [pending, setPending]       = useState(0);
-  const [loading, setLoading]       = useState(true);
-  const [selected, setSelected]     = useState<ContactMessage | null>(null);
-  const [filter, setFilter]         = useState<'all' | 'pending' | 'replied'>('all');
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pending, setPending] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<ContactMessage | null>(null);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'replied'>('all');
 
-  // FIX: Safely extract lengths from the array directly to satisfy TypeScript!
+  // Load all recorded messages to ensure all user inquiries are visible for review
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await contactApi.getAllMessages();
       const msgs = data.messages || [];
-      
+
       setMessages(msgs);
-      setTotal(msgs.length); // Calculated directly from array
-      setPending(msgs.filter((m) => m.status === 'pending').length); // Calculated directly
-      
+      setTotal(msgs.length);
+      setPending(msgs.filter((m) => m.status === 'pending').length);
+
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to load messages.');
     } finally {
@@ -273,7 +233,6 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
     filter === 'all' ? true : m.status === filter,
   );
 
-  // ── Detail view ────────────────────────────────────────────────────────
   if (selected) {
     return (
       <MessageDetail
@@ -286,10 +245,8 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
     );
   }
 
-  // ── List view ──────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Header strip */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
         <div className="absolute -right-20 -top-16 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -303,7 +260,6 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
             </p>
           </div>
 
-          {/* Filter tabs */}
           <div className="flex gap-1 rounded-2xl border border-slate-200 bg-white/80 p-1">
             {(['all', 'pending', 'replied'] as const).map((f) => (
               <button
@@ -323,10 +279,9 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
         </div>
       </div>
 
-      {/* List */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-emerald-500" />
+          <IconSpinner className="h-12 w-12 text-emerald-500" />
         </div>
       ) : displayed.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-24 text-slate-400">

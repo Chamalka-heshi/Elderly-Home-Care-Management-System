@@ -1,17 +1,9 @@
-/**
- * src/features/dashboards/common/icons.tsx
- * ─────────────────────────────────────────
- * Single source of truth for ALL SVG icon components shared across every
- * dashboard (Admin, Doctor, Caregiver, FamilyMember) and their sub-pages.
- * Import only what you need — tree-shaking will handle the rest.
- */
-
 import React from "react";
 
 export type IconProps = { className?: string };
 
-// ── Profile / Auth ────────────────────────────────────────────────────────────
-
+// Profile / Auth
+// Visual markers for user identity, security clearance, and professional medical roles
 export const IconUser: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -31,8 +23,8 @@ export const IconStethoscope: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Communication ─────────────────────────────────────────────────────────────
-
+// Communication
+// Indicators for messaging, alerts, and administrative correspondence
 export const IconMail: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M4 6.5h16c.83 0 1.5.67 1.5 1.5v8c0 .83-.67 1.5-1.5 1.5H4c-.83 0-1.5-.67-1.5-1.5V8c0-.83.67-1.5 1.5-1.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
@@ -67,8 +59,8 @@ export const IconInbox: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-
+// Navigation
+// Wayfinding elements for lateral and hierarchical movement within the application
 export const IconChevronLeft: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -111,8 +103,14 @@ export const IconSearch: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Security / Status ─────────────────────────────────────────────────────────
+export const IconEye: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
 
+// Security / Status
+// System states and data integrity indicators for critical user feedback
 export const IconLock: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M7.5 11V8.8A4.5 4.5 0 0 1 12 4.3a4.5 4.5 0 0 1 4.5 4.5V11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -156,8 +154,16 @@ export const IconBan: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Dashboard / Layout ────────────────────────────────────────────────────────
+export const IconInfo: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="16" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12.01" y2="8" />
+  </svg>
+);
 
+// Dashboard / Layout
+// Structural elements used for organization and visual hierarchy in dashboard views
 export const IconSettings: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
@@ -178,8 +184,8 @@ export const IconSparkle: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── People ────────────────────────────────────────────────────────────────────
-
+// People
+// Icons representing individual and group entities within the care ecosystem
 export const IconUsers: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
@@ -201,12 +207,19 @@ export const IconUserPlus: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Medical / Health ──────────────────────────────────────────────────────────
-
+// Medical / Health
+// Specialized indicators for medical record keeping and health tracking tasks
 export const IconClipboard: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
       d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+  </svg>
+);
+
+export const IconClipboardList: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9h6m-6 4h6" />
   </svg>
 );
 
@@ -231,8 +244,8 @@ export const IconPill: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Actions ───────────────────────────────────────────────────────────────────
-
+// Actions
+// Interactive cues for common administrative and user operations
 export const IconPlus: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -281,8 +294,8 @@ export const IconIdCard: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Finance ───────────────────────────────────────────────────────────────────
-
+// Finance
+// Visual markers for monetary transactions, digital payments, and accounting records
 export const IconCurrency: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
@@ -296,8 +309,20 @@ export const IconSparkles: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Doctor Appointments specific ──────────────────────────────────────────────
+export const IconCreditCard: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+  </svg>
+);
 
+export const IconBank: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M5 10v11m14-11v11m-7-11v11M2 10l10-7 10 7" />
+  </svg>
+);
+
+// Doctor Appointments specific
+// Contextual icons for clinical consultations and physiological data monitoring
 export const IconFileText: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
     <path strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
@@ -331,8 +356,8 @@ export const IconChevronUp: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// ── Branding ──────────────────────────────────────────────────────────────────
-
+// Branding
+// Official assets for external authentication providers and session termination
 export const IconGoogle: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "h-5 w-5"} viewBox="0 0 48 48" fill="none" aria-hidden="true">
     <path d="M47.532 24.552c0-1.636-.132-3.202-.388-4.701H24.48v9.01h12.985c-.566 2.99-2.24 5.525-4.76 7.226v5.998h7.698c4.508-4.15 7.129-10.269 7.129-17.533z" fill="#4285F4"/>
@@ -344,8 +369,39 @@ export const IconGoogle: React.FC<IconProps> = ({ className }) => (
 
 export const IconLogout: React.FC<IconProps> = ({ className }) => (
   <svg className={className ?? "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round"strokeWidth={2}
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
       d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
     />
+  </svg>
+);
+
+export const IconAlertTriangle: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-4 w-4"} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+    <path strokeWidth="1.6" strokeLinejoin="round" d="M12 3.8 21 20H3L12 3.8Z" />
+    <path strokeWidth="1.6" strokeLinecap="round" d="M12 9v5" />
+    <path strokeWidth="2.2" strokeLinecap="round" d="M12 17.5h.01" />
+  </svg>
+);
+
+// Misc
+// Auxiliary icons for loading states and generic medical documentation
+export const IconSpinner: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-4 w-4 animate-spin"} viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+  </svg>
+);
+
+export const IconPrescription: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+export const IconWave: React.FC<IconProps> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v4M11.5 10c-.83 0-1.5-.67-1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5S7 3.67 7 4.5v5M8.5 10c-.83 0-1.5-.67-1.5-1.5v-3c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v4" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.5 11.5c-.83 0-1.5-.67-1.5-1.5v-2c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v2" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.5v2.21c0 1.93.93 3.74 2.5 4.82l.82.57c1.4.98 3.1 1.4 4.82 1.4h1.72c3.15 0 5.86-2.17 6.64-5.22l.5-1.96" />
   </svg>
 );

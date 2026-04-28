@@ -1,7 +1,6 @@
 import { apiFetch } from '../core/apiClient';
 
-// ── Response types ─────────────────────────────────────────────────────────
-
+// Response types
 export interface DashboardRecentPatient {
   id: string;
   name: string;
@@ -20,5 +19,6 @@ export interface DoctorDashboardStats {
   recentPatients: DashboardRecentPatient[];
 }
 
+// Fetch doctor-specific metrics to provide clinicians with a concise overview of their daily schedule and patient load
 export const getDoctorDashboardStats = () =>
   apiFetch<DoctorDashboardStats>('/doctors/dashboard');

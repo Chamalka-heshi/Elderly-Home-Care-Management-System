@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import sideImg from "../../../assets/Home/Login Art.png";
+import sideImg from "../../../assets/landing/auth-side-art.png";
 import { IconGoogle } from "../../dashboards/common/icons";
 
 // Auth services

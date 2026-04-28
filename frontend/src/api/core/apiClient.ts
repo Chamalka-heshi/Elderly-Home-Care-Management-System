@@ -1,4 +1,5 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 const AUTH_ENDPOINTS = [
   '/auth/login',
   '/auth/firebase',
@@ -6,14 +7,17 @@ const AUTH_ENDPOINTS = [
   '/auth/reset-password',
 ];
 
+// Generate standard authentication headers to authorize requests with the active session token
 export const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem('token');
+
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 };
 
+// Process server errors to provide consistent error messaging and handle session expiry
 export const handleApiError = async (
   res: Response,
   endpoint: string,
@@ -26,11 +30,9 @@ export const handleApiError = async (
     const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => endpoint.startsWith(ep));
 
     if (isAuthEndpoint) {
-      // Wrong credentials on login – surface the server message in the form, no redirect.
       throw new Error(msg || 'Invalid email or password. Please try again.');
     }
 
-    // Real session expiry: clean up and redirect to login with a reason flag.
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login?reason=expired';
@@ -40,26 +42,45 @@ export const handleApiError = async (
   throw new Error(msg);
 };
 
-/** Centralized fetch wrapper to DRY up API calls */
+// Execute standard JSON API requests with automatic token injection and error handling
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: { ...getAuthHeaders(), ...options.headers },
+    headers: {
+      ...getAuthHeaders(),
+      ...options.headers,
+    },
   });
-  if (!res.ok) await handleApiError(res, endpoint);
-  if (res.status === 204) return undefined as unknown as T;
+
+  if (!res.ok) {
+    await handleApiError(res, endpoint);
+  }
+  if (res.status === 204) {
+    return undefined as unknown as T;
+  }
+
   return res.json();
 }
 
-/** Multipart/form-data fetch wrapper (no Content-Type header — browser sets boundary) */
+// Execute multipart/form-data requests to support file uploads without manual boundary setting
 export async function apiFetchMultipart<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token');
   const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: { ...headers, ...(options.headers as Record<string, string> ?? {}) },
+    headers: {
+      ...headers,
+      ...(options.headers as Record<string, string> ?? {}),
+    },
   });
-  if (!res.ok) await handleApiError(res, endpoint);
-  if (res.status === 204) return undefined as unknown as T;
+
+  if (!res.ok) {
+    await handleApiError(res, endpoint);
+  }
+  if (res.status === 204) {
+    return undefined as unknown as T;
+  }
+
   return res.json();
 }

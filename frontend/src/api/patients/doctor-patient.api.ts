@@ -1,7 +1,6 @@
 import { apiFetch } from '../core/apiClient';
 
-// ── Vital Record ──────────────────────────────────────────────────────────────
-
+// Vital Record
 export interface VitalRecord {
   id: string;
   patientId: string;
@@ -16,8 +15,7 @@ export interface VitalRecord {
   updatedAt: string;
 }
 
-// ── Prescription (summary for history) ───────────────────────────────────────
-
+// Prescription (summary for history)
 export interface MedicineItem {
   medicineName: string;
   dosage: string;
@@ -44,8 +42,7 @@ export interface PrescriptionHistory {
   };
 }
 
-// ── Patient (full medical details) ───────────────────────────────────────────
-
+// Patient (full medical details)
 export interface PatientMedicalDetail {
   id: string;
   fullName: string;
@@ -65,15 +62,13 @@ export interface PatientMedicalDetail {
   createdAt: string;
 }
 
-// ── Combined response ─────────────────────────────────────────────────────────
-
+// Combined response
 export interface PatientMedicalHistory {
   patient: PatientMedicalDetail;
   vitalRecords: VitalRecord[];
   prescriptions: PrescriptionHistory[];
 }
 
-// ── API call ──────────────────────────────────────────────────────────────────
-
+// Fetch the full medical history to provide doctors with a comprehensive view of the patient's health over time
 export const getPatientMedicalHistory = (patientId: string) =>
   apiFetch<PatientMedicalHistory>(`/patients/${patientId}/medical-history`);

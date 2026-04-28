@@ -6,8 +6,6 @@ import {
   updateAdminProfile,
   changePasswordApi,
 } from "../../../../api/auth/auth.api";
-
-// ── Common shared components ───────────────────────────────────────────────
 import {
   IconMail,
   IconPhone,
@@ -15,6 +13,9 @@ import {
   IconAlert,
   IconUser,
   IconShield,
+  IconLock,
+  IconIdCard,
+  IconSpinner,
 } from "../../common/icons";
 import {
   FieldLabel,
@@ -31,45 +32,36 @@ import DangerZoneTab from "../../common/DangerZoneTab";
 import AvatarUpload from "../../common/AvatarUpload";
 import DeleteAccountButton from "../../../../components/deleteaccount";
 
-// ── Types ──────────────────────────────────────────────────────────────────
 type TabKey = "profile" | "password" | "danger";
 
 interface Props {
   onBack: () => void;
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-//  AdminProfile Component
-// ══════════════════════════════════════════════════════════════════════════
+// Administrative profile management component for account updates and security settings
 const AdminProfile: React.FC<Props> = ({ onBack }) => {
   const { user, setUser } = useAuth();
 
-  // ── UI state ──────────────────────────────────────────────────────────
   const [tab, setTab] = useState<TabKey>("profile");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // ── Profile fetch state ───────────────────────────────────────────────
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
 
-  // ── Editable profile fields ───────────────────────────────────────────
   const [fullName, setFullName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
 
-  // ── Read-only profile fields ──────────────────────────────────────────
   const [nic, setNic] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
 
-  // ── Password fields ───────────────────────────────────────────────────
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
 
-  // ── Loading states ────────────────────────────────────────────────────
   const [pwLoading, setPwLoading] = useState(false);
   const [profLoading, setProfLoading] = useState(false);
 
-  // ── Fetch profile on mount ────────────────────────────────────────────
+  // Synchronize local state with fresh profile data from the server on component load
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -78,17 +70,13 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
 
         const freshUser = await getProfile();
 
-        // Sync AuthContext with the latest data from the server
+        // Update the global authentication context and local storage persistence
         setUser({ ...freshUser, avatarUrl: (freshUser as any).avatarUrl ?? null });
-
-        // Sync localStorage so refreshes are consistent
         localStorage.setItem("user", JSON.stringify(freshUser));
 
-        // Pre-fill editable fields with fresh data
         setFullName(freshUser.fullName ?? "");
         setContactNumber(freshUser.contactNumber ?? "");
 
-        // Read-only profile fields come from the nested `profile` object
         const profile = (freshUser as any)?.profile ?? {};
         setNic(profile.nic ?? null);
         setCreatedAt((freshUser as any).createdAt ?? null);
@@ -102,7 +90,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Helpers ───────────────────────────────────────────────────────────
   const addToast = useCallback(
     (kind: "success" | "error", message: string) => {
       const id = Date.now();
@@ -124,46 +111,19 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     ).toUpperCase();
   }, [user?.fullName]);
 
-  const roleLabel =
-    user?.role === "super_admin" ? "Super Administrator" : "Administrator";
+  const roleLabel = user?.role === "super_admin" ? "Super Administrator" : "Administrator";
 
-  // ── Tab definitions ───────────────────────────────────────────────────
   const tabs: {
     key: TabKey;
     label: string;
     icon: React.FC<{ className?: string }>;
   }[] = [
     { key: "profile", label: "Profile", icon: IconUser },
-    {
-      key: "password",
-      label: "Password",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M7.5 11V8.8A4.5 4.5 0 0 1 12 4.3a4.5 4.5 0 0 1 4.5 4.5V11"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-          <path
-            d="M7.2 11h9.6c1 0 1.7.8 1.7 1.7v6.1c0 1-.8 1.7-1.7 1.7H7.2c-1 0-1.7-.8-1.7-1.7v-6.1c0-1 .8-1.7 1.7-1.7Z"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
-    },
+    { key: "password", label: "Password", icon: IconLock },
     { key: "danger", label: "Danger Zone", icon: IconAlert },
   ];
 
-  // ── API Handlers ──────────────────────────────────────────────────────
-
+  // Update administrative profile details via the backend API
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) {
       addToast("error", "Full name cannot be empty.");
@@ -173,7 +133,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
       setProfLoading(true);
       const updatedUser = await updateAdminProfile({ fullName, contactNumber });
 
-      // Merge updated fields back into AuthContext and localStorage
       if (user) {
         const newUserState: User = {
           ...user,
@@ -192,6 +151,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     }
   };
 
+  // Securely change the account password with validation
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPw) {
@@ -224,11 +184,10 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
     }
   };
 
-  // ── Loading / Error state ─────────────────────────────────────────────
   if (profileLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+        <IconSpinner className="h-10 w-10 text-emerald-500" />
       </div>
     );
   }
@@ -254,7 +213,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
       <AmbientBg />
       <ToastList toasts={toasts} />
 
-      {/* ── Header ── */}
+      {/* Global Navigation Header */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 px-4 py-4 backdrop-blur-xl md:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-4">
@@ -287,10 +246,10 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
         </div>
       </header>
 
-      {/* ── Main ── */}
+      {/* Primary Page Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-
-        {/* Tab bar */}
+        
+        {/* Tab Navigation Menu */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Pill tone="emerald">{roleLabel}</Pill>
@@ -321,7 +280,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* ── Profile Tab ── */}
+        {/* Dynamic Content Views based on active tab */}
         {tab === "profile" && (
           <div className="space-y-6">
             <SectionCard
@@ -329,7 +288,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
               subtitle="Update your personal details. Email and NIC cannot be changed."
               rightSlot={<Pill tone="emerald">{roleLabel}</Pill>}
             >
-              {/* Avatar + Save row */}
+              {/* Branding and Update Controls */}
               <div className="mb-6 flex flex-col gap-4 border-b border-white/30 pb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
                   <AvatarUpload
@@ -364,9 +323,8 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                 </PrimaryBtn>
               </div>
 
-              {/* Fields */}
+              {/* Data Input Form Fields */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {/* Editable */}
                 <div>
                   <FieldLabel>Full Name</FieldLabel>
                   <GlassInput
@@ -390,7 +348,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                   />
                 </div>
 
-                {/* Read-only */}
                 <div>
                   <FieldLabel>
                     <span className="inline-flex items-center gap-2">
@@ -407,9 +364,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                 <div>
                   <FieldLabel>
                     <span className="inline-flex items-center gap-2">
-                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
-                      </svg>
+                      <IconIdCard className="h-4 w-4 text-slate-400" />
                       NIC Number
                     </span>
                   </FieldLabel>
@@ -426,7 +381,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
               </div>
             </SectionCard>
 
-            {/* Account Summary */}
+            {/* Read-only Data Overview */}
             <SectionCard
               title="Account Summary"
               subtitle="Read-only overview of your account details."
@@ -474,7 +429,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
           </div>
         )}
 
-        {/* ── Password Tab ── */}
         {tab === "password" && (
           <PasswordTab
             currentPw={currentPw}
@@ -488,7 +442,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
           />
         )}
 
-        {/* ── Danger Zone Tab ── */}
         {tab === "danger" && (
           <DangerZoneTab
             deleteNote="Permanently delete your admin account and all associated data. This cannot be undone."

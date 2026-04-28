@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import TableShell from "../../common/widgets/TableShell";
+import { IconSpinner, IconCheck } from "../../common/icons";
 
-// ── NEW API IMPORTS ──────────────────────────────────────────────────────────
+// API services to synchronize facility contact details between the dashboard and public interface
 import { getContactInfo } from "../../../../api/contact/public-contact.api";
 import { updateContactInfo } from "../../../../api/contact/admin-contact.api";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
+// Types
 interface ContactForm {
   phonePrimary:   string;
   phoneEmergency: string;
@@ -31,8 +31,7 @@ const EMPTY_CONTACT: ContactForm = {
   mapUrl:         '',
 };
 
-// ── Reusable field components ──────────────────────────────────────────────
-
+// CSS utility for consistent input styling across the settings interface
 const inputClass =
   'w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10 disabled:opacity-50';
 
@@ -43,6 +42,7 @@ interface FieldProps {
   children:    React.ReactNode;
 }
 
+// Wrapper for form fields to ensure consistent labeling and validation hint placement
 const Field: React.FC<FieldProps> = ({ label, hint, optional, children }) => (
   <label className="grid gap-1.5">
     <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -58,16 +58,15 @@ const Field: React.FC<FieldProps> = ({ label, hint, optional, children }) => (
   </label>
 );
 
-// ── Component ──────────────────────────────────────────────────────────────
-
+// Configuration page to manage system-wide metadata and facility-specific contact information
 const Settings: React.FC = () => {
-  // ── Contact info state ─────────────────────────────────────────────────
+  // Contact info state
   const [contact,     setContact]     = useState<ContactForm>(EMPTY_CONTACT);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [saveState,   setSaveState]   = useState<SaveState>('idle');
   const [saveError,   setSaveError]   = useState('');
 
-  // ── Load existing contact info on mount ────────────────────────────────
+  // Load the current facility details to pre-populate the form for administrative updates
   useEffect(() => {
     getContactInfo()
       .then((info) => {
@@ -82,7 +81,7 @@ const Settings: React.FC = () => {
           mapUrl:         info.mapUrl         ?? '',
         });
       })
-      .catch(() => {/* keep empty defaults */})
+      .catch(() => {/* fallback to empty defaults */})
       .finally(() => setLoadingInfo(false));
   }, []);
 
@@ -93,12 +92,11 @@ const Settings: React.FC = () => {
     setContact((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ── Save contact info ──────────────────────────────────────────────────
+  // Persist updated contact information to the backend to reflect changes on the public website
   const handleSaveContact = async () => {
     setSaveState('saving');
     setSaveError('');
     try {
-      // Strip empty optional fields so backend doesn't overwrite with ''
       const payload = Object.fromEntries(
         Object.entries(contact).filter(([, v]) => v.trim() !== ''),
       );
@@ -116,7 +114,6 @@ const Settings: React.FC = () => {
   return (
     <div className="space-y-6">
 
-      {/* ── Contact Information ──────────────────────────────────────────── */}
       <TableShell
         title="Contact Information"
         subtitle="These details appear on the public Contact page and in automated reply emails."
@@ -130,7 +127,6 @@ const Settings: React.FC = () => {
         ) : (
           <div className="grid max-w-xl gap-5">
 
-            {/* Phone numbers */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Primary Phone" hint="Shown on the contact page under 'Call Us'">
                 <input
@@ -154,7 +150,6 @@ const Settings: React.FC = () => {
               </Field>
             </div>
 
-            {/* Email */}
             <Field label="Contact Email" hint="Used in reply emails and shown on the contact page">
               <input
                 type="email"
@@ -167,7 +162,6 @@ const Settings: React.FC = () => {
               />
             </Field>
 
-            {/* Address */}
             <Field label="Address Line 1">
               <input
                 name="addressLine1"
@@ -213,7 +207,6 @@ const Settings: React.FC = () => {
               </Field>
             </div>
 
-            {/* Map URL */}
             <Field
               label="Google Maps URL"
               optional
@@ -229,7 +222,6 @@ const Settings: React.FC = () => {
               />
             </Field>
 
-            {/* Save button */}
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={handleSaveContact}
@@ -238,10 +230,7 @@ const Settings: React.FC = () => {
               >
                 {isSaving ? (
                   <span className="flex items-center gap-2">
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                    </svg>
+                    <IconSpinner className="h-4 w-4" />
                     Saving…
                   </span>
                 ) : 'Save Contact Info'}
@@ -249,9 +238,7 @@ const Settings: React.FC = () => {
 
               {saveState === 'saved' && (
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L8 12.586 4.707 9.293a1 1 0 00-1.414 1.414l4 4a1 1 0 001.414 0l8-8a1 1 0 000-1.414z" clipRule="evenodd"/>
-                  </svg>
+                  <IconCheck className="h-4 w-4" />
                   Saved successfully
                 </span>
               )}
@@ -266,7 +253,6 @@ const Settings: React.FC = () => {
         )}
       </TableShell>
 
-      {/* ── API Configuration (read-only) ────────────────────────────────── */}
       <TableShell
         title="API Configuration"
         subtitle="Backend connection details (read-only)."

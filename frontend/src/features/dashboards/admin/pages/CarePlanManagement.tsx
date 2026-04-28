@@ -1,24 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createCarePlan,
   deactivateCarePlan,
   getAllCarePlans,
   updateCarePlan,
-} from '../../../../api/care-plans/admin-care-plan.api';
+} from "../../../../api/care-plans/admin-care-plan.api";
 import type {
   CarePlan,
   CarePlanDurationUnit,
-} from '../../../../api/care-plans/care-plan.types';
-import { useAuth } from '../../../../auth/AuthContext';
-import Badge from '../../common/widgets/Badge';
-import TableShell from '../../common/widgets/TableShell';
-import { IconEdit, IconHeart, IconTrash } from '../../common/icons';
+} from "../../../../api/care-plans/care-plan.types";
+import { useAuth } from "../../../../auth/AuthContext";
+import Badge from "../../common/widgets/Badge";
+import TableShell from "../../common/widgets/TableShell";
+import { IconEdit, IconHeart, IconTrash } from "../../common/icons";
 
 interface Props {
-  addToast: (kind: 'success' | 'error', message: string) => void;
+  addToast: (kind: "success" | "error", message: string) => void;
 }
 
-type FormMode = 'create' | 'edit';
+type FormMode = "create" | "edit";
 
 interface CarePlanFormState {
   name: string;
@@ -29,13 +29,14 @@ interface CarePlanFormState {
 }
 
 const emptyForm: CarePlanFormState = {
-  name: '',
-  description: '',
-  price: '',
-  duration: '',
-  durationUnit: 'days',
+  name: "",
+  description: "",
+  price: "",
+  duration: "",
+  durationUnit: "days",
 };
 
+// Interface for managing care plan subscription packages offered to family members
 const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
   const { user } = useAuth();
   const [plans, setPlans] = useState<CarePlan[]>([]);
@@ -43,12 +44,13 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
   const [saving, setSaving] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [formMode, setFormMode] = useState<FormMode>('create');
+  const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingPlan, setEditingPlan] = useState<CarePlan | null>(null);
   const [form, setForm] = useState<CarePlanFormState>(emptyForm);
 
-  const canManage = user?.role === 'admin' || user?.role === 'super_admin';
+  const canManage = user?.role === "admin" || user?.role === "super_admin";
 
+  // Retrieve all existing care plans from the administrative API
   const loadPlans = useCallback(async () => {
     if (!canManage) return;
 
@@ -57,7 +59,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
       const data = await getAllCarePlans();
       setPlans(data);
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to load care plans');
+      addToast("error", err instanceof Error ? err.message : "Failed to load care plans");
     } finally {
       setLoading(false);
     }
@@ -77,14 +79,14 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
   );
 
   const openCreateModal = () => {
-    setFormMode('create');
+    setFormMode("create");
     setEditingPlan(null);
     setForm(emptyForm);
     setModalOpen(true);
   };
 
   const openEditModal = (plan: CarePlan) => {
-    setFormMode('edit');
+    setFormMode("edit");
     setEditingPlan(plan);
     setForm({
       name: plan.name,
@@ -108,6 +110,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Submit care plan creation or update with validation
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -120,38 +123,39 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
     };
 
     if (!payload.name || !payload.description) {
-      addToast('error', 'Name and description are required');
+      addToast("error", "Name and description are required");
       return;
     }
     if (!Number.isFinite(payload.price) || payload.price <= 0) {
-      addToast('error', 'Price must be greater than 0');
+      addToast("error", "Price must be greater than 0");
       return;
     }
     if (!Number.isFinite(payload.duration) || payload.duration <= 0) {
-      addToast('error', 'Duration must be greater than 0');
+      addToast("error", "Duration must be greater than 0");
       return;
     }
 
     try {
       setSaving(true);
 
-      if (formMode === 'create') {
+      if (formMode === "create") {
         await createCarePlan(payload);
-        addToast('success', 'Care plan created successfully');
+        addToast("success", "Care plan created successfully");
       } else if (editingPlan) {
         await updateCarePlan(editingPlan.id, payload);
-        addToast('success', 'Care plan updated successfully');
+        addToast("success", "Care plan updated successfully");
       }
 
       setModalOpen(false);
       await loadPlans();
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to save care plan');
+      addToast("error", err instanceof Error ? err.message : "Failed to save care plan");
     } finally {
       setSaving(false);
     }
   };
 
+  // Permanently deactivate a care plan (preventing new subscriptions)
   const handleDeactivate = async (plan: CarePlan) => {
     if (!plan.isActive) return;
 
@@ -160,12 +164,12 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
     try {
       setDeactivatingId(plan.id);
       const res = await deactivateCarePlan(plan.id);
-      addToast('success', res.message || 'Care plan deactivated successfully');
+      addToast("success", res.message || "Care plan deactivated successfully");
       await loadPlans();
     } catch (err) {
       addToast(
-        'error',
-        err instanceof Error ? err.message : 'Failed to deactivate care plan',
+        "error",
+        err instanceof Error ? err.message : "Failed to deactivate care plan",
       );
     } finally {
       setDeactivatingId(null);
@@ -203,10 +207,12 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
         }
       >
         {loading ? (
+          /* Loading Overlay: Animated spinner during data fetch */
           <div className="flex items-center justify-center py-16">
             <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
           </div>
         ) : (
+          /* Care Plan Grid: Overview of all active and inactive packages */
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -236,8 +242,8 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                     <td className="px-4 py-3 text-slate-600">{plan.duration}</td>
                     <td className="px-4 py-3 text-slate-600">{plan.durationUnit}</td>
                     <td className="px-4 py-3">
-                      <Badge tone={plan.isActive ? 'emerald' : 'slate'}>
-                        {plan.isActive ? 'Active' : 'Inactive'}
+                      <Badge tone={plan.isActive ? "emerald" : "slate"}>
+                        {plan.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
@@ -257,7 +263,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                           className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <IconTrash className="h-3.5 w-3.5" />
-                          {deactivatingId === plan.id ? 'Deactivating...' : 'Deactivate'}
+                          {deactivatingId === plan.id ? "Deactivating..." : "Deactivate"}
                         </button>
                       </div>
                     </td>
@@ -276,6 +282,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
         )}
       </TableShell>
 
+      {/* Editor Modal: Modal form for creating and updating care plans */}
       {modalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <button
@@ -286,7 +293,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
           <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-white/90 p-6 shadow-2xl backdrop-blur-xl">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900">
-                {formMode === 'create' ? 'Add Care Plan' : 'Edit Care Plan'}
+                {formMode === "create" ? "Add Care Plan" : "Edit Care Plan"}
               </h3>
               <button
                 onClick={closeModal}
@@ -301,7 +308,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                 <span className="text-xs font-semibold text-slate-600">Name</span>
                 <input
                   value={form.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
+                  onChange={(e) => handleFormChange("name", e.target.value)}
                   required
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10"
                 />
@@ -311,7 +318,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                 <span className="text-xs font-semibold text-slate-600">Description</span>
                 <textarea
                   value={form.description}
-                  onChange={(e) => handleFormChange('description', e.target.value)}
+                  onChange={(e) => handleFormChange("description", e.target.value)}
                   required
                   rows={4}
                   className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10"
@@ -326,7 +333,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                     min="0.01"
                     step="0.01"
                     value={form.price}
-                    onChange={(e) => handleFormChange('price', e.target.value)}
+                    onChange={(e) => handleFormChange("price", e.target.value)}
                     required
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10"
                   />
@@ -338,7 +345,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                     type="number"
                     min="1"
                     value={form.duration}
-                    onChange={(e) => handleFormChange('duration', e.target.value)}
+                    onChange={(e) => handleFormChange("duration", e.target.value)}
                     required
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10"
                   />
@@ -350,7 +357,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                 <select
                   value={form.durationUnit}
                   onChange={(e) =>
-                    handleFormChange('durationUnit', e.target.value as CarePlanDurationUnit)
+                    handleFormChange("durationUnit", e.target.value as CarePlanDurationUnit)
                   }
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10"
                 >
@@ -372,7 +379,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                   disabled={saving}
                   className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? 'Saving...' : formMode === 'create' ? 'Create Plan' : 'Update Plan'}
+                  {saving ? "Saving..." : formMode === "create" ? "Create Plan" : "Update Plan"}
                 </button>
               </div>
             </form>

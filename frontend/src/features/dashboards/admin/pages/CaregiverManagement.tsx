@@ -1,20 +1,13 @@
 import React from "react";
-// ── NEW API IMPORT ──
 import type { Caregiver } from "../../../../api/users/user.types";
-
+import { IconUserPlus } from "../../common/icons";
 import TableShell from "../../common/widgets/TableShell";
-import Badge      from "../../common/widgets/Badge";
+import Badge from "../../common/widgets/Badge";
 
-const UserPlusIcon = ({ className = "h-4 w-4" }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-      d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M10 7a4 4 0 11-8 0 4 4 0 018 0zm9 4v6m3-3h-6" />
-  </svg>
-);
-
+// Maps availability status strings to visual badge tones
 const availabilityTone = (s: string) =>
-  s === "available" ? "emerald" as const :
-  s === "busy"      ? "amber"   as const : "slate" as const;
+  s === "available" ? ("emerald" as const) :
+  s === "busy"      ? ("amber"   as const) : ("slate" as const);
 
 interface Props {
   caregivers: Caregiver[];
@@ -23,22 +16,27 @@ interface Props {
   onToggleStatus: (id: string, isActive: boolean) => void;
 }
 
+// Interface for managing caregiver staff, their availability, and account status
 const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregiver, onToggleStatus }) => (
   <TableShell
     title="Caregivers"
     subtitle="Manage caregiver accounts and their availability status."
     right={
-      <button onClick={onAddCaregiver}
-        className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
-        <UserPlusIcon /> + Add Caregiver
+      <button 
+        onClick={onAddCaregiver}
+        className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700"
+      >
+        <IconUserPlus className="h-4 w-4" /> + Add Caregiver
       </button>
     }
   >
     {loading ? (
+      /* Loading Overlay: Animated spinner during data fetch */
       <div className="flex items-center justify-center py-16">
         <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     ) : (
+      /* Caregiver Grid: Tabular overview of staff details and availability */
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -55,7 +53,7 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
           </thead>
           <tbody className="divide-y divide-slate-100">
             {caregivers.map((c) => {
-              // Safely extract fields whether they are flattened or nested in a 'user' object
+              // Extract identity fields safely from nested or flattened structures
               const fullName = (c as any).user?.fullName || c.fullName;
               const email = (c as any).user?.email || c.email;
               const isActive = (c as any).user?.isActive ?? c.isActive;
@@ -103,4 +101,4 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
   </TableShell>
 );
 
-export default CaregiverManagement;
+export default CaregiverManagement;

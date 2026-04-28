@@ -1,13 +1,8 @@
-/**
- * src/features/dashboards/common/widgets/Badge.tsx
- * ──────────────────────────────────────────────────
- * Coloured status badge shared across admin and doctor management pages.
- */
-
 import React from "react";
 
 export type BadgeTone = "emerald" | "amber" | "slate" | "red" | "purple" | "blue";
 
+// Map qualitative intent to specific color schemes to maintain visual consistency in status messaging
 const toneMap: Record<BadgeTone, string> = {
   emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   amber:   "bg-amber-50 text-amber-700 ring-amber-100",
@@ -22,6 +17,7 @@ interface Props {
   children: React.ReactNode;
 }
 
+// Compact UI element for displaying short status labels or categorical tags with distinct color tones
 const Badge: React.FC<Props> = ({ tone, children }) => (
   <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${toneMap[tone]}`}>
     {children}

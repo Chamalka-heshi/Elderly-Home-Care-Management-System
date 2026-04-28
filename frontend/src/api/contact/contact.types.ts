@@ -1,3 +1,4 @@
+// Publicly visible contact and location details for the facility to guide user inquiries
 export interface ContactInfo {
   phonePrimary: string;
   phoneEmergency: string;
@@ -10,6 +11,7 @@ export interface ContactInfo {
   mapEmbedUrl?: string;
 }
 
+// Inquiry message structure to track communication between the public and the facility
 export interface ContactMessage {
   id: string;
   fullName: string;
@@ -19,5 +21,5 @@ export interface ContactMessage {
   reply?: string;
   status: 'pending' | 'replied';
   createdAt: string;
-  repliedAt?: string; // <-- Added this missing field
+  repliedAt?: string;
 }

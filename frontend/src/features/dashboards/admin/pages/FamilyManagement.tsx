@@ -1,9 +1,7 @@
 import React from "react";
-// ── NEW API IMPORT ──
 import type { Family } from "../../../../api/users/user.types";
-
 import TableShell from "../../common/widgets/TableShell";
-import Badge      from "../../common/widgets/Badge";
+import Badge from "../../common/widgets/Badge";
 
 interface Props {
   families: Family[];
@@ -11,13 +9,16 @@ interface Props {
   onToggleStatus: (id: string, isActive: boolean) => void;
 }
 
+// Administrative console for managing registered family members and patient links
 const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }) => (
   <TableShell title="Families" subtitle="View and manage registered family accounts.">
+    {/* Content State: Handles loading, empty, and data population results */}
     {loading ? (
       <div className="flex items-center justify-center py-16">
         <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     ) : (
+      /* Family Database: High-density data grid for account oversight */
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -38,7 +39,6 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
                 <td className="px-4 py-3 text-slate-600">{f.email}</td>
                 <td className="px-4 py-3 text-slate-600">{f.contactNumber ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{f.patientsCount ?? 0}</td>
-                {/* Changed f.joinedDate to f.createdAt to match the updated API type */}
                 <td className="px-4 py-3 text-slate-600">{new Date(f.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <Badge tone={f.isActive ? "emerald" : "red"}>{f.isActive ? "Active" : "Blocked"}</Badge>
@@ -59,7 +59,12 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
               </tr>
             ))}
             {families.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">No families found.</td></tr>
+              /* No Results Backdrop */
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
+                  No families found.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -68,4 +73,4 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
   </TableShell>
 );
 
-export default FamilyManagement;
+export default FamilyManagement;

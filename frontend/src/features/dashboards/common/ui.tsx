@@ -1,35 +1,16 @@
-/**
- * src/features/dashboards/common/ui.tsx
- * ──────────────────────────────────────
- * Reusable glassmorphism UI primitives shared across AdminProfile,
- * DoctorProfile, and any future role-based profile pages.
- *
- * Components exported:
- *  - FieldLabel      — styled <label> for form fields
- *  - GlassInput      — frosted-glass <input>
- *  - GlassSelect     — frosted-glass <select>
- *  - SectionCard     — rounded glass card with optional title / subtitle / right slot
- *  - PrimaryBtn      — action button in emerald / blue / red tone
- *  - Pill            — inline badge chip
- *  - AmbientBg       — fixed full-screen decorative blobs
- *  - ToastList       — renders the active toast stack
- *
- * Types exported:
- *  - Toast           — { id, kind, message }
- */
-
 import React from "react";
+import { IconCheck, IconAlertTriangle } from "./icons";
 
-// ── FieldLabel ────────────────────────────────────────────────────────────────
-
+// FieldLabel
+// Provides consistent typographical styling for form field headers across all dashboard components
 export const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <label className="mb-2 block text-xs font-semibold tracking-wide text-slate-600">
     {children}
   </label>
 );
 
-// ── GlassInput ────────────────────────────────────────────────────────────────
-
+// GlassInput
+// Implements a frosted-glass visual style for text inputs to align with the modern glassmorphism aesthetic
 export const GlassInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = ({
   className = "", ...props
 }) => (
@@ -46,8 +27,8 @@ export const GlassInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> =
   />
 );
 
-// ── GlassSelect ───────────────────────────────────────────────────────────────
-
+// GlassSelect
+// Standardized dropdown component with glass effects for selecting categorical data from predefined options
 export const GlassSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = ({
   className = "", children, ...props
 }) => (
@@ -64,8 +45,8 @@ export const GlassSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>
   </select>
 );
 
-// ── SectionCard ───────────────────────────────────────────────────────────────
-
+// SectionCard
+// High-level content container that provides visual separation and depth for distinct logical sections
 export const SectionCard: React.FC<{
   title: string;
   subtitle?: string;
@@ -73,7 +54,6 @@ export const SectionCard: React.FC<{
   children: React.ReactNode;
 }> = ({ title, subtitle, rightSlot, children }) => (
   <section className="relative overflow-hidden rounded-3xl border border-white/30 bg-white/60 p-6 shadow-[0_30px_80px_-55px_rgba(0,0,0,0.6)] backdrop-blur-xl md:p-8">
-    {/* Decorative blobs inside the card */}
     <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl" />
     <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-sky-500/12 blur-3xl" />
 
@@ -88,8 +68,8 @@ export const SectionCard: React.FC<{
   </section>
 );
 
-// ── PrimaryBtn ────────────────────────────────────────────────────────────────
-
+// PrimaryBtn
+// Unified button component with color-coded intent to guide user actions (emerald for confirm, red for delete)
 type BtnTone = "emerald" | "blue" | "red";
 
 const btnToneMap: Record<BtnTone, string> = {
@@ -112,8 +92,8 @@ export const PrimaryBtn: React.FC<
   />
 );
 
-// ── Pill ──────────────────────────────────────────────────────────────────────
-
+// Pill
+// Inline status indicator or tag used for highlighting brief, categorical metadata
 type PillTone = "emerald" | "slate" | "purple";
 
 const pillToneMap: Record<PillTone, string> = {
@@ -130,9 +110,8 @@ export const Pill: React.FC<{ children: React.ReactNode; tone?: PillTone }> = ({
   </span>
 );
 
-// ── AmbientBg ─────────────────────────────────────────────────────────────────
-// Fixed full-screen decorative gradient blobs; place once per page.
-
+// AmbientBg
+// Decorative background layer providing soft, non-interactive visual interest to the dashboard layout
 export const AmbientBg: React.FC = () => (
   <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
     <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-3xl" />
@@ -141,7 +120,6 @@ export const AmbientBg: React.FC = () => (
   </div>
 );
 
-// Alternate variant used by the dashboard shell (slightly different colours).
 export const DashboardAmbientBg: React.FC = () => (
   <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
     <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
@@ -150,8 +128,8 @@ export const DashboardAmbientBg: React.FC = () => (
   </div>
 );
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-
+// ToastList
+// Overlay to manage and display ephemeral system notifications for transient user feedback
 export interface Toast { id: number; kind: "success" | "error"; message: string; }
 
 export const ToastList: React.FC<{ toasts: Toast[] }> = ({ toasts }) => (
@@ -164,17 +142,10 @@ export const ToastList: React.FC<{ toasts: Toast[] }> = ({ toasts }) => (
           t.kind === "success" ? "bg-emerald-600" : "bg-red-600",
         ].join(" ")}
       >
-        {/* Inline minimal icons to avoid circular imports */}
         {t.kind === "success" ? (
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M5 13l4 4L19 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <IconCheck className="h-4 w-4" />
         ) : (
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M12 3.8 21 20H3L12 3.8Z" strokeWidth="1.6" strokeLinejoin="round" />
-            <path d="M12 9v5" strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M12 17.5h.01" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
+          <IconAlertTriangle className="h-4 w-4" />
         )}
         {t.message}
       </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import Navbar from '../../components/Navbar/navbar';
 import Footer from '../../components/Footer/footer';
-import heroImage from '../../assets/Home/services_image.png'; 
+import heroImage from '../../assets/landing/services-hero.png'; 
 import './ServicesPage.css';
 
 type Service = {
