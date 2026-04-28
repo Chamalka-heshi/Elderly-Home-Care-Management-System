@@ -5,43 +5,44 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JwtService } from '@nestjs/jwt';
-import { Repository } from 'typeorm';
-import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
-import { UsersService } from '../users/users.service';
-import { FamilyService } from '../family/family.service';
-import { DoctorsService } from '../doctors/doctors.service';
-import { CaregiversService } from '../caregivers/caregivers.service';
-import { AdminService } from '../admin/admin.service';
-import { PatientsService } from '../patients/patients.service';
-import { FamilySignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
-import { CreatePatientDto } from '../patients/dto/create-patient.dto';
-import { UserRole } from '../../common/enums/user-role.enum';
-import { FirebaseAdminService } from './firebase/firebase-admin.service';
-import { MailService } from '../mail/mail.service';
+import { JwtService }       from '@nestjs/jwt';
+import { Repository }       from 'typeorm';
+import * as crypto          from 'crypto';
+import * as bcrypt          from 'bcrypt';
+
+import { User }                  from '../users/entities/user.entity';
+import { UsersService }          from '../users/users.service';
+import { FamilyService }         from '../family/family.service';
+import { DoctorsService }        from '../doctors/doctors.service';
+import { CaregiversService }     from '../caregivers/caregivers.service';
+import { AdminService }          from '../admin/admin.service';
+import { PatientsService }       from '../patients/patients.service';
+import { FamilySignupDto }       from './dto/signup.dto';
+import { LoginDto }              from './dto/login.dto';
+import { UserRole }              from '../../common/enums/user-role.enum';
+import { FirebaseAdminService }  from './firebase/firebase-admin.service';
+import { MailService }           from '../mail/mail.service';
+
+const BCRYPT_SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
-    private familyService: FamilyService,
-    private doctorsService: DoctorsService,
-    private caregiversService: CaregiversService,
-    private patientsService: PatientsService,
-    private jwtService: JwtService,
+    private readonly usersService:      UsersService,
+    private readonly familyService:     FamilyService,
+    private readonly doctorsService:    DoctorsService,
+    private readonly caregiversService: CaregiversService,
+    private readonly patientsService:   PatientsService,
+    private readonly jwtService:        JwtService,
+    private readonly firebaseAdmin:     FirebaseAdminService,
+    private readonly adminService:      AdminService,
+    private readonly mailService:       MailService,
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    private readonly firebaseAdmin: FirebaseAdminService,
-    private readonly adminService: AdminService,
-    private readonly mailService: MailService,
+    private readonly userRepository:    Repository<User>,
   ) {}
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // PUBLIC: Family Member Signup
-  // ──────────────────────────────────────────────────────────────────────────
+  // Registration
+  // Handles family member registration by creating both a core user identity and a family-specific profile.
   async familySignup(signupDto: FamilySignupDto) {
     const { email, password, fullName, contactNumber } = signupDto;
 
@@ -65,46 +66,19 @@ export class AuthService {
     return {
       message: 'Family member registered successfully',
       user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        contactNumber: user.contactNumber,
+        id:                 user.id,
+        fullName:           user.fullName,
+        email:              user.email,
+        role:               user.role,
+        contactNumber:      user.contactNumber,
         mustChangePassword: false,
       },
       token,
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // FAMILY ONLY: Create Patient Profile
-  // ──────────────────────────────────────────────────────────────────────────
-  async createPatient(createPatientDto: CreatePatientDto, familyUserId: string) {
-    const familyMember = await this.familyService.findByUserId(familyUserId);
-    if (!familyMember) {
-      throw new NotFoundException('Family member profile not found');
-    }
-
-    const patient = await this.patientsService.create(
-      familyMember.id,
-      createPatientDto,
-    );
-
-    return {
-      message: 'Patient profile created successfully',
-      patient: {
-        id: patient.id,
-        fullName: patient.fullName,
-        dateOfBirth: patient.dateOfBirth,
-        gender: patient.gender,
-        familyMemberId: familyMember.id,
-      },
-    };
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // UNIVERSAL: Login (All Roles)
-  // ──────────────────────────────────────────────────────────────────────────
+  // Authentication
+  // Verifies credentials and activation status before issuing a session token to grant platform access.
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
@@ -117,10 +91,7 @@ export class AuthService {
       throw new UnauthorizedException('Your account has been deactivated. Please contact support.');
     }
 
-    const isPasswordValid = await this.usersService.validatePassword(
-      password,
-      user.password,
-    );
+    const isPasswordValid = await this.usersService.validatePassword(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Incorrect password. Please try again.');
     }
@@ -130,33 +101,33 @@ export class AuthService {
     return {
       message: 'Login successful',
       user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        contactNumber: user.contactNumber,
+        id:                 user.id,
+        fullName:           user.fullName,
+        email:              user.email,
+        role:               user.role,
+        contactNumber:      user.contactNumber,
         mustChangePassword: user.mustChangePassword,
       },
       token,
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Get Profile
-  // ──────────────────────────────────────────────────────────────────────────
+  // Profile & Session
+  // Aggregates core identity data with role-specific profile attributes for a complete user overview.
   async getProfile(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    let profileData = null;
-
+    // Strips the nested `user` relation before returning role-specific profile data
     const stripUser = (entity: any) => {
       if (!entity) return null;
       const { user: _, ...rest } = entity;
       return rest;
     };
+
+    let profileData = null;
 
     switch (user.role) {
       case UserRole.FAMILY:
@@ -175,41 +146,34 @@ export class AuthService {
     }
 
     return {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      contactNumber: user.contactNumber,
+      id:                 user.id,
+      fullName:           user.fullName,
+      email:              user.email,
+      role:               user.role,
+      contactNumber:      user.contactNumber,
       mustChangePassword: user.mustChangePassword,
-      createdAt: user.createdAt,
-      avatarUrl: user.avatarUrl ?? null,
-      profile: profileData,
+      createdAt:          user.createdAt,
+      avatarUrl:          user.avatarUrl ?? null,
+      profile:            profileData,
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Logout — stamp lastLogoutAt so all existing tokens are rejected
-  // ──────────────────────────────────────────────────────────────────────────
+  // Marks the point in time after which any previously issued tokens are considered invalid for safety.
   async logout(userId: string): Promise<void> {
     await this.usersService.setLastLogoutAt(userId, new Date());
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Delete Account
-  // ──────────────────────────────────────────────────────────────────────────
+  // Disables the user's account to prevent further access while preserving historical data records.
   async deleteAccount(userId: string) {
     await this.usersService.deactivateUser(userId);
     return { message: 'Account deleted successfully' };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Firebase / Google OAuth
-  // ──────────────────────────────────────────────────────────────────────────
-  async firebaseAuth(
-    idToken: string,
-  ): Promise<{ token: string; user: any; isNewUser: boolean }> {
 
+  // Synchronizes external Firebase identities with the local user database, creating new profiles if necessary.
+  async firebaseAuth(idToken: string): Promise<{ token: string; user: any; isNewUser: boolean }> {
     let decodedToken: Awaited<ReturnType<FirebaseAdminService['verifyIdToken']>>;
+
     try {
       decodedToken = await this.firebaseAdmin.verifyIdToken(idToken);
     } catch (err: any) {
@@ -237,12 +201,12 @@ export class AuthService {
     if (!user) {
       user = this.userRepository.create({
         email,
-        fullName:      name ?? email.split('@')[0],
-        password:      `FIREBASE_OAUTH::${crypto.randomBytes(32).toString('hex')}`,
-        role:          UserRole.FAMILY,
-        contactNumber: '',
-        firebaseUid:   uid,
-        avatarUrl:     picture ?? null,
+        fullName:           name ?? email.split('@')[0],
+        password:           `FIREBASE_OAUTH::${crypto.randomBytes(32).toString('hex')}`,
+        role:               UserRole.FAMILY,
+        contactNumber:      '',
+        firebaseUid:        uid,
+        avatarUrl:          picture ?? null,
         mustChangePassword: false,
       });
 
@@ -268,29 +232,29 @@ export class AuthService {
     return {
       token,
       user: {
-        id:                user.id,
-        fullName:          user.fullName,
-        email:             user.email,
-        role:              user.role,
-        contactNumber:     user.contactNumber,
+        id:                 user.id,
+        fullName:           user.fullName,
+        email:              user.email,
+        role:               user.role,
+        contactNumber:      user.contactNumber,
         mustChangePassword: user.mustChangePassword,
       },
       isNewUser,
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Avatar Upload / Remove
-  // ──────────────────────────────────────────────────────────────────────────
+  // Converts uploaded image buffers into data URLs for efficient storage and immediate UI rendering.
   async uploadAvatar(
     userId: string,
     file: { mimetype: string; size: number; buffer: Buffer },
   ): Promise<{ avatarUrl: string }> {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const maxFileSizeBytes = 5 * 1024 * 1024;
+
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException('Only JPEG, PNG, WEBP, or GIF images are allowed');
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > maxFileSizeBytes) {
       throw new BadRequestException('Avatar image must be smaller than 5 MB');
     }
 
@@ -301,15 +265,16 @@ export class AuthService {
     return { avatarUrl: dataUrl };
   }
 
+  // Clears the avatar reference to return the user profile to its default state.
   async removeAvatar(userId: string): Promise<void> {
     await this.usersService.updateAvatar(userId, null);
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Change Password (regular — requires current password)
-  // ──────────────────────────────────────────────────────────────────────────
+  // Password Security
+
+  // Replaces the existing password with a new hash after verifying the user's current credentials.
   async changePassword(userId: string, currentPw: string, newPw: string): Promise<void> {
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findByIdWithPassword(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -323,10 +288,7 @@ export class AuthService {
     await this.usersService.setMustChangePassword(userId, false);
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // First-Login Password Change — no current-password check needed.
-  // Only allowed when mustChangePassword === true to prevent abuse.
-  // ──────────────────────────────────────────────────────────────────────────
+  // Forces a new permanent password set for users loggin in with temporary system-generated credentials.
   async firstLoginChangePassword(userId: string, newPw: string): Promise<void> {
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -334,23 +296,20 @@ export class AuthService {
     }
 
     if (!user.mustChangePassword) {
-      throw new UnauthorizedException(
-        'This endpoint is only available on first login.',
-      );
+      throw new UnauthorizedException('This endpoint is only available on first login.');
     }
 
     await this.usersService.updatePassword(userId, newPw);
     await this.usersService.setMustChangePassword(userId, false);
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // FORGOT PASSWORD — Step 1: Check email & return masked contact number
-  // ──────────────────────────────────────────────────────────────────────────
+  // Password Recovery
+  // Validates a reset request and provides a masked phone number hint to the user for confirmation.
   async checkEmailForReset(email: string): Promise<{ maskedContact: string }> {
     const user = await this.usersService.findByEmail(email.trim().toLowerCase());
 
+    // Generic message — avoids revealing whether the email is registered
     if (!user || !user.isActive) {
-      // Generic message — don't reveal whether the email exists
       throw new NotFoundException('No account found with this email address.');
     }
 
@@ -362,15 +321,12 @@ export class AuthService {
 
     // Mask all but the last 3 digits: "+947123456789" → "**********789"
     const contact = user.contactNumber.trim();
-    const last3   = contact.slice(-3);
-    const masked  = '*'.repeat(contact.length - 3) + last3;
+    const masked  = '*'.repeat(contact.length - 3) + contact.slice(-3);
 
     return { maskedContact: masked };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // FORGOT PASSWORD — Step 2: Verify email + contact, send temp password email
-  // ──────────────────────────────────────────────────────────────────────────
+  // Issues a temporary random password to the user's registered email after verifying their identity via contact number.
   async forgotPassword(email: string, contactNumber: string): Promise<{ message: string }> {
     const normEmail   = email.trim().toLowerCase();
     const normContact = contactNumber.trim();
@@ -380,35 +336,25 @@ export class AuthService {
       throw new NotFoundException('No account found with this email address.');
     }
 
-    // Verify by comparing last 3 digits — tolerant of formatting differences
     if (!user.contactNumber || user.contactNumber.trim().length < 3) {
       throw new BadRequestException('Contact number not on record. Please contact support.');
     }
 
-    const storedLast3   = user.contactNumber.trim().slice(-3);
-    const submittedLast3 = normContact.slice(-3);
-
-    if (storedLast3 !== submittedLast3) {
+    // Masking is display-only — verify the full number for security
+    if (user.contactNumber.trim() !== normContact) {
       throw new UnauthorizedException(
         'The contact number you entered does not match our records.',
       );
     }
 
-    // Generate a random 10-character alphanumeric temp password
-    const tempPassword = crypto.randomBytes(6).toString('hex'); // 12 hex chars, e.g. "a3f7c1b2d4e9"
+    const tempPassword = crypto.randomBytes(6).toString('hex');
+    const hashed       = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
 
-    // Hash and save as the user's current password; flag them for mandatory change
-    const hashed = await bcrypt.hash(tempPassword, 10);
-    user.password          = hashed;
+    user.password           = hashed;
     user.mustChangePassword = true;
     await this.userRepository.save(user);
 
-    // Send the temp password by email
-    await this.mailService.sendPasswordResetEmail(
-      user.email,
-      user.fullName,
-      tempPassword,
-    );
+    await this.mailService.sendPasswordResetEmail(user.email, user.fullName, tempPassword);
 
     return {
       message:
@@ -417,16 +363,13 @@ export class AuthService {
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // FORGOT PASSWORD — Step 3: Verify temp password, set new password, return JWT
-  // ──────────────────────────────────────────────────────────────────────────
+  // Authenticates with a temporary credential and sets a new permanent password, resetting the security session.
   async resetPassword(
-    email:       string,
-    tempPassword: string,
-    newPassword:  string,
+    email:           string,
+    tempPassword:    string,
+    newPassword:     string,
     confirmPassword: string,
   ): Promise<{ token: string; user: any }> {
-
     if (newPassword !== confirmPassword) {
       throw new BadRequestException('New password and confirmation do not match.');
     }
@@ -438,21 +381,19 @@ export class AuthService {
       throw new NotFoundException('No account found with this email address.');
     }
 
-    // The temp password was stored (hashed) in the password field when forgotPassword was called
     const isValid = await bcrypt.compare(tempPassword, user.password);
     if (!isValid) {
       throw new UnauthorizedException('The temporary password you entered is incorrect.');
     }
 
-    // Set the new password and clear the forced-change flag
-    const hashedNew = await bcrypt.hash(newPassword, 10);
+    const hashedNew = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
     user.password           = hashedNew;
-    user.mustChangePassword  = false;
-    // Invalidate any outstanding sessions so the new password is the only way in
+    user.mustChangePassword = false;
+    // Invalidate all outstanding sessions so only the new password grants access
     user.lastLogoutAt       = new Date();
     await this.userRepository.save(user);
 
-    // Issue a fresh JWT so the user lands on their dashboard directly
     const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
 
     return {
@@ -468,13 +409,11 @@ export class AuthService {
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Private helpers
-  // ──────────────────────────────────────────────────────────────────────────
+  // Encodes user identity and role into a secure JWT for platform-wide authorization.
   private generateToken(
-    userId: string,
-    email: string,
-    role: UserRole,
+    userId:        string,
+    email:         string,
+    role:          UserRole,
     contactNumber: string,
   ): string {
     return this.jwtService.sign({ sub: userId, email, role, contactNumber });

@@ -1,19 +1,21 @@
-import { Module } from '@nestjs/common';
+import { Module }        from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { FirebaseAdminService } from './firebase/firebase-admin.service';
-import { User } from '../users/entities/user.entity';
-import { UsersModule } from '../users/users.module';
-import { FamilyModule } from '../family/family.module';
-import { DoctorsModule } from '../doctors/doctors.module';
-import { CaregiversModule } from '../caregivers/caregivers.module';
-import { PatientsModule } from '../patients/patients.module';
-import { AdminModule } from '../admin/admin.module';
-import { MailModule } from '../mail/mail.module';
+import { ConfigModule }  from '@nestjs/config';
 
-// JwtModule is globally registered via JwtConfigModule (imported in AppModule).
+import { AuthService }          from './auth.service';
+import { AuthController }       from './auth.controller';
+import { FirebaseAdminService } from './firebase/firebase-admin.service';
+import { User }                 from '../users/entities/user.entity';
+import { UsersModule }          from '../users/users.module';
+import { FamilyModule }         from '../family/family.module';
+import { DoctorsModule }        from '../doctors/doctors.module';
+import { CaregiversModule }     from '../caregivers/caregivers.module';
+import { PatientsModule }       from '../patients/patients.module';
+import { AdminModule }          from '../admin/admin.module';
+import { MailModule }           from '../mail/mail.module';
+
+
+// Aggregates authentication strategies, user validation logic, and third-party provider integrations.
 @Module({
   imports: [
     ConfigModule,
@@ -24,7 +26,7 @@ import { MailModule } from '../mail/mail.module';
     CaregiversModule,
     PatientsModule,
     AdminModule,
-    MailModule,   // ← added for forgot-password email delivery
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, FirebaseAdminService],

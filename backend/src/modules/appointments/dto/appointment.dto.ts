@@ -4,14 +4,15 @@ import {
   IsString,
   IsEnum,
 } from 'class-validator';
+
 import { AppointmentStatus } from '../entities/appointment.entity';
 
+
+// Captures the essential relationship between a time slot and a patient to initiate the booking process.
 export class CreateAppointmentDto {
-  /** The channeling slot to book into */
   @IsUUID()
   slotId: string;
 
-  /** The patient (elder) this appointment is for */
   @IsUUID()
   patientId: string;
 
@@ -20,6 +21,9 @@ export class CreateAppointmentDto {
   notes?: string;
 }
 
+// Update Status DTO
+
+// Validates the transition between appointment stages, ensuring only recognized system statuses are applied.
 export class UpdateAppointmentStatusDto {
   @IsEnum(AppointmentStatus)
   status: AppointmentStatus;
@@ -29,6 +33,9 @@ export class UpdateAppointmentStatusDto {
   notes?: string;
 }
 
+// Query Appointments DTO
+
+// Provides optional filtering criteria for listing appointments based on status, doctor, or patient identifiers.
 export class QueryAppointmentsDto {
   @IsOptional()
   @IsEnum(AppointmentStatus)

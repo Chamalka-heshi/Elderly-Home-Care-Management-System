@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Controller,
   Get,
@@ -12,37 +11,31 @@ import {
   HttpStatus,
   Req,
 } from '@nestjs/common';
-import { AppointmentService } from './appointment.service';
-import {
-  UpdateAppointmentStatusDto,
-  QueryAppointmentsDto,
-} from './dto/appointment.dto';
-import { Roles }    from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/user-role.enum';
 
-/**
- * AppointmentController — doctor & admin routes only.
- *
- * Family-member appointment routes live in FamilyController
- * under /family/appointments  (POST, GET, PATCH /:id/cancel).
- *
- * There is exactly ONE controller and ONE service for appointments.
- * The old AppointmentBookingController has been removed.
- */
+import { AppointmentService }        from './appointment.service';
+import { Roles }                     from '../../common/decorators/roles.decorator';
+import { UserRole }                  from '../../common/enums/user-role.enum';
+import { 
+  UpdateAppointmentStatusDto, 
+  QueryAppointmentsDto 
+} from './dto/appointment.dto';
+
+
+// Orchestrates appointment workflows for doctors and administrators, separating medical oversight from system management.
 @Controller('appointments')
 export class AppointmentController {
   constructor(private readonly service: AppointmentService) {}
 
-  // ── Doctor routes ───────────────────────────────────────────────────────────
+  // Doctor Management
 
-  /** Get all CONFIRMED/COMPLETED appointments for this doctor's slots */
+  // Retrieves all confirmed and completed appointments assigned to the logged-in doctor.
   @Get('doctor')
   @Roles(UserRole.DOCTOR)
   getDoctorAppointments(@Req() req: any) {
     return this.service.getDoctorAppointments(req.user.sub);
   }
 
-  /** Doctor updates an appointment status (confirm / complete / cancel) */
+  // Allows doctors to update appointment stages, ensuring the medical consultation flow is accurately tracked.
   @Patch('doctor/:id/status')
   @Roles(UserRole.DOCTOR)
   updateStatusByDoctor(
@@ -53,16 +46,16 @@ export class AppointmentController {
     return this.service.updateAppointmentStatusByDoctor(req.user.sub, id, dto);
   }
 
-  // ── Admin routes ────────────────────────────────────────────────────────────
+  // Administrative Oversight
 
-  /** Get all appointments — sensitive patient medical data is HIDDEN from admin */
+  // Provides a system-wide view of all appointments for resource planning, while redacting sensitive medical details.
   @Get('admin')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getAllAppointments(@Query() query: QueryAppointmentsDto) {
     return this.service.getAllAppointments(query);
   }
 
-  /** Admin updates appointment status */
+  // Permits administrators to override appointment statuses to resolve scheduling conflicts or billing issues.
   @Patch('admin/:id/status')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
@@ -73,7 +66,7 @@ export class AppointmentController {
     return this.service.adminUpdateStatus(id, dto);
   }
 
-  /** Admin deletes appointment */
+  // Facilitates the removal of erroneous or cancelled appointment records from the system.
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)

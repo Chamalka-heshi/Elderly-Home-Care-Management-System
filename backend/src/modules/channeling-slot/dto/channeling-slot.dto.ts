@@ -10,24 +10,24 @@ import {
   IsUUID,
   IsNumber,
 } from 'class-validator';
+
 import { SlotStatus } from '../entities/channeling-slot.entity';
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+
+// Validates the parameters for proposing a new consultation window, ensuring doctor availability and system-enforced scheduling constraints.
 export class CreateChannelingSlotDto {
   @IsUUID()
   doctorId: string;
 
-  /** YYYY-MM-DD */
   @IsDateString()
   date: string;
 
-  /** HH:MM (24-hour) */
   @IsString()
   @Matches(TIME_REGEX, { message: 'startTime must be HH:MM (24-hour)' })
   startTime: string;
 
-  /** HH:MM (24-hour) */
   @IsString()
   @Matches(TIME_REGEX, { message: 'endTime must be HH:MM (24-hour)' })
   endTime: string;
@@ -48,13 +48,15 @@ export class CreateChannelingSlotDto {
   @IsString()
   notes?: string;
 
-  /** Care-home charge added by admin. Optional at creation. */
   @IsOptional()
   @IsNumber()
   @Min(0)
   careHomeFee?: number;
 }
 
+// Update Slot DTO
+
+// Allows administrators to modify existing slot details while maintaining temporal and status consistency.
 export class UpdateChannelingSlotDto {
   @IsOptional()
   @IsDateString()
@@ -90,31 +92,33 @@ export class UpdateChannelingSlotDto {
   @IsString()
   notes?: string;
 
-  /** Admin can add / update the care-home charge on any slot. */
   @IsOptional()
   @IsNumber()
   @Min(0)
   careHomeFee?: number;
 }
 
-/** Used by the doctor to update only the consultation fee on their slot. */
+// Doctor Fee Update DTO
+
+// Permits clinical staff to define their own professional charges for a specific availability window.
 export class UpdateDoctorSlotFeeDto {
   @IsNumber()
   @Min(0)
   consultationFee: number;
 }
 
+// Query Slots DTO
+
+// Supports advanced system-wide filtering of consultation windows by doctor, date range, or current lifecycle status.
 export class QueryChannelingSlotsDto {
   @IsOptional()
   @IsUUID()
   doctorId?: string;
 
-  /** Filter from this date (YYYY-MM-DD) */
   @IsOptional()
   @IsDateString()
   fromDate?: string;
 
-  /** Filter up to this date (YYYY-MM-DD) */
   @IsOptional()
   @IsDateString()
   toDate?: string;

@@ -1,13 +1,21 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { 
+  Injectable, 
+  OnModuleInit, 
+  Logger 
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as admin from 'firebase-admin';
+import * as admin         from 'firebase-admin';
 
+// Firebase Admin Service
+
+// Handles the initialization and low-level token verification logic for third-party authentication via Google Firebase.
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
   private readonly logger = new Logger(FirebaseAdminService.name);
 
   constructor(private readonly configService: ConfigService) {}
 
+  // Automatically connects to the Firebase project using service account credentials during the module startup phase.
   onModuleInit() {
     // Initialise only once — guard against hot-reload double init.
     if (admin.apps.length > 0) return;
@@ -16,7 +24,7 @@ export class FirebaseAdminService implements OnModuleInit {
     const clientEmail = this.configService.get<string>('FIREBASE_CLIENT_EMAIL');
     const privateKey  = this.configService
       .get<string>('FIREBASE_PRIVATE_KEY')
-      ?.replace(/\\n/g, '\n');   // .env escapes newlines — restore them
+      ?.replace(/\\n/g, '\n');
 
     if (!projectId || !clientEmail || !privateKey) {
       this.logger.error(
@@ -33,10 +41,7 @@ export class FirebaseAdminService implements OnModuleInit {
     this.logger.log('Firebase Admin SDK initialised');
   }
 
-  /**
-   * Verifies a Firebase ID token and returns the decoded token payload.
-   * Throws if the token is invalid or expired.
-   */
+  // Decodes and validates incoming identity tokens, throwing an error if the credential has expired or been tampered with.
   async verifyIdToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
     return admin.auth().verifyIdToken(idToken);
   }

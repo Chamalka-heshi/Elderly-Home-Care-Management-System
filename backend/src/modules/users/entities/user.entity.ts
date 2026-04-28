@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,8 +6,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
 import { UserRole } from '../../../common/enums/user-role.enum';
 
+
+// Represents the master identity record for all system participants, managing authentication, role authorization, and secure session state.
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -18,17 +20,18 @@ export class User {
   @Column()
   email: string;
 
-  @Column()
+  // Hashed credentials are excluded from default queries to prevent accidental exposure in application logs or API responses.
+  @Column({ select: false })
   password: string;
 
+  // Determines the user's primary permission level and controls access to specialized modules like clinical dashboard or administrative tools.
   @Column({
-    type: 'enum',
-    enum: UserRole,
+    type:    'enum',
+    enum:    UserRole,
     default: UserRole.FAMILY,
   })
   role: UserRole;
 
-  // ── Common profile fields ─────────────────────────────────────────────────
   @Column()
   fullName: string;
 
@@ -38,33 +41,21 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
-
+  // Enforces a secure workflow requiring users to choose new credentials upon their first or recovery-based login.
   @Column({ name: 'must_change_password', default: false })
   mustChangePassword: boolean;
 
-  // ── Firebase / OAuth fields ───────────────────────────────────────────────
-
-  /**
-   * Firebase UID from the decoded ID token.
-   * Unique per Firebase project — used to link Google / Facebook sign-ins.
-   */
+  // The unique identifier provided by the identity provider for federated authentication flows.
   @Column({ type: 'varchar', nullable: true, unique: true, name: 'firebase_uid' })
   firebaseUid: string | null;
 
-  /**
-   * Profile picture URL (OAuth provider) or base64 data-URL (custom upload).
-   * Stored as TEXT so it can hold full base64-encoded images.
-   */
   @Column({ type: 'text', nullable: true, name: 'avatar_url' })
   avatarUrl: string | null;
 
-  /** Set to the current time on every logout. The JWT guard rejects any
-   *  token whose `iat` (issued-at) is older than this value, instantly
-   *  invalidating all sessions without a separate blacklist table. */
+  // Tracks the timestamp of the most recent session termination to facilitate global token invalidation and security auditing.
   @Column({ type: 'timestamptz', nullable: true, name: 'last_logout_at' })
   lastLogoutAt: Date | null;
 
-  // ── Timestamps ────────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

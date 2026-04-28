@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   IsEmail,
   IsNotEmpty,
@@ -6,6 +5,8 @@ import {
   Matches,
 } from 'class-validator';
 
+
+// Validates the incoming request payload when creating a new admin account to ensure identity and contact data integrity.
 export class CreateAdminDto {
   @IsNotEmpty()
   @IsString()
@@ -15,22 +16,18 @@ export class CreateAdminDto {
   @IsNotEmpty()
   email: string;
 
-  /**
-   * Contact number is required — it forms part of the auto-generated
-   * temporary password sent to the new admin's email address.
-   */
   @IsNotEmpty()
   @IsString()
   @Matches(/^[0-9]{10}$/, { message: 'Contact number must be 10 digits' })
   contactNumber: string;
 
-  /**
-   * National Identity Card number — required for all admin accounts.
-   */
   @IsNotEmpty()
   @IsString()
   @Matches(/^[0-9]{9}[vVxX]$|^[0-9]{12}$/, {
     message: 'NIC must be valid Sri Lankan format (9 digits + V/X or 12 digits)',
   })
   nic: string;
+
+  // This field is populated internally during the registration flow and is not exposed to the public API.
+  password?: string;
 }

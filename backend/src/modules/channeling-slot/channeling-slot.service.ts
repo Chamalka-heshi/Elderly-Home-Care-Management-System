@@ -6,15 +6,19 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
+
 import { ChannelingSlot, SlotStatus } from './entities/channeling-slot.entity';
+import { Doctor }                      from '../doctors/entities/doctor.entity';
 import {
   CreateChannelingSlotDto,
   UpdateChannelingSlotDto,
   UpdateDoctorSlotFeeDto,
   QueryChannelingSlotsDto,
 } from './dto/channeling-slot.dto';
-import { Doctor } from '../doctors/entities/doctor.entity';
 
+// Utility Helpers
+
+// Generates a standardized ISO-style week key (e.g., 2026-W18) to group availability for reporting and scheduling.
 function weekKey(dateStr: string): string {
   const d = new Date(dateStr);
   const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -25,11 +29,13 @@ function weekKey(dateStr: string): string {
   return `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
+// Converts time strings into total minutes to facilitate precise overlap detection and duration calculations.
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
 }
 
+// Calculates the UTC Monday of a given date's week to define the boundaries for weekly slot quotas.
 function weekStart(dateStr: string): Date {
   const d = new Date(dateStr);
   const day = d.getUTCDay() || 7;
@@ -46,6 +52,9 @@ export class ChannelingSlotService {
     private readonly doctorRepo: Repository<Doctor>,
   ) {}
 
+  // Slot Creation
+
+  // Validates doctor activity, scheduling quotas, and time overlaps before proposing a new consultation window.
   async create(dto: CreateChannelingSlotDto): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({
       where: { id: dto.doctorId },
@@ -101,13 +110,15 @@ export class ChannelingSlotService {
     const slot = this.slotRepo.create({
       ...dto,
       status: SlotStatus.PENDING,
-      // Seed the doctor's current consultation fee; doctor can update it later
       consultationFee: doctor.consultationFee ?? null,
     });
 
     return this.slotRepo.save(slot);
   }
 
+  // Doctor Management
+
+  // Moves a proposed slot into the active pool, signaling the doctor's commitment to the scheduled time.
   async acceptSlot(id: string, userId: string): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -120,6 +131,7 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
+  // Rejects a proposed slot, indicating the doctor is unavailable for the system-generated window.
   async rejectSlot(id: string, userId: string): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -132,89 +144,7 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  async findAll(query: QueryChannelingSlotsDto): Promise<{ slots: ChannelingSlot[]; total: number }> {
-    const qb = this.slotRepo
-      .createQueryBuilder('slot')
-      .leftJoinAndSelect('slot.doctor', 'doctor')
-      .orderBy('slot.date', 'ASC')
-      .addOrderBy('slot.startTime', 'ASC');
-
-    if (query.doctorId) qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
-    if (query.fromDate) qb.andWhere('slot.date >= :fromDate', { fromDate: query.fromDate });
-    if (query.toDate) qb.andWhere('slot.date <= :toDate', { toDate: query.toDate });
-    if (query.status) qb.andWhere('slot.status = :status', { status: query.status });
-
-    const [slots, total] = await qb.getManyAndCount();
-    return { slots, total };
-  }
-
-  async findOne(id: string): Promise<ChannelingSlot> {
-    const slot = await this.slotRepo.findOne({
-      where: { id },
-      relations: ['doctor'],
-    });
-    if (!slot) throw new NotFoundException('Channeling slot not found');
-    return slot;
-  }
-
-  async getWeeklySchedule(doctorId: string): Promise<Record<string, string[]>> {
-    const doctor = await this.doctorRepo.findOne({ where: { id: doctorId } });
-    if (!doctor) throw new NotFoundException('Doctor not found');
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const slots = await this.slotRepo.find({
-      where: { doctorId, status: SlotStatus.ACTIVE, date: MoreThanOrEqual(today) as any },
-      select: ['date'],
-      order: { date: 'ASC' },
-    });
-
-    const schedule: Record<string, Set<string>> = {};
-    for (const s of slots) {
-      const wk = weekKey(s.date);
-      if (!schedule[wk]) schedule[wk] = new Set();
-      schedule[wk].add(s.date);
-    }
-
-    return Object.fromEntries(Object.entries(schedule).map(([wk, days]) => [wk, [...days]]));
-  }
-
-  async findSlotsByUserId(userId: string): Promise<ChannelingSlot[]> {
-    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
-    if (!doctor) throw new NotFoundException('Doctor profile not found for this user');
-
-    return this.slotRepo.find({
-      where: { doctorId: doctor.id },
-      order: { date: 'ASC', startTime: 'ASC' },
-    });
-  }
-
-  async getAvailableSlotsWithDoctors(): Promise<ChannelingSlot[]> {
-    const today = new Date().toISOString().split('T')[0];
-    return this.slotRepo.find({
-      where: { status: SlotStatus.ACTIVE, date: MoreThanOrEqual(today) as any },
-      order: { date: 'ASC', startTime: 'ASC' },
-    });
-  }
-
-  async update(id: string, dto: UpdateChannelingSlotDto): Promise<ChannelingSlot> {
-    const slot = await this.findOne(id);
-    const newDate = dto.date ?? slot.date;
-    const newStart = dto.startTime ?? slot.startTime;
-    const newEnd = dto.endTime ?? slot.endTime;
-
-    if (toMinutes(newStart) >= toMinutes(newEnd)) throw new BadRequestException('startTime must be before endTime');
-    const today = new Date().toISOString().split('T')[0];
-    if (newDate < today) throw new BadRequestException('Slot date must be today or in the future');
-
-    Object.assign(slot, dto);
-    return this.slotRepo.save(slot);
-  }
-
-  /**
-   * Doctor updates the consultation fee for one of their own slots.
-   * Admin cannot call this — it is guarded at the controller level.
-   */
+  // Permits doctors to override their base fee for a specific session to account for special procedures or complexity.
   async updateDoctorSlotFee(
     slotId: string,
     userId: string,
@@ -230,6 +160,36 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
+  // Administrative Control
+
+  // Retrieves all system slots with associated doctor profiles for management and scheduling oversight.
+  async findAll(query: QueryChannelingSlotsDto): Promise<{ slots: ChannelingSlot[]; total: number }> {
+    const qb = this.slotRepo
+      .createQueryBuilder('slot')
+      .leftJoinAndSelect('slot.doctor', 'doctor')
+      .orderBy('slot.date', 'ASC')
+      .addOrderBy('slot.startTime', 'ASC');
+
+    if (query.doctorId) qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
+    if (query.fromDate) qb.andWhere('slot.date >= :fromDate', { fromDate: query.fromDate });
+    if (query.toDate)   qb.andWhere('slot.date <= :toDate', { toDate: query.toDate });
+    if (query.status)   qb.andWhere('slot.status = :status', { status: query.status });
+
+    const [slots, total] = await qb.getManyAndCount();
+    return { slots, total };
+  }
+
+  // Returns granular details for a specific slot to support targeted management actions.
+  async findOne(id: string): Promise<ChannelingSlot> {
+    const slot = await this.slotRepo.findOne({
+      where:     { id },
+      relations: ['doctor'],
+    });
+    if (!slot) throw new NotFoundException('Channeling slot not found');
+    return slot;
+  }
+
+  // Invalidates a slot to prevent new patient bookings, typically in response to doctor emergencies or scheduling shifts.
   async cancel(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
     if (slot.status === SlotStatus.CANCELLED) throw new BadRequestException('Slot is already cancelled');
@@ -238,9 +198,55 @@ export class ChannelingSlotService {
     return { message: 'Channeling slot cancelled successfully' };
   }
 
+  // Removes a slot record permanently; used for deleting administrative errors before any patient interactions occur.
   async remove(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
     await this.slotRepo.remove(slot);
     return { message: 'Channeling slot deleted successfully' };
+  }
+
+  // Availability Retrieval
+
+  // Aggregates active consultation windows into weekly clusters to power the public scheduling interface.
+  async getWeeklySchedule(doctorId: string): Promise<Record<string, string[]>> {
+    const doctor = await this.doctorRepo.findOne({ where: { id: doctorId } });
+    if (!doctor) throw new NotFoundException('Doctor not found');
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const slots = await this.slotRepo.find({
+      where:  { doctorId, status: SlotStatus.ACTIVE, date: MoreThanOrEqual(today) as any },
+      select: ['date'],
+      order:  { date: 'ASC' },
+    });
+
+    const schedule: Record<string, Set<string>> = {};
+    for (const s of slots) {
+      const wk = weekKey(s.date);
+      if (!schedule[wk]) schedule[wk] = new Set();
+      schedule[wk].add(s.date);
+    }
+
+    return Object.fromEntries(Object.entries(schedule).map(([wk, days]) => [wk, [...days]]));
+  }
+
+  // Fetches all slots linked to a doctor's user identity to populate their private management dashboard.
+  async findSlotsByUserId(userId: string): Promise<ChannelingSlot[]> {
+    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    if (!doctor) throw new NotFoundException('Doctor profile not found for this user');
+
+    return this.slotRepo.find({
+      where: { doctorId: doctor.id },
+      order: { date: 'ASC', startTime: 'ASC' },
+    });
+  }
+
+  // Lists all active and upcoming consultation slots across the entire platform for patient discovery.
+  async getAvailableSlotsWithDoctors(): Promise<ChannelingSlot[]> {
+    const today = new Date().toISOString().split('T')[0];
+    return this.slotRepo.find({
+      where: { status: SlotStatus.ACTIVE, date: MoreThanOrEqual(today) as any },
+      order: { date: 'ASC', startTime: 'ASC' },
+    });
   }
 }

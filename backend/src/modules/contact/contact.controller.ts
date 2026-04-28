@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Body,
   Controller,
@@ -10,31 +9,31 @@ import {
   Req,
   ValidationPipe,
 } from '@nestjs/common';
+
 import { ContactService } from './contact.service';
+import { Roles }          from '../../common/decorators/roles.decorator';
+import { Public }         from '../../common/decorators/public.decorator';
+import { UserRole }       from '../../common/enums/user-role.enum';
 import {
   CreateContactMessageDto,
   ReplyContactMessageDto,
   UpdateContactInfoDto,
 } from './dto/create-contact-message.dto';
-import { Roles }        from '../../common/decorators/roles.decorator';
-import { Public }       from '../../common/decorators/public.decorator';
-import { UserRole }     from '../../common/enums/user-role.enum';
 
-// JWT + RolesGuard are enforced globally via APP_GUARD in AppModule.
 @Controller('contact')
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
 
-  // ── Public ────────────────────────────────────────────────────────────────
+  // Public Access
 
-  /** GET /api/contact/info — system phone, email, address */
+  // Provides basic facility contact details to unauthenticated site visitors for direct inquiries.
   @Public()
   @Get('info')
   getInfo() {
     return this.contactService.getInfo();
   }
 
-  /** POST /api/contact/message — visitor submits a contact form */
+  // Permites public visitors to submit inquiries or support requests directly to the administration.
   @Public()
   @Post('message')
   createMessage(
@@ -43,8 +42,9 @@ export class ContactController {
     return this.contactService.createMessage(dto);
   }
 
-  // ── Admin: contact info management ────────────────────────────────────────
+  // Administrative Control
 
+  // Allows authorized staff to update the public-facing contact information for the facility.
   @Put('info')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   updateInfo(
@@ -53,20 +53,21 @@ export class ContactController {
     return this.contactService.updateInfo(dto);
   }
 
-  // ── Admin: message management ─────────────────────────────────────────────
-
+  // Retrieves a complete history of all incoming contact messages for administrative review.
   @Get('messages')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getAllMessages() {
     return this.contactService.getAllMessages();
   }
 
+  // Returns granular details for a specific inquiry, including its original content and metadata.
   @Get('messages/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getMessage(@Param('id') id: string) {
     return this.contactService.getMessage(id);
   }
 
+  // Enables administrators to send responses to user inquiries while tracking which staff member handled the reply.
   @Post('messages/:id/reply')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   replyToMessage(
@@ -78,6 +79,7 @@ export class ContactController {
     return this.contactService.replyToMessage(id, dto, adminId);
   }
 
+  // Permanently removes a message record once it has been processed or resolved.
   @Delete('messages/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   deleteMessage(@Param('id') id: string) {

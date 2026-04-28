@@ -7,16 +7,19 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+
 import { Doctor } from '../../doctors/entities/doctor.entity';
 
 export enum SlotStatus {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  REJECTED = 'rejected',
+  PENDING   = 'pending',
+  ACTIVE    = 'active',
+  REJECTED  = 'rejected',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
 }
 
+
+// Represents a specific time window reserved for medical consultations, tracking availability, fees, and doctor acceptance.
 @Entity('channeling_slots')
 export class ChannelingSlot {
   @PrimaryGeneratedColumn('uuid')
@@ -47,26 +50,16 @@ export class ChannelingSlot {
   @Column({
     type: 'enum',
     enum: SlotStatus,
-    default: SlotStatus.PENDING, // Admin creates as pending
+    default: SlotStatus.PENDING,
   })
   status: SlotStatus;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
-  /**
-   * Care-home service charge set by Admin (added on top of the doctor fee).
-   * Admin can set/update this when creating or editing a slot.
-   */
   @Column({ name: 'care_home_fee', nullable: true, type: 'decimal', precision: 10, scale: 2 })
   careHomeFee: number | null;
 
-  /**
-   * Doctor's own consultation fee for this specific slot.
-   * Initialised from Doctor.consultationFee when the slot is created;
-   * the doctor can later update it via PATCH /channeling-slots/my-slots/:id/fee.
-   * Admin cannot change this field.
-   */
   @Column({ name: 'consultation_fee', nullable: true, type: 'decimal', precision: 10, scale: 2 })
   consultationFee: number | null;
 

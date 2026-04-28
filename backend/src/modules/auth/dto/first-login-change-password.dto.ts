@@ -1,11 +1,12 @@
-/* eslint-disable prettier/prettier */
-import { IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
+import { 
+  IsNotEmpty, 
+  IsString, 
+  MinLength, 
+  Matches 
+} from 'class-validator';
 
-/**
- * Used on the forced first-login password change screen.
- * No `currentPassword` is required — the backend verifies
- * mustChangePassword === true before accepting this request.
- */
+
+// Used on the forced first-login password change screen. No currentPassword is required — the backend verifies mustChangePassword === true before accepting this request.
 export class FirstLoginChangePasswordDto {
   @IsNotEmpty()
   @IsString()

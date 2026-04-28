@@ -63,13 +63,6 @@ export class CaregiversService {
     });
   }
 
-  async findAllActive(): Promise<Caregiver[]> {
-    return this.caregiverRepository.find({
-      where: { user: { isActive: true } },
-      relations: ['user'],
-      order: { user: { createdAt: 'DESC' } },
-    });
-  }
 
   async findOne(id: string): Promise<Caregiver> {
     const caregiver = await this.caregiverRepository.findOne({

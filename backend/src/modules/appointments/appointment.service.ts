@@ -5,19 +5,19 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Appointment, AppointmentStatus } from './entities/appointment.entity';
-import {
-  CreateAppointmentDto,
-  UpdateAppointmentStatusDto,
-  QueryAppointmentsDto,
-} from './dto/appointment.dto';
-import { ChannelingSlot, SlotStatus } from '../channeling-slot/entities/channeling-slot.entity';
-import { Patient } from '../patients/entities/patient.entity';
-import { FamilyMember } from '../family/entities/family-member.entity';
-import { Doctor } from '../doctors/entities/doctor.entity';
+import { Repository }       from 'typeorm';
 
-// ── Sensitive fields hidden from admin ────────────────────────────────────────
+import { Appointment, AppointmentStatus }          from './entities/appointment.entity';
+import { ChannelingSlot, SlotStatus }              from '../channeling-slot/entities/channeling-slot.entity';
+import { Patient }                                 from '../patients/entities/patient.entity';
+import { FamilyMember }                            from '../family/entities/family-member.entity';
+import { Doctor }                                  from '../doctors/entities/doctor.entity';
+import { 
+  CreateAppointmentDto, 
+  UpdateAppointmentStatusDto, 
+  QueryAppointmentsDto 
+} from './dto/appointment.dto';
+
 const MEDICAL_SENSITIVE_FIELDS = [
   'medicalHistory',
   'allergies',
@@ -42,8 +42,9 @@ export class AppointmentService {
     private readonly doctorRepo: Repository<Doctor>,
   ) {}
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  // Data Security
 
+  // Redacts sensitive clinical information from patient records to prevent unauthorized exposure during administrative reviews.
   private stripMedicalDetails(patient: Patient): SafePatient {
     const safe: any = { ...patient };
     for (const field of MEDICAL_SENSITIVE_FIELDS) {
@@ -52,6 +53,7 @@ export class AppointmentService {
     return safe as SafePatient;
   }
 
+  // Wraps appointment data with conditional patient privacy filters based on the required authorization level of the requester.
   private buildSafeAppointment(appt: Appointment, includeFullMedical: boolean) {
     return {
       ...appt,
@@ -61,31 +63,36 @@ export class AppointmentService {
     };
   }
 
-  // ── Family member: create appointment ───────────────────────────────────────
+  // Calculates the current age based on the date of birth to assist doctors with pediatric or geriatric clinical context.
+  private computeAge(dateOfBirth: string | Date): number {
+    const dob       = new Date(dateOfBirth);
+    const today     = new Date();
+    let age         = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
+  }
 
+  // Validates slot availability, patient ownership, and prevents double-booking before creating a pending-payment record.
   async createAppointment(
     userId: string,
     dto: CreateAppointmentDto,
   ): Promise<Appointment> {
-    // Resolve family member from user id
     const familyMember = await this.familyRepo.findOne({
-      where: { user: { id: userId } },
+      where:     { user: { id: userId } },
       relations: ['user'],
     });
     if (!familyMember) throw new NotFoundException('Family member profile not found');
 
-    // Validate slot
     const slot = await this.slotRepo.findOne({ where: { id: dto.slotId } });
     if (!slot) throw new NotFoundException('Channeling slot not found');
     if (slot.status !== SlotStatus.ACTIVE)
       throw new BadRequestException('This slot is not active / available for booking');
 
-    // Validate slot date is in the future
     const today = new Date().toISOString().split('T')[0];
     if (slot.date < today)
       throw new BadRequestException('Cannot book a past slot');
 
-    // Validate patient belongs to this family member
     const patient = await this.patientRepo.findOne({
       where: { id: dto.patientId, familyMemberId: familyMember.id },
     });
@@ -94,7 +101,6 @@ export class AppointmentService {
     if (!patient.isActive)
       throw new BadRequestException('Patient is not active');
 
-    // Check duplicate: same patient + same slot (ignore cancelled ones)
     const duplicate = await this.appointmentRepo.findOne({
       where: [
         { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PENDING_PAYMENT },
@@ -105,7 +111,6 @@ export class AppointmentService {
     if (duplicate)
       throw new BadRequestException('An appointment for this patient in this slot already exists');
 
-    // Check slot capacity (count non-cancelled, non-pending_payment)
     const booked = await this.appointmentRepo.count({
       where: [
         { slotId: dto.slotId, status: AppointmentStatus.PENDING },
@@ -115,20 +120,18 @@ export class AppointmentService {
     if (booked >= slot.maxPatients)
       throw new BadRequestException('This slot is fully booked');
 
-    // Create appointment — starts as PENDING_PAYMENT until payment is made
     const appointment = this.appointmentRepo.create({
-      slotId: dto.slotId,
-      patientId: dto.patientId,
+      slotId:         dto.slotId,
+      patientId:      dto.patientId,
       familyMemberId: familyMember.id,
-      status: AppointmentStatus.PENDING_PAYMENT,
-      notes: dto.notes ?? null,
+      status:         AppointmentStatus.PENDING_PAYMENT,
+      notes:          dto.notes ?? null,
     });
 
     return this.appointmentRepo.save(appointment);
   }
 
-  // ── Family member: get own appointments ─────────────────────────────────────
-
+  // Retrieves all historical and upcoming bookings associated with the logged-in family member.
   async getMyAppointments(userId: string): Promise<Appointment[]> {
     const familyMember = await this.familyRepo.findOne({
       where: { user: { id: userId } },
@@ -136,14 +139,13 @@ export class AppointmentService {
     if (!familyMember) throw new NotFoundException('Family member profile not found');
 
     return this.appointmentRepo.find({
-      where: { familyMemberId: familyMember.id },
+      where:     { familyMemberId: familyMember.id },
       relations: ['slot', 'slot.doctor', 'slot.doctor.user', 'patient'],
-      order: { createdAt: 'DESC' },
+      order:     { createdAt: 'DESC' },
     });
   }
 
-  // ── Family member: cancel own appointment ───────────────────────────────────
-
+  // Marks an appointment as cancelled if it is not yet completed, allowing the slot to be potentially reused.
   async cancelMyAppointment(userId: string, id: string): Promise<{ message: string }> {
     const familyMember = await this.familyRepo.findOne({
       where: { user: { id: userId } },
@@ -164,8 +166,7 @@ export class AppointmentService {
     return { message: 'Appointment cancelled successfully' };
   }
 
-  // ── Doctor: get appointments for their slots (FULL medical details) ─────────
-
+  // Provides doctors with a detailed view of their upcoming patients, including full clinical histories for consultation readiness.
   async getDoctorAppointments(userId: string): Promise<any[]> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -179,9 +180,12 @@ export class AppointmentService {
       .innerJoinAndSelect('appt.familyMember', 'fm')
       .innerJoinAndSelect('fm.user', 'fmUser')
       .where('slot.doctorId = :doctorId', { doctorId: doctor.id })
-      // Doctor only sees confirmed appointments (paid ones)
       .andWhere('appt.status IN (:...statuses)', {
-        statuses: [AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED],
+        statuses: [
+          AppointmentStatus.PENDING,
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.COMPLETED,
+        ],
       })
       .orderBy('slot.date', 'DESC')
       .addOrderBy('slot.startTime', 'ASC')
@@ -196,17 +200,7 @@ export class AppointmentService {
     });
   }
 
-  private computeAge(dateOfBirth: string | Date): number {
-    const dob = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const monthDiff = today.getMonth() - dob.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
-    return age;
-  }
-
-  // ── Doctor: update appointment status ───────────────────────────────────────
-
+  // Allows clinical staff to update the session status, ensuring accurate billing and patient record updates.
   async updateAppointmentStatusByDoctor(
     userId: string,
     id: string,
@@ -216,7 +210,7 @@ export class AppointmentService {
     if (!doctor) throw new NotFoundException('Doctor profile not found');
 
     const appointment = await this.appointmentRepo.findOne({
-      where: { id },
+      where:     { id },
       relations: ['slot'],
     });
     if (!appointment) throw new NotFoundException('Appointment not found');
@@ -228,8 +222,7 @@ export class AppointmentService {
     return this.appointmentRepo.save(appointment);
   }
 
-  // ── Admin: get all appointments ──────────────────────────────────────────────
-
+  // Provides a comprehensive system view of appointments for operational reporting, with medical redaction applied.
   async getAllAppointments(query: QueryAppointmentsDto): Promise<any[]> {
     const qb = this.appointmentRepo
       .createQueryBuilder('appt')
@@ -241,16 +234,15 @@ export class AppointmentService {
       .innerJoinAndSelect('fm.user', 'fmUser')
       .orderBy('appt.createdAt', 'DESC');
 
-    if (query.status) qb.andWhere('appt.status = :status', { status: query.status });
+    if (query.status)    qb.andWhere('appt.status = :status', { status: query.status });
     if (query.patientId) qb.andWhere('appt.patientId = :patientId', { patientId: query.patientId });
-    if (query.doctorId) qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
+    if (query.doctorId)  qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
 
     const appointments = await qb.getMany();
     return appointments.map((a) => this.buildSafeAppointment(a, false));
   }
 
-  // ── Admin: update appointment status ────────────────────────────────────────
-
+  // Permits administrators to manually adjust appointment statuses to fix data entry errors or billing discrepancies.
   async adminUpdateStatus(
     id: string,
     dto: UpdateAppointmentStatusDto,
@@ -264,8 +256,7 @@ export class AppointmentService {
     return { message: 'Appointment status updated' };
   }
 
-  // ── Admin: delete appointment ────────────────────────────────────────────────
-
+  // Removes appointment records entirely, typically used for cleanup or purging erroneous data.
   async adminDelete(id: string): Promise<{ message: string }> {
     const appointment = await this.appointmentRepo.findOne({ where: { id } });
     if (!appointment) throw new NotFoundException('Appointment not found');
@@ -273,8 +264,7 @@ export class AppointmentService {
     return { message: 'Appointment deleted successfully' };
   }
 
-  // ── Payment callback: confirm appointment after payment ─────────────────────
-
+  // Promotes an appointment from payment-pending to system-pending once the billing gateway confirms success.
   async confirmAfterPayment(id: string): Promise<void> {
     const appointment = await this.appointmentRepo.findOne({ where: { id } });
     if (!appointment) throw new NotFoundException('Appointment not found');
@@ -284,6 +274,7 @@ export class AppointmentService {
     }
   }
 
+  // Automatically cancels bookings that fail the payment phase to release resources back into the pool.
   async cancelAfterPaymentRejection(id: string): Promise<void> {
     const appointment = await this.appointmentRepo.findOne({ where: { id } });
     if (!appointment) return;

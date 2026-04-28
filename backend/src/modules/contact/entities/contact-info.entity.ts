@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,6 +6,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+
+// Stores the official facility contact details and location data used across the platform's public interfaces.
 @Entity('contact_info')
 export class ContactInfo {
   @PrimaryGeneratedColumn('uuid')

@@ -1,5 +1,12 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { 
+  IsEmail, 
+  IsNotEmpty, 
+  IsString, 
+  MinLength 
+} from 'class-validator';
 
+
+// Processes the transition from a temporary recovery credential to a new permanent password after identity verification.
 export class ResetPasswordDto {
   @IsEmail({}, { message: 'Please provide a valid email address.' })
   @IsNotEmpty({ message: 'Email is required.' })

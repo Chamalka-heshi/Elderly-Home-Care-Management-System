@@ -16,24 +16,24 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
-import { AuthService } from './auth.service';
-import { FamilySignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
-import { FirebaseAuthDto } from './dto/firebase-auth.dto';
-import { CreatePatientDto } from '../patients/dto/create-patient.dto';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Public } from '../../common/decorators/public.decorator';
-import { UserRole } from '../../common/enums/user-role.enum';
-import { ChangePasswordDto } from './dto/change-password.dto';
+import { memoryStorage }    from 'multer';
+
+import { AuthService }                 from './auth.service';
+import { FamilySignupDto }             from './dto/signup.dto';
+import { LoginDto }                    from './dto/login.dto';
+import { FirebaseAuthDto }             from './dto/firebase-auth.dto';
+import { ChangePasswordDto }           from './dto/change-password.dto';
 import { FirstLoginChangePasswordDto } from './dto/first-login-change-password.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ForgotPasswordDto }           from './dto/forgot-password.dto';
+import { ResetPasswordDto }            from './dto/reset-password.dto';
+import { Roles }                       from '../../common/decorators/roles.decorator';
+import { Public }                      from '../../common/decorators/public.decorator';
+import { UserRole }                    from '../../common/enums/user-role.enum';
 
 interface JwtUser {
-  sub: string;
-  email: string;
-  role: UserRole;
+  sub:           string;
+  email:         string;
+  role:          UserRole;
   contactNumber: string;
 }
 
@@ -43,10 +43,8 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
-  /* =========================================================
-     PUBLIC ROUTES — no JWT required
-  ========================================================= */
-
+  // Session Management
+  // Registers a new family member account and creates their initial profile in the system.
   @Public()
   @Post('family/signup')
   @HttpCode(HttpStatus.CREATED)
@@ -54,6 +52,7 @@ export class AuthController {
     return this.authService.familySignup(dto);
   }
 
+  // Authenticates existing users with email/password and issues a JWT for session management.
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -61,6 +60,7 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  // Facilitates third-party authentication via Firebase, linking external identities to local system accounts.
   @Public()
   @Post('firebase')
   @HttpCode(HttpStatus.OK)
@@ -69,20 +69,13 @@ export class AuthController {
     return {
       token:     result.token,
       user:      result.user,
-      message:   result.isNewUser
-        ? 'Account created successfully'
-        : 'Signed in successfully',
+      message:   result.isNewUser ? 'Account created successfully' : 'Signed in successfully',
       isNewUser: result.isNewUser,
     };
   }
 
-  /* ─── Forgot-password flow (all public — user is not logged in) ─────── */
-
-  /**
-   * Step 1a — Check whether the email is registered and return the masked
-   * contact number so the UI can display it as a hint.
-   * GET /auth/forgot-password/check-email?email=user@example.com
-   */
+  // Password Recovery
+  // Validates email existence and provides a masked hint of the contact number to assist user verification.
   @Public()
   @Get('forgot-password/check-email')
   @HttpCode(HttpStatus.OK)
@@ -93,10 +86,7 @@ export class AuthController {
     return this.authService.checkEmailForReset(email);
   }
 
-  /**
-   * Step 1b — Verify email + contact number; generate & email a temp password.
-   * POST /auth/forgot-password
-   */
+  // Initiates the reset flow by generating a temporary password after verifying the user's secret contact number.
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
@@ -104,10 +94,7 @@ export class AuthController {
     return this.authService.forgotPassword(dto.email, dto.contactNumber);
   }
 
-  /**
-   * Step 2 — Verify the temp password, set the new password, return a JWT.
-   * POST /auth/reset-password
-   */
+  // Finalizes the recovery process by replacing the temporary credential with a user-chosen permanent password.
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
@@ -120,8 +107,8 @@ export class AuthController {
     );
   }
 
-  /* ─── End forgot-password flow ────────────────────────────────────────── */
-
+  // Profile & Security
+  // Invalidates the current session token to ensure secure account sign-out.
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Request() req: { user: JwtUser }) {
@@ -129,58 +116,29 @@ export class AuthController {
     return { message: 'Logged out successfully' };
   }
 
-  /* =========================================================
-     AUTHENTICATED ROUTES — JWT enforced by global APP_GUARD
-  ========================================================= */
-
+  // Retrieves the complete profile of the authenticated user based on their JWT identity.
   @Get('profile')
   @HttpCode(HttpStatus.OK)
   async getProfile(@Request() req: { user: JwtUser }) {
-    this.logger.log(`Getting profile - req.user: ${JSON.stringify(req.user)}`);
-
     const userId = req.user.sub;
     if (!userId) {
-      this.logger.error('No user ID found in JWT token');
       throw new UnauthorizedException('Authentication failed');
     }
-
     return this.authService.getProfile(userId);
   }
 
+  // Permits users to remove their account from the platform, including all associated personal data.
   @Delete('delete-account')
   @HttpCode(HttpStatus.OK)
   async deleteAccount(@Request() req: { user: JwtUser }) {
-    this.logger.log(
-      `Delete account - Full req.user: ${JSON.stringify(req.user)}`,
-    );
     const userId = req.user.sub;
     if (!userId) {
-      this.logger.error('No user ID found in JWT token');
-      this.logger.error(`JWT Payload received: ${JSON.stringify(req.user)}`);
-      throw new UnauthorizedException(
-        'Authentication failed - no user ID in token',
-      );
+      throw new UnauthorizedException('Authentication failed - no user ID in token');
     }
-
-    this.logger.log(`✅ Deleting account for userId: ${userId}`);
     return this.authService.deleteAccount(userId);
   }
 
-  /* =========================================================
-     FAMILY ONLY ROUTES
-  ========================================================= */
-
-  @Post('family/create-patient')
-  @Roles(UserRole.FAMILY)
-  @HttpCode(HttpStatus.CREATED)
-  async createPatient(
-    @Body() dto: CreatePatientDto,
-    @Request() req: { user: JwtUser },
-  ) {
-    const userId = req.user.sub;
-    return this.authService.createPatient(dto, userId);
-  }
-
+  // Allows authenticated users to update their password while ensuring they know the previous one.
   @Patch('change-password')
   @HttpCode(HttpStatus.OK)
   async changePassword(
@@ -193,14 +151,10 @@ export class AuthController {
     }
 
     await this.authService.changePassword(userId, dto.currentPassword, dto.newPassword);
-
     return { message: 'Password updated successfully' };
   }
 
-  /**
-   * First-login forced password change.
-   * No current/temporary password required — the server checks mustChangePassword === true.
-   */
+  // Enforces a required password reset for accounts created with temporary credentials during their first login.
   @Patch('first-login-change-password')
   @HttpCode(HttpStatus.OK)
   async firstLoginChangePassword(
@@ -217,10 +171,10 @@ export class AuthController {
     }
 
     await this.authService.firstLoginChangePassword(userId, dto.newPassword);
-
     return { message: 'Password set successfully. Welcome!' };
   }
 
+  // Processes and stores user profile images to enhance visual identity across the dashboard.
   @Patch('upload-avatar')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('avatar', { storage: memoryStorage() }))
@@ -230,10 +184,11 @@ export class AuthController {
   ) {
     const userId = req.user.sub;
     if (!userId) throw new UnauthorizedException('Authentication failed');
-    if (!file) throw new UnauthorizedException('No file uploaded');
+    if (!file)   throw new UnauthorizedException('No file uploaded');
     return this.authService.uploadAvatar(userId, file);
   }
 
+  // Removes the profile picture, reverting the user avatar to its default system state.
   @Delete('remove-avatar')
   @HttpCode(HttpStatus.OK)
   async removeAvatar(@Request() req: { user: JwtUser }) {

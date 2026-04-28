@@ -1,6 +1,12 @@
-/* eslint-disable prettier/prettier */
-import { IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
+import { 
+  IsNotEmpty, 
+  IsString, 
+  MinLength, 
+  Matches 
+} from 'class-validator';
 
+
+// Enforces secure password update criteria, requiring both proof of current credentials and compliance with new complexity rules.
 export class ChangePasswordDto {
   @IsNotEmpty()
   @IsString()

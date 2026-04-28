@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   IsEmail,
   IsNotEmpty,
@@ -7,8 +6,9 @@ import {
   MaxLength,
 } from 'class-validator';
 
-// ── Public: submit a contact message ─────────────────────────────────────────
+// Create Contact Message DTO
 
+// Validates the inquiry payload from public visitors, ensuring mandatory identity and contact details are provided for follow-up.
 export class CreateContactMessageDto {
   @IsNotEmpty()
   @IsString()
@@ -29,8 +29,9 @@ export class CreateContactMessageDto {
   message: string;
 }
 
-// ── Admin: reply to a contact message ────────────────────────────────────────
+// Reply Contact Message DTO
 
+// Ensures administrative responses are structured correctly and adhere to length constraints for system consistency.
 export class ReplyContactMessageDto {
   @IsNotEmpty()
   @IsString()
@@ -38,8 +39,9 @@ export class ReplyContactMessageDto {
   reply: string;
 }
 
-// ── Admin: update system contact info (email, phone, address …) ──────────────
+// Update Contact Info DTO
 
+// Permits administrators to update the facility's master contact details, enforcing format and safety constraints on every field.
 export class UpdateContactInfoDto {
   @IsOptional()
   @IsString()
