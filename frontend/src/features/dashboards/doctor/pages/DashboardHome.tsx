@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
+
 import StatCard from '../../common/widgets/StatCard';
-import Badge from '../../common/widgets/Badge';
+import Badge    from '../../common/widgets/Badge';
+
 import type { MenuLabel } from '../components/Sidebar';
+
 import {
   getDoctorDashboardStats,
   type DoctorDashboardStats,
   type DashboardRecentPatient,
 } from '../../../../api/users/doctor-dashboard.api';
+
 import {
   IconHeart,
   IconCalendar,
@@ -14,17 +18,20 @@ import {
   IconBell,
   IconSparkle,
   IconRefresh,
+  IconAlertTriangle,
 } from '../../common/icons';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// Clinical Status Indicators
 
+// Maps clinical patient statuses to specific color tones to provide immediate visual cues on patient trajectory.
 const statusTone = (s: DashboardRecentPatient['status']) =>
-  s === 'Active'       ? 'emerald' as const :
-  s === 'Completed'    ? 'slate'   as const :
-  s === 'Discontinued' ? 'red'     as const : 'amber' as const;
+  s === 'Active' ? 'emerald' as const :
+    s === 'Completed' ? 'slate' as const :
+      s === 'Discontinued' ? 'red' as const : 'amber' as const;
 
-// ── Skeleton loader ────────────────────────────────────────────────────────
+// Loading States
 
+// Displays structural placeholders during data fetching to maintain layout stability and improve perceived performance.
 const SkeletonRow = () => (
   <tr>
     {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -43,18 +50,22 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ── Component ──────────────────────────────────────────────────────────────
+// Doctor Dashboard Overview
 
+// Aggregates patient statistics, pending appointments, and recent clinical activities into a unified operational command center.
 interface Props {
   onNavigate: (label: MenuLabel) => void;
 }
 
 const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
-  const [stats, setStats] = useState<DoctorDashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [stats,      setStats]      = useState<DoctorDashboardStats | null>(null);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Data Fetching Lifecycle
+
+  // Synchronizes the dashboard view with the backend API, handling parallel stat aggregation and error recovery.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -77,38 +88,37 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
     return () => { cancelled = true; };
   }, [refreshKey]);
 
-  // Derived stat card array — built from live data (falls back to 0 while loading)
+  // Derived Statistics Configuration
   const STATS = [
     {
-      title: 'My Patients',
-      value: stats?.myPatientsCount ?? 0,
+      title:   'My Patients',
+      value:   stats?.myPatientsCount ?? 0,
       caption: 'Active + incoming',
-      icon: IconHeart,
+      icon:    IconHeart,
     },
     {
-      title: "Today's Appointments",
-      value: stats?.todaysAppointmentsCount ?? 0,
+      title:   "Today's Appointments",
+      value:   stats?.todaysAppointmentsCount ?? 0,
       caption: 'Active slots today',
-      icon: IconCalendar,
+      icon:    IconCalendar,
     },
     {
-      title: 'Active Prescriptions',
-      value: stats?.activePrescriptionsCount ?? 0,
+      title:   'Active Prescriptions',
+      value:   stats?.activePrescriptionsCount ?? 0,
       caption: 'Currently prescribed',
-      icon: IconPill,
+      icon:    IconPill,
     },
     {
-      title: 'Pending Slots',
-      value: stats?.pendingAppointmentsCount ?? 0,
+      title:   'Pending Slots',
+      value:   stats?.pendingAppointmentsCount ?? 0,
       caption: 'Awaiting your acceptance',
-      icon: IconBell,
+      icon:    IconBell,
     },
   ];
 
   return (
     <div className="space-y-6">
-
-      {/* ── Hero strip ─────────────────────────────────────────────────────── */}
+      {/* Dashboard Welcome Header — Provides personalized recognition and quick access to core patient management features. */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
         <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-lime-400/20 blur-3xl" />
@@ -135,10 +145,12 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* ── Error banner ───────────────────────────────────────────────────── */}
+      {/* System Alerts */}
       {error && (
         <div className="flex items-center justify-between rounded-2xl border border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
-          <span>⚠️ {error}</span>
+          <span className="flex items-center gap-2">
+            <IconAlertTriangle className="h-4 w-4" /> {error}
+          </span>
           <button
             onClick={() => setRefreshKey((k) => k + 1)}
             className="ml-4 flex items-center gap-1 rounded-xl bg-red-100 px-3 py-1.5 text-xs font-semibold hover:bg-red-200"
@@ -148,24 +160,25 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* ── Stat cards ─────────────────────────────────────────────────────── */}
+      {/* Operational Metrics Overview */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {loading
           ? [1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)
           : STATS.map((s) => (
-              <StatCard
-                key={s.title}
-                title={s.title}
-                value={s.value}
-                caption={s.caption}
-                icon={s.icon}
-              />
-            ))}
+            <StatCard
+              key={s.title}
+              title={s.title}
+              value={s.value}
+              caption={s.caption}
+              icon={s.icon}
+            />
+          ))}
       </div>
 
-      {/* ── Recent patients table ───────────────────────────────────────────── */}
+      {/* Clinical Activity History */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
+          {/* Recent Prescriptions Record — Lists the most recent clinical interactions and prescriptions, facilitating rapid patient follow-up. */}
           <div className="rounded-3xl border border-white/10 bg-white/70 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
               <div>
@@ -245,16 +258,18 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* ── Quick actions panel ───────────────────────────────────────── */}
+        {/* Workflow Shortcuts */}
+
         <div className="flex flex-col gap-4">
+          {/* Task Prioritization — Provides rapid navigation to clinical tasks, ensuring efficient time management for the attending doctor. */}
           <div className="rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
             <h3 className="mb-4 text-base font-bold text-slate-900">Quick Actions</h3>
             <div className="flex flex-col gap-3">
               {[
-                { label: 'Channeling Slots',    nav: 'Channeling Slots' as MenuLabel },
-                { label: 'Write Prescription',  nav: 'Prescription' as MenuLabel },
+                { label: 'Channeling Slots',   nav: 'Channeling Slots'   as MenuLabel },
+                { label: 'Write Prescription', nav: 'Prescription'       as MenuLabel },
                 { label: 'Patient Management', nav: 'Patient Management' as MenuLabel },
-                { label: 'My Profile', nav: 'Doctor Profile' as MenuLabel },
+                { label: 'My Profile',         nav: 'Doctor Profile'     as MenuLabel },
               ].map(({ label, nav }) => (
                 <button
                   key={label}
@@ -267,7 +282,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Today summary card */}
+          {/* Agenda Summary — Displays a concise overview of the day's commitments, including pending requests that require immediate clinical attention. */}
           {!loading && stats && (
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50/80 p-6 shadow-sm backdrop-blur-xl">
               <h3 className="mb-3 text-sm font-bold text-emerald-800">Today at a Glance</h3>

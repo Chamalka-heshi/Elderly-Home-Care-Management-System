@@ -1,17 +1,41 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import { getDoctorAppointments } from "../../../../api/appointment/doctor-appointment.api";
-import type { Appointment, AppointmentPatient } from "../../../../api/appointment/appointment.types";
-import { fmt12, fmtDate, statusColor } from "../../../../api/appointment/appointment.types";
-import Badge from "../../common/widgets/Badge";
-import TableShell from "../../common/widgets/TableShell";
+
+import type {
+  Appointment,
+  AppointmentPatient,
+} from "../../../../api/appointment/appointment.types";
+
 import {
-  IconUser, IconFileText, IconX, IconUsers,
-  IconClock, IconCalendar, IconCheckCircle, IconAlertCircle,
+  fmt12,
+  fmtDate,
+  statusColor,
+} from "../../../../api/appointment/appointment.types";
+
+import Badge      from "../../common/widgets/Badge";
+import TableShell from "../../common/widgets/TableShell";
+
+import {
+  IconUser,
+  IconFileText,
+  IconX,
+  IconUsers,
+  IconClock,
+  IconCalendar,
+  IconCheckCircle,
+  IconAlertCircle,
+  IconSpinner,
 } from "../../common/icons";
 
-// ─── Medical Detail Modal ────────────────────────────────────────────────────
+// Medical Detail Overlay
 
-interface MedModalProps { patient: AppointmentPatient; appointment: Appointment; onClose: () => void }
+// Provides a focused view of a patient's personal and medical data within the context of a specific appointment.
+interface MedModalProps {
+  patient:     AppointmentPatient;
+  appointment: Appointment;
+  onClose:     () => void;
+}
 
 const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) => {
   const personal = [
@@ -30,6 +54,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
     { label: "Current Medications", value: patient.currentMedications },
     { label: "Chronic Conditions",  value: patient.chronicConditions },
   ];
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
@@ -49,7 +74,9 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
           </div>
           <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 transition"><IconX className="h-5 w-5" /></button>
         </div>
+
         <div className="p-6 space-y-6">
+          {/* Demographic Data */}
           <section>
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Personal Information</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -61,6 +88,8 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
               ))}
             </div>
           </section>
+
+          {/* Clinical Background */}
           <section>
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-emerald-600">Medical Information</h4>
             <div className="space-y-3">
@@ -72,12 +101,15 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
               ))}
             </div>
           </section>
+
           {appointment.notes && (
             <section>
               <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Appointment Notes</h4>
               <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-100">{appointment.notes}</div>
             </section>
           )}
+
+          {/* Appointment Source */}
           <section>
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Booked By</h4>
             <div className="rounded-xl bg-slate-50 px-4 py-3">
@@ -86,6 +118,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
             </div>
           </section>
         </div>
+
         <div className="border-t border-slate-100 px-6 py-4">
           <button onClick={onClose} className="w-full rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition">Close</button>
         </div>
@@ -94,7 +127,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
   );
 };
 
-// ─── Status badge tone ────────────────────────────────────────────────────────
+// Visual Tone Helpers
 
 type BT = "emerald" | "amber" | "red" | "slate" | "blue";
 const tone = (s: string): BT =>
@@ -102,14 +135,15 @@ const tone = (s: string): BT =>
 
 type Filter = "" | "pending" | "confirmed" | "completed" | "cancelled";
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// Patient Management Registry
 
+// Orchestrates the centralized repository of all patient interactions, allowing doctors to track engagement metrics and filter appointments by clinical status.
 const PatientManagement: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
-  const [filter, setFilter]   = useState<Filter>("");
-  const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
+  const [filter,       setFilter]       = useState<Filter>("");
+  const [viewAppt,     setViewAppt]     = useState<Appointment | null>(null);
 
   const load = useCallback(async () => {
     try { setLoading(true); setError(null); setAppointments(await getDoctorAppointments()); }
@@ -120,6 +154,8 @@ const PatientManagement: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => filter ? appointments.filter((a) => a.status === filter) : appointments, [appointments, filter]);
+
+  // Metric Aggregation logic
   const stats = useMemo(() => ({
     total:     appointments.length,
     pending:   appointments.filter((a) => a.status === "pending").length,
@@ -128,7 +164,12 @@ const PatientManagement: React.FC = () => {
     cancelled: appointments.filter((a) => a.status === "cancelled").length,
   }), [appointments]);
 
-  if (loading) return <div className="flex items-center justify-center py-24"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-24">
+      <IconSpinner className="h-10 w-10 text-emerald-500" />
+    </div>
+  );
+
   if (error)   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
       <p className="text-sm font-semibold text-red-700">{error}</p>
@@ -138,13 +179,13 @@ const PatientManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Management Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Patient Management</h1>
         <p className="text-sm text-slate-500">All patient appointments across your channeling slots</p>
       </div>
 
-      {/* Stats */}
+      {/* Engagement Statistics Overview */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: "Total",     value: stats.total,     color: "slate",   icon: <IconUsers className="h-4 w-4" /> },
@@ -160,7 +201,7 @@ const PatientManagement: React.FC = () => {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Result Set Filtering */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-slate-500">Filter:</span>
         {(["", "pending", "confirmed", "completed", "cancelled"] as Filter[]).map((f) => (
@@ -171,7 +212,7 @@ const PatientManagement: React.FC = () => {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Appointment Master List */}
       <TableShell title="Patient Appointments" subtitle={`${filtered.length} record${filtered.length !== 1 ? "s" : ""} · To prescribe, use the Appointments tab`}>
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           {filtered.length === 0 ? (

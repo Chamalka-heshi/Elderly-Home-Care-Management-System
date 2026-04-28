@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
+
 import { useAuth } from "../../../../auth/AuthContext";
 import type { User } from "../../../../auth/AuthContext";
+
 import {
   getProfile,
   updateDoctorProfile,
@@ -9,7 +11,6 @@ import {
 
 import DeleteAccountButton from "../../../../components/deleteaccount";
 
-// ── Shared components ──────────────────────────────────────────────────────
 import {
   IconMail,
   IconPhone,
@@ -19,7 +20,9 @@ import {
   IconShield,
   IconLock,
   IconIdCard,
+  IconSpinner,
 } from "../../common/icons";
+
 import {
   FieldLabel,
   GlassInput,
@@ -30,54 +33,50 @@ import {
   ToastList,
   type Toast,
 } from "../../common/ui";
+
 import PasswordTab   from "../../common/PasswordTab";
 import DangerZoneTab from "../../common/DangerZoneTab";
 import AvatarUpload  from "../../common/AvatarUpload";
 
-// ── Types ──────────────────────────────────────────────────────────────────
 type TabKey = "profile" | "password" | "danger";
 
 interface Props {
   onBack: () => void;
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-//  DoctorProfile Component
-// ══════════════════════════════════════════════════════════════════════════
+// Doctor Professional Profile
+
+// Manages the doctor's personal and professional identity, including clinical credentials, security preferences, and account lifecycle.
 const DoctorProfile: React.FC<Props> = ({ onBack }) => {
   const { user, setUser } = useAuth();
 
-  // ── UI state ──────────────────────────────────────────────────────────
-  const [tab, setTab] = useState<TabKey>("profile");
+  const [tab,    setTab]    = useState<TabKey>("profile");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // ── Profile fetch state ───────────────────────────────────────────────
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError, setProfileError]     = useState<string | null>(null);
+  const [profileError,   setProfileError]   = useState<string | null>(null);
 
-  // ── Editable profile fields ───────────────────────────────────────────
-  const [fullName, setFullName]             = useState("");
-  const [contactNumber, setContactNumber]   = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [licenseNumber, setLicenseNumber]   = useState("");
-  const [qualification, setQualification]   = useState("");
-  const [yearsExp, setYearsExp]             = useState<number>(0);
-  const [hospitalAffiliation, setHospitalAffiliation] = useState("");
+  const [fullName,             setFullName]             = useState("");
+  const [contactNumber,        setContactNumber]        = useState("");
+  const [specialization,       setSpecialization]       = useState("");
+  const [licenseNumber,        setLicenseNumber]        = useState("");
+  const [qualification,        setQualification]        = useState("");
+  const [yearsExp,             setYearsExp]             = useState<number>(0);
+  const [hospitalAffiliation, setHospitalAffiliation]   = useState("");
 
-  // ── Read-only profile fields ──────────────────────────────────────────
-  const [nic, setNic] = useState<string | null>(null);
+  const [nic,       setNic]       = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
 
-  // ── Password fields ───────────────────────────────────────────────────
   const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw]         = useState("");
+  const [newPw,     setNewPw]     = useState("");
   const [confirmPw, setConfirmPw] = useState("");
 
-  // ── Loading states ────────────────────────────────────────────────────
-  const [pwLoading, setPwLoading]     = useState(false);
+  const [pwLoading,   setPwLoading]   = useState(false);
   const [profLoading, setProfLoading] = useState(false);
 
-  // ── Fetch profile on mount ────────────────────────────────────────────
+  // Profile Synchronization
+
+  // Ensures the professional profile reflects the most current credentials and contact information from the identity provider.
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -110,7 +109,8 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Helpers ───────────────────────────────────────────────────────────
+  // Notifications logic
+
   const addToast = useCallback(
     (kind: "success" | "error", message: string) => {
       const id = Date.now();
@@ -119,6 +119,8 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     },
     []
   );
+
+  // Visual Identity calculation
 
   const initials = useMemo(() => {
     const name  = user?.fullName ?? "Doctor";
@@ -131,22 +133,19 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
 
   const roleLabel = "Doctor";
 
-  // ── Tab definitions ───────────────────────────────────────────────────
   const tabs: {
     key: TabKey;
     label: string;
     icon: React.FC<{ className?: string }>;
   }[] = [
     { key: "profile",  label: "Profile",     icon: IconUser  },
-    {
-      key: "password",
-      label: "Password",
-      icon: IconLock,
-    },
+    { key: "password", label: "Password",    icon: IconLock, },
     { key: "danger",   label: "Danger Zone", icon: IconAlert },
   ];
 
-  // ── API Handlers ──────────────────────────────────────────────────────
+  // Professional Update Handler
+
+  // Persists changes to clinical credentials (specialization, license) while updating the global authentication context.
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) {
       addToast("error", "Full name cannot be empty.");
@@ -181,6 +180,8 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     }
   };
 
+  // Credential Security Handler
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -214,11 +215,10 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     }
   };
 
-  // ── Loading / Error state ─────────────────────────────────────────────
   if (profileLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+        <IconSpinner className="h-10 w-10 text-emerald-500" />
       </div>
     );
   }
@@ -241,7 +241,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
       <AmbientBg />
       <ToastList toasts={toasts} />
 
-      {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-white/60 px-4 py-4 backdrop-blur-xl md:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-4">
@@ -269,10 +268,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
         </div>
       </header>
 
-      {/* ── Main ── */}
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-
-        {/* Tab bar */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Pill tone="emerald">{roleLabel}</Pill>
@@ -303,7 +299,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* ── Profile Tab ── */}
         {tab === "profile" && (
           <div className="space-y-6">
             <SectionCard
@@ -311,7 +306,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
               subtitle="Update your professional credentials. Email and NIC cannot be changed."
               rightSlot={<Pill tone="emerald">{roleLabel}</Pill>}
             >
-              {/* Avatar + Save row */}
               <div className="mb-6 flex flex-col gap-4 border-b border-white/30 pb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
                   <AvatarUpload
@@ -342,9 +336,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
                 </PrimaryBtn>
               </div>
 
-              {/* Fields */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {/* Editable */}
                 <div>
                   <FieldLabel>Full Name</FieldLabel>
                   <GlassInput
@@ -414,7 +406,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
                   />
                 </div>
 
-                {/* Read-only */}
                 <div>
                   <FieldLabel>
                     <span className="inline-flex items-center gap-2">
@@ -439,7 +430,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
               </div>
             </SectionCard>
 
-            {/* Account Summary */}
             <SectionCard title="Account Summary" subtitle="Read-only overview of your account.">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
@@ -471,7 +461,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
           </div>
         )}
 
-        {/* ── Password Tab ── */}
         {tab === "password" && (
           <PasswordTab
             currentPw={currentPw}
@@ -485,14 +474,12 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
           />
         )}
 
-        {/* ── Danger Zone Tab ── */}
         {tab === "danger" && (
           <DangerZoneTab
             deleteNote="Permanently delete your doctor account and all associated data. This cannot be undone."
             deleteButton={<DeleteAccountButton />}
           />
         )}
-
       </main>
     </div>
   );

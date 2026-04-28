@@ -1,26 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+
 import Badge from '../../common/widgets/Badge';
+
 import {
   IconX,
-  IconTrash,
   IconBan,
   IconRefresh,
   IconPrint,
   IconFileText,
   IconSearch,
+  IconCheck,
 } from '../../common/icons';
 
 import {
   getAllPrescriptions,
   discontinuePrescription,
-  deletePrescription,
   type Prescription,
 } from '../../../../api/prescriptions/doctor-prescription.api';
 
 export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
 type FilterTab = 'all' | 'active' | 'completed';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// Clinical Formatting Utilities
+
 const fmtDate = (d?: string | null): string => {
   if (!d) return '—';
   try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -33,33 +35,49 @@ const statusConfig: Record<PrescriptionStatus, { tone: 'emerald' | 'blue' | 'red
   discontinued: { tone: 'red',     label: 'Discontinued' },
 };
 
+// UI State Management
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface Toast { id: number; kind: 'success' | 'error'; message: string }
-interface ConfirmState {
-  open: boolean; title: string; message: string;
-  label: string; danger: boolean; loading: boolean;
-  action: () => Promise<void>;
+interface Toast {
+  id:      number;
+  kind:    'success' | 'error';
+  message: string;
 }
+
+interface ConfirmState {
+  open:    boolean;
+  title:   string;
+  message: string;
+  label:   string;
+  danger:  boolean;
+  loading: boolean;
+  action:  () => Promise<void>;
+}
+
 const CONFIRM_CLOSED: ConfirmState = {
-  open: false, title: '', message: '', label: '', danger: false, loading: false, action: async () => {},
+  open:    false,
+  title:   '',
+  message: '',
+  label:   '',
+  danger:  false,
+  loading: false,
+  action:  async () => {},
 };
 
-// ── Table Row ─────────────────────────────────────────────────────────────────
+// Prescription Row Component
+
+// Encapsulates the visual representation and primary actions for a single prescription record within the clinical table.
 interface RxRowProps {
-  rx: Prescription;
-  onPrint: (rx: Prescription) => void;
+  rx:            Prescription;
+  onPrint:       (rx: Prescription) => void;
   onDiscontinue: (rx: Prescription) => void;
-  onDelete: (rx: Prescription) => void;
 }
 
-const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue, onDelete }) => {
-  const cfg = statusConfig[(rx.status as PrescriptionStatus) ?? 'active'];
+const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue }) => {
+  const cfg      = statusConfig[(rx.status as PrescriptionStatus) ?? 'active'];
   const isActive = rx.status === 'active';
 
   return (
     <tr className="group border-b border-slate-100 hover:bg-slate-50/60 transition">
-      {/* Patient */}
       <td className="px-4 py-3.5">
         <p className="font-semibold text-slate-800 text-sm">{rx.patientName}</p>
         <p className="text-xs text-slate-400 mt-0.5">
@@ -72,7 +90,6 @@ const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue, onDelete }) =
         </p>
       </td>
 
-      {/* Medicines */}
       <td className="px-4 py-3.5">
         <div className="flex flex-wrap gap-1">
           {rx.medicines.slice(0, 2).map((m: any, i: number) => (
@@ -88,22 +105,18 @@ const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue, onDelete }) =
         </div>
       </td>
 
-      {/* Issued */}
       <td className="px-4 py-3.5 whitespace-nowrap">
         <p className="text-sm text-slate-700">{fmtDate(rx.issuedDate)}</p>
       </td>
 
-      {/* End Date */}
       <td className="px-4 py-3.5 whitespace-nowrap">
         <p className="text-sm text-slate-700">{fmtDate(rx.validUntil)}</p>
       </td>
 
-      {/* Status */}
       <td className="px-4 py-3.5">
         <Badge tone={cfg.tone}>{cfg.label}</Badge>
       </td>
 
-      {/* Actions */}
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-1">
           <button
@@ -124,24 +137,21 @@ const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue, onDelete }) =
               <IconBan className="h-3.5 w-3.5" />
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={() => onDelete(rx)}
-            title="Delete"
-            className="rounded-xl p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 transition"
-          >
-            <IconTrash className="h-3.5 w-3.5" />
-          </button>
         </div>
       </td>
     </tr>
   );
 };
 
-// ── Print View ────────────────────────────────────────────────────────────────
+// Portable Document Interface
+
+// Generates a clinical-standard print view for prescriptions, facilitating physical medication fulfillment.
 const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, onClose }) => {
   const ref = useRef<HTMLDivElement>(null);
+
+  // Printing Orchestration
+
+  // Injects raw HTML and specialized CSS into a temporary window to ensure consistent print formatting across browsers.
   const handlePrint = () => {
     if (!ref.current) return;
     const w = window.open('', '_blank');
@@ -167,46 +177,48 @@ const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, on
           </div>
         </div>
         <div ref={ref} className="p-8">
-          <h1>Medical Prescription</h1>
-          <p className="sub">
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">Medical Prescription</h1>
+          <p className="sub text-sm text-slate-500 mb-6">
             Issued: {fmtDate(rx.issuedDate)}
             {rx.validUntil ? ` · Valid Until: ${fmtDate(rx.validUntil)}` : ''}
-            {' · '}<span className="badge">{rx.status}</span>
+            {' · '}<span className={`badge inline-block px-3 py-1 rounded-full text-xs font-bold ${rx.status === 'active' ? 'bg-emerald-100 text-emerald-700' : rx.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>{rx.status}</span>
           </p>
-          <div className="section">
-            <div className="label">Patient Details</div>
-            <p style={{ fontWeight: 700 }}>{rx.patientName}</p>
-            <p>Age {rx.patientAge} years</p>
+          <div className="section mb-8">
+            <div className="label text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Patient Details</div>
+            <p className="font-bold text-slate-800 text-base">{rx.patientName}</p>
+            <p className="text-slate-600">Age {rx.patientAge} years</p>
             {rx.diagnosis && (
-              <p style={{ marginTop: 8 }}>
-                <span className="label" style={{ display: 'block' }}>Diagnosis</span>
-                {rx.diagnosis}
-              </p>
+              <div className="mt-4">
+                <span className="label text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Diagnosis</span>
+                <p className="text-slate-700">{rx.diagnosis}</p>
+              </div>
             )}
           </div>
-          <div className="section">
-            <div className="label">Prescribed Medicines</div>
-            {rx.medicines.map((m: any, i: number) => (
-              <div key={i} className="med">
-                <p className="med-name">{i + 1}. {m.medicineName}</p>
-                <p className="med-sub">
-                  Dosage: {m.dosage} · Frequency: {m.frequency} · Duration: {m.durationDays} day{m.durationDays !== 1 ? 's' : ''}
-                </p>
-                {m.instructions && (
-                  <span style={{ fontSize: '.78rem', color: '#047857', background: '#d1fae5', borderRadius: 6, padding: '2px 8px', display: 'inline-block', marginTop: 5 }}>
-                    {m.instructions}
-                  </span>
-                )}
-              </div>
-            ))}
+          <div className="section mb-8">
+            <div className="label text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Prescribed Medicines</div>
+            <div className="space-y-3">
+              {rx.medicines.map((m: any, i: number) => (
+                <div key={i} className="med border border-slate-200 rounded-xl p-4 bg-slate-50/30">
+                  <p className="med-name font-bold text-slate-800">{i + 1}. {m.medicineName}</p>
+                  <p className="med-sub text-xs text-slate-500 mt-1">
+                    Dosage: {m.dosage} · Frequency: {m.frequency} · Duration: {m.durationDays} day{m.durationDays !== 1 ? 's' : ''}
+                  </p>
+                  {m.instructions && (
+                    <span className="inline-block mt-2 px-2 py-0.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md">
+                      {m.instructions}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
           {rx.notes && (
-            <div className="section">
-              <div className="label">Notes</div>
-              <p style={{ fontSize: '.9rem' }}>{rx.notes}</p>
+            <div className="section mb-8">
+              <div className="label text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Notes</div>
+              <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{rx.notes}</p>
             </div>
           )}
-          <div className="footer">
+          <div className="footer mt-12 pt-6 border-t border-slate-100 text-[10px] text-slate-400">
             <p>Generated electronically · Prescription ID: {rx.id}</p>
           </div>
         </div>
@@ -215,7 +227,8 @@ const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, on
   );
 };
 
-// ── Confirm Modal ─────────────────────────────────────────────────────────────
+// Modals & Notifications
+
 const ConfirmModal: React.FC<{ state: ConfirmState; onConfirm: () => void; onCancel: () => void }> = ({ state, onConfirm, onCancel }) => {
   if (!state.open) return null;
   return (
@@ -239,19 +252,21 @@ const ConfirmModal: React.FC<{ state: ConfirmState; onConfirm: () => void; onCan
   );
 };
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
 const ToastList: React.FC<{ toasts: Toast[]; onDismiss: (id: number) => void }> = ({ toasts, onDismiss }) => (
   <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
     {toasts.map(t => (
       <div key={t.id} onClick={() => onDismiss(t.id)}
         className={`pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-white shadow-lg cursor-pointer transition ${t.kind === 'success' ? 'bg-emerald-600' : 'bg-red-500'}`}>
-        <span>{t.kind === 'success' ? '✓' : '✕'}</span>{t.message}
+        {t.kind === 'success' ? <IconCheck className="h-4 w-4" /> : <IconX className="h-4 w-4" />}
+        {t.message}
       </div>
     ))}
   </div>
 );
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// Prescription Management Registry
+
+// Orchestrates the clinical repository of all issued medications, allowing doctors to monitor treatment adherence, discontinue active scripts, and manage physical fulfillment.
 const PrescriptionPage: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [total,         setTotal]         = useState(0);
@@ -269,34 +284,45 @@ const PrescriptionPage: React.FC = () => {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4500);
   }, []);
 
+  // Data Aggregation logic
+
+  // Fetches a comprehensive list of prescriptions, ensuring that status-based counts remain synchronized across the UI tabs.
   const fetchPrescriptions = useCallback(async () => {
     setLoading(true); setFetchError(null);
     try {
-      const res = await getAllPrescriptions({ status: filter === 'all' ? undefined : filter, limit: 100 });
+      const res = await getAllPrescriptions({ limit: 100 });
       setPrescriptions((res as any).data ?? []);
       setTotal((res as any).total ?? 0);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load prescriptions.';
       setFetchError(msg); toast('error', msg);
     } finally { setLoading(false); }
-  }, [filter, toast]);
+  }, [toast]);
 
   useEffect(() => { fetchPrescriptions(); }, [fetchPrescriptions]);
 
-  const filtered = search.trim()
-    ? prescriptions.filter(rx => {
-        const q = search.toLowerCase();
-        return rx.patientName.toLowerCase().includes(q)
-          || (rx.diagnosis ?? '').toLowerCase().includes(q)
-          || rx.medicines.some((m: any) => m.medicineName.toLowerCase().includes(q));
-      })
-    : prescriptions;
+  // Search & Filtering logic
+
+  const filtered = prescriptions.filter(rx => {
+    if (filter !== 'all' && rx.status !== filter) return false;
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return rx.patientName.toLowerCase().includes(q)
+        || (rx.diagnosis ?? '').toLowerCase().includes(q)
+        || rx.medicines.some((m: any) => m.medicineName.toLowerCase().includes(q));
+    }
+
+    return true;
+  });
 
   const counts = {
     all:       total,
     active:    prescriptions.filter(r => r.status === 'active').length,
     completed: prescriptions.filter(r => r.status === 'completed').length,
   };
+
+  // Clinical Lifecycle Handlers
 
   const openDiscontinue = useCallback((rx: Prescription) => {
     const action = async () => {
@@ -314,22 +340,6 @@ const PrescriptionPage: React.FC = () => {
     setConfirm({ open: true, danger: false, loading: false, label: 'Discontinue', title: 'Discontinue Prescription', message: `Stop ${rx.patientName}'s prescription?`, action });
   }, [toast]);
 
-  const openDelete = useCallback((rx: Prescription) => {
-    const action = async () => {
-      setConfirm(c => ({ ...c, loading: true }));
-      try {
-        await deletePrescription(rx.id);
-        setPrescriptions(p => p.filter(r => r.id !== rx.id));
-        setTotal(t => Math.max(0, t - 1));
-        setConfirm(CONFIRM_CLOSED);
-        toast('success', 'Prescription deleted.');
-      } catch (err) {
-        setConfirm(c => ({ ...c, loading: false }));
-        toast('error', err instanceof Error ? err.message : 'Failed.');
-      }
-    };
-    setConfirm({ open: true, danger: true, loading: false, label: 'Delete', title: 'Delete Prescription', message: `Permanently delete ${rx.patientName}'s prescription?`, action });
-  }, [toast]);
 
   const TABS: { key: FilterTab; label: string }[] = [
     { key: 'all',       label: `All (${counts.all})` },
@@ -339,7 +349,6 @@ const PrescriptionPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
       <div className="border-b border-slate-100 bg-white px-6 py-5 shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -356,8 +365,6 @@ const PrescriptionPage: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-5">
-
-        {/* Filter tabs + search */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
             {TABS.map(({ key, label }) => (
@@ -388,7 +395,6 @@ const PrescriptionPage: React.FC = () => {
           </div>
         )}
 
-        {/* Table */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] text-sm">
@@ -436,7 +442,6 @@ const PrescriptionPage: React.FC = () => {
                       rx={rx}
                       onPrint={setPrintRx}
                       onDiscontinue={openDiscontinue}
-                      onDelete={openDelete}
                     />
                   ))
                 )}

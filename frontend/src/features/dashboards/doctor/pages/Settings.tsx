@@ -1,6 +1,6 @@
 
-
 import React, { useState } from "react";
+import { IconCheck } from "../../common/icons";
 
 const Settings: React.FC = () => {
   const [systemName,    setSystemName]    = useState("Care Home ECMS");
@@ -76,7 +76,10 @@ const Settings: React.FC = () => {
               Save Settings
             </button>
             {saved && (
-              <span className="text-sm font-semibold text-emerald-600">✓ Settings saved</span>
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+                <IconCheck className="h-4 w-4" />
+                Settings saved
+              </span>
             )}
           </div>
         </form>

@@ -2,14 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./homePage.css";
 
-
 import Navbar from "../../components/Navbar/navbar";
 import Footer from "../../components/Footer/footer";
 
 import heroImg from "../../assets/Home/hero.jpg";
 import aboutImg from "../../assets/Home/about.jpg";
 import bestCareImg from "../../assets/Home/best-care.jpg";
-
 
 import AuthModal, { type AuthMode } from "../../components/auth/AuthModal";
 import LoginCard from "../auth/Login/LoginCard";
@@ -28,6 +26,9 @@ const services: Service[] = [
   { title: "Caring Staff", desc: "Dedicated caregivers ensuring every resident feels valued, respected, and secure." },
 ];
 
+// Landing Page
+
+// Serves as the primary entry point for all system stakeholders, providing high-level service summaries and secure authentication entry points.
 const Home: React.FC = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -36,6 +37,9 @@ const Home: React.FC = () => {
   const openSignup = () => { setAuthMode("signup"); setAuthOpen(true); };
   const closeAuth  = () => setAuthOpen(false);
 
+  // Viewport & Scroll Animations
+
+  // Initializes visual interaction observers to trigger reveal animations and parallax effects as the user explores the content.
   useEffect(() => {
     const onScroll = () => {
       const el = document.querySelector<HTMLDivElement>(".hp-heroParallax");
@@ -60,8 +64,9 @@ const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <Navbar />
-
-
+    {/* Hero Section*/}
+    {/* Captures immediate user attention with a parallax visual and clear value proposition, directing users toward account registration.*/}
+      
       <section id="home" className="relative min-h-[92vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 hp-heroParallax">
           <img src={heroImg} alt="Elderly care" className="h-full w-full object-cover" />
@@ -85,7 +90,6 @@ const Home: React.FC = () => {
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
-                
                 <button
                   onClick={openLogin}
                   className="btn-modern inline-flex items-center justify-center rounded-lg bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition shadow-lg shadow-emerald-700/20"
@@ -134,6 +138,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* About Section — Establishes trust by detailing the organization's philosophy and commitment to dignified, high-quality senior care. */}
       <section id="about" className="bg-white">
         <div className="group mx-auto max-w-287.5 px-4 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
@@ -161,6 +166,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* Services Overview — Highlights key medical and operational services to demonstrate the platform's comprehensive approach to care management. */}
       <section id="services" className="bg-slate-50/60">
         <div className="mx-auto max-w-287.5 px-4 py-16">
           <div className="text-center max-w-175 mx-auto reveal">
@@ -194,7 +200,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-  
+      {/* Value Proposition — Reiterates the platform's core benefits to encourage final user conversion and account creation. */}
       <section className="bg-white">
         <div className="mx-auto max-w-287.5 px-4 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
@@ -232,19 +238,20 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* Authentication Portal — Provides a centralized, modal-based interface for all user login, registration, and recovery flows without page redirection. */}
       <AuthModal open={authOpen} onClose={closeAuth} mode={authMode} onSwitchMode={setAuthMode}>
-              {authMode === "login" ? (
-                <LoginCard
-                  onGoSignup={() => setAuthMode("signup")}
-                  onSuccessClose={closeAuth}
-                  onForgotPassword={() => setAuthMode("forgot")}
-                />
-              ) : authMode === "forgot" ? (
-                <ForgotPasswordCard onGoLogin={() => setAuthMode("login")} />
-              ) : (
-                <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
-              )}
-            </AuthModal>
+        {authMode === "login" ? (
+          <LoginCard
+            onGoSignup={() => setAuthMode("signup")}
+            onSuccessClose={closeAuth}
+            onForgotPassword={() => setAuthMode("forgot")}
+          />
+        ) : authMode === "forgot" ? (
+          <ForgotPasswordCard onGoLogin={() => setAuthMode("login")} />
+        ) : (
+          <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
+        )}
+      </AuthModal>
 
       <Footer />
     </div>

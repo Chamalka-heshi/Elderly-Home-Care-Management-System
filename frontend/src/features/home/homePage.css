@@ -54,7 +54,7 @@
   }
 }
 
-/* ---------- Global smoothness ---------- */
+/* Global smoothness */
 html {
   scroll-behavior: smooth;
 }
@@ -63,7 +63,7 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ---------- Modern Button Hover ---------- */
+/*  Modern Button Hover  */
 .btn-modern {
   transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease,
     border-color 220ms ease, color 220ms ease, opacity 220ms ease;
@@ -79,7 +79,7 @@ html {
   transform: translateY(0px) scale(0.98);
 }
 
-/* ---------- Link underline animation ---------- */
+/*  Link underline animation  */
 .link-underline {
   position: relative;
   text-decoration: none;
@@ -100,7 +100,7 @@ html {
   width: 100%;
 }
 
-/* ---------- Card Hover Lift ---------- */
+/*  Card Hover Lift */
 .card-hover {
   transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
   will-change: transform;
@@ -112,7 +112,7 @@ html {
   border-color: rgba(16, 185, 129, 0.35);
 }
 
-/* ---------- Image Hover Zoom ---------- */
+/* Image Hover Zoom */
 .img-hover {
   overflow: hidden;
   border-radius: 16px;
@@ -128,7 +128,7 @@ html {
   filter: saturate(1.05) contrast(1.02);
 }
 
-/* ---------- Scroll reveal animation ---------- */
+/*  Scroll reveal animation  */
 .reveal {
   opacity: 0;
   transform: translateY(18px);
@@ -140,12 +140,12 @@ html {
   transform: translateY(0px);
 }
 
-/* Optional: stagger support */
+
 .reveal-delay-1 { transition-delay: 120ms; }
 .reveal-delay-2 { transition-delay: 240ms; }
 .reveal-delay-3 { transition-delay: 360ms; }
 
-/* ---------- Stronger hero overlay polish ---------- */
+/* Stronger hero overlay polish */
 .hp-heroOverlayModern {
   position: absolute;
   inset: 0;
@@ -155,13 +155,13 @@ html {
     linear-gradient(90deg, rgba(0,0,0,0.65), rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.10));
 }
 
-/* ---------- Smooth parallax layer ---------- */
+/* Smooth parallax layer  */
 .hp-heroParallax {
   will-change: transform;
   transform: translateY(0px);
 }
 
-/* ---------- Scroll indicator dot ---------- */
+/*  Scroll indicator dot */
 .hp-scrollDot {
   width: 10px;
   height: 10px;

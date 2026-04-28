@@ -1,35 +1,49 @@
 import React, { useState, useMemo } from "react";
-import SignOutButton from "../../../../components/signoutbtn";
-import {IconSparkle , IconSearch, IconX} from "../../common/icons"; 
 
-// ── Types 
+import SignOutButton from "../../../../components/signoutbtn";
+
+import {
+  IconSparkle,
+  IconSearch,
+  IconX,
+} from "../../common/icons";
+
 export type MenuLabel =
   | "Dashboard"
   | "Patient Management"
   | "Prescription"
-  | "Treatment Plans"
   | "Channeling Slots"
   | "Appointments"
   | "Payments"
-  | "Settings";
 
 export interface MenuItem {
-  icon: React.FC<{ className?: string }>;
+  icon:  React.FC<{ className?: string }>;
   label: MenuLabel;
 }
 
 interface Props {
-  items: MenuItem[];
+  items:      MenuItem[];
   activeMenu: MenuLabel;
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen:     boolean;
+  onClose:    () => void;
   onNavigate: (label: MenuLabel) => void;
 }
 
-// ── Component 
-const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNavigate }) => {
+// Clinical Navigation Sidebar
+
+// Provides a persistent navigation interface for the doctor dashboard, featuring menu filtering and quick access to professional workflows.
+const Sidebar: React.FC<Props> = ({
+  items,
+  activeMenu,
+  isOpen,
+  onClose,
+  onNavigate,
+}) => {
   const [search, setSearch] = useState("");
 
+  // Navigation Filter logic
+
+  // Filters menu items based on the doctor's search input to facilitate rapid access to specific dashboard features.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? items.filter((m) => m.label.toLowerCase().includes(q)) : items;
@@ -42,13 +56,11 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
     "Channeling Slots":   "View channeling schedule",
     "Appointments":       "View & prescribe for confirmed patients",
     "Payments":           "View consultation fee income",
-    "Treatment Plans":    "Manage patient treatment",
-    "Settings":           "Manage settings",
   };
 
   return (
     <>
-      {/* Mobile backdrop */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <button
           aria-label="Close sidebar"
@@ -68,8 +80,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
         ].join(" ")}
       >
         <div className="flex flex-1 flex-col overflow-y-auto p-5">
-
-          {/* Brand */}
+          {/* Brand Identity */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
@@ -88,7 +99,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
             </button>
           </div>
 
-          {/* Search */}
+          {/* Navigation Search */}
           <div className="relative mt-5">
             <input
               placeholder="Search menu…"
@@ -101,10 +112,10 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
             </span>
           </div>
 
-          {/* Nav */}
+          {/* Clinical Menu */}
           <nav className="mt-5 flex-1 space-y-1">
             {filtered.map((item) => {
-              const Icon = item.icon;
+              const Icon   = item.icon;
               const active = activeMenu === item.label;
               return (
                 <button
@@ -141,7 +152,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
             })}
           </nav>
 
-          {/* Sign out */}
+          {/* Identity Management */}
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
             <p className="text-xs font-semibold text-slate-700">Account</p>
             <p className="mt-1 text-xs text-slate-500">Securely sign out when you're done.</p>

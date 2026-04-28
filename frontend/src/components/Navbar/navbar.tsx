@@ -1,12 +1,17 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+
+// Auth components and modals
 import LoginCard from "../../features/auth/Login/LoginCard";
 import SignupCard from "../../features/auth/Signin/Signupcard";
 import ForgotPasswordCard from "../../features/auth/ForgotPassword/ForgotPassword";
 import AuthModal, { type AuthMode } from "../auth/AuthModal";
+
+// UI icons and styling
+import { IconX, IconMenu } from "../../features/dashboards/common/icons";
 import "./navbar.css";
 
-// NavLink component moved outside Navbar
+// Reusable navigation link that handles both internal routing and section scrolling
 interface NavLinkProps {
   href?: string;
   sectionId?: string;
@@ -46,6 +51,7 @@ const NavLinkComponent: React.FC<NavLinkProps> = ({
   );
 };
 
+// Global navigation bar with responsive mobile menu and auth modal triggers
 const Navbar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -70,6 +76,7 @@ const Navbar: React.FC = () => {
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
+  // Logic to either scroll on the home page or navigate to a dedicated page
   const handleScrollOrNavigate = (
     e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
     sectionId: string,
@@ -92,6 +99,7 @@ const Navbar: React.FC = () => {
     <>
       <header className="hp-glassNav fixed top-0 left-0 right-0 z-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+          {/* Logo and Home Link */}
           <Link
             to="/"
             className="flex items-center gap-2 font-extrabold tracking-tight text-base sm:text-lg"
@@ -100,6 +108,7 @@ const Navbar: React.FC = () => {
             <span>Care Home</span>
           </Link>
 
+          {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium">
             <NavLinkComponent
               href="/"
@@ -128,6 +137,7 @@ const Navbar: React.FC = () => {
             </NavLinkComponent>
           </nav>
 
+          {/* Desktop Call-to-Actions */}
           <div className="hidden md:flex items-center gap-2">
             <Link
               to="/contact"
@@ -151,21 +161,17 @@ const Navbar: React.FC = () => {
             </button>
           </div>
 
+          {/* Mobile Menu Toggle */}
           <button
             onClick={toggleMobileMenu}
             className="md:hidden inline-flex items-center justify-center p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
             aria-label="Toggle menu"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+            {mobileMenuOpen ? <IconX className="w-6 h-6" /> : <IconMenu className="w-6 h-6" />}
           </button>
         </div>
 
+        {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-lg">
             <nav className="px-4 py-4 space-y-3">
@@ -223,6 +229,7 @@ const Navbar: React.FC = () => {
         )}
       </header>
 
+      {/* Shared Authentication Modal */}
       <AuthModal open={authOpen} onClose={closeAuth} mode={authMode} onSwitchMode={setAuthMode}>
         {authMode === "login" ? (
           <LoginCard

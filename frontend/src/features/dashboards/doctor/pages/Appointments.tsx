@@ -1,21 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   getDoctorAppointments,
+  updateAppointmentStatusDoctor,
   type Appointment,
 } from "../../../../api/appointment/doctor-appointment.api";
+
 import {
   createPrescription,
   type Medicine,
   type CreatePrescriptionPayload,
 } from "../../../../api/prescriptions/doctor-prescription.api";
+
 import {
   getPatientMedicalHistory,
   type PatientMedicalHistory,
 } from "../../../../api/patients/doctor-patient.api";
+
 import {
   fmt12,
   fmtDate,
 } from "../../../../api/appointment/appointment.types";
+
 import {
   IconCalendar,
   IconClock,
@@ -31,12 +37,14 @@ import {
   IconChevronDown,
   IconPill,
   IconUser,
+  IconSpinner,
 } from "../../common/icons";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Constants & Utilities
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Standardized medication frequency options to ensure consistent clinical documentation.
 const FREQ = [
   "Once daily", "Twice daily", "Three times daily", "Four times daily",
   "Every 6 hours", "Every 8 hours", "Every 12 hours", "PRN (as needed)",
@@ -48,18 +56,19 @@ const inp =
 
 const EMPTY_MED: Medicine = {
   medicineName: "",
-  dosage: "",
-  frequency: FREQ[0],
+  dosage:       "",
+  frequency:    FREQ[0],
   durationDays: 7,
   instructions: "",
 };
 
-// ─── Prescription Creation Modal ──────────────────────────────────────────────
+// Prescription Creation Workflow
 
+// Provides a comprehensive interface for issuing digital prescriptions, allowing doctors to detail dosages, frequencies, and clinical notes.
 interface PrescribeModalProps {
   appointment: Appointment;
-  onClose: () => void;
-  onSuccess: (prescriptionId: string, appointmentId: string) => void;
+  onClose:     () => void;
+  onSuccess:   (prescriptionId: string, appointmentId: string) => void;
 }
 
 const PrescribeModal: React.FC<PrescribeModalProps> = ({
@@ -68,18 +77,20 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
   onSuccess,
 }) => {
   const { patient, id: appointmentId, familyMember } = appointment;
-  const [diagnosis, setDiagnosis]   = useState("");
-  const [notes, setNotes]           = useState("");
-  const [issuedDate, setIssuedDate] = useState(today());
-  const [validUntil, setValidUntil] = useState("");
-  const [meds, setMeds]             = useState<Medicine[]>([{ ...EMPTY_MED }]);
-  const [saving, setSaving]         = useState(false);
-  const [err, setErr]               = useState<string | null>(null);
+  const [diagnosis,  setDiagnosis]   = useState("");
+  const [notes,      setNotes]       = useState("");
+  const [issuedDate, setIssuedDate]  = useState(today());
+  const [validUntil, setValidUntil]  = useState("");
+  const [meds,       setMeds]        = useState<Medicine[]>([{ ...EMPTY_MED }]);
+  const [saving,     setSaving]      = useState(false);
+  const [err,        setErr]         = useState<string | null>(null);
 
   const addMed    = () => setMeds((m) => [...m, { ...EMPTY_MED }]);
   const removeMed = (i: number) => setMeds((m) => m.filter((_, x) => x !== i));
   const changeMed = (i: number, field: keyof Medicine, val: string | number) =>
     setMeds((m) => m.map((x, idx) => (idx === i ? { ...x, [field]: val } : x)));
+
+  // Persists the prescription to the backend and associates it with the active appointment record.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,12 +107,12 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
       patientAge:  patient.age ?? 0,
       issuedDate,
       ...(diagnosis.trim()  && { diagnosis: diagnosis.trim() }),
-      ...(notes.trim()      && { notes: notes.trim() }),
+      ...(notes.trim()      && { notes:     notes.trim() }),
       ...(validUntil        && { validUntil }),
       medicines: meds.map((m) => ({
         ...m,
         durationDays: Number(m.durationDays),
-        // omit empty instructions to keep the payload clean
+        // Omit empty instructions to keep the payload clean
         ...(m.instructions?.trim()
           ? { instructions: m.instructions.trim() }
           : { instructions: undefined }),
@@ -352,8 +363,9 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
   );
 };
 
-// ─── Medical History Modal ────────────────────────────────────────────────────
+// Medical History Repository
 
+// Allows doctors to review a patient's clinical background, including vital signs and historical prescriptions, to inform current treatment.
 interface MedicalHistoryModalProps {
   patientId:   string;
   patientName: string;
@@ -441,7 +453,7 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
           {/* Loading */}
           {loading && (
             <div className="flex items-center justify-center py-20">
-              <div className="h-9 w-9 animate-spin rounded-full border-b-2 border-blue-500" />
+              <IconSpinner className="h-9 w-9 text-blue-500" />
             </div>
           )}
 
@@ -695,10 +707,12 @@ interface SlotCardProps {
   group:           SlotGroup;
   onPrescribe:     (appt: Appointment) => void;
   onViewHistory:   (appt: Appointment) => void;
+  onConfirm:       (appt: Appointment) => void;
   localPrescribed: Set<string>;
+  confirming:      string | null;
 }
 
-const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, localPrescribed }) => {
+const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, onConfirm, localPrescribed, confirming }) => {
   const [expanded, setExpanded] = useState(true);
   const total  = group.appointments.length;
   const isPast = new Date(`${group.date}T${group.endTime}:00`) < new Date();
@@ -736,7 +750,7 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
             <IconUserCheck className="h-3.5 w-3.5" />
-            {total} confirmed patient{total !== 1 ? "s" : ""}
+            {total} patient{total !== 1 ? "s" : ""}
           </span>
           {expanded
             ? <IconChevronUp className="h-4 w-4 text-slate-400" />
@@ -747,6 +761,7 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
       {expanded && (
         <div className="border-t border-slate-100">
           {group.appointments.map((appt, idx) => {
+            const isPending  = appt.status === "pending";
             const prescribed = !!appt.prescriptionId || localPrescribed.has(appt.id);
             return (
               <div
@@ -809,8 +824,18 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
                     Medical History
                   </button>
 
-                  {/* Prescription status / action */}
-                  {prescribed ? (
+                  {/* Pending → Confirm; Confirmed → Prescribe */}
+                  {isPending ? (
+                    <button
+                      type="button"
+                      onClick={() => onConfirm(appt)}
+                      disabled={confirming === appt.id}
+                      className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 active:scale-95 disabled:opacity-60 transition"
+                    >
+                      <IconUserCheck className="h-3.5 w-3.5" />
+                      {confirming === appt.id ? "Confirming…" : "Confirm"}
+                    </button>
+                  ) : prescribed ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
                       <IconCheckCircle className="h-3.5 w-3.5" /> Prescribed
                     </span>
@@ -862,6 +887,7 @@ const DoctorAppointments: React.FC = () => {
   const [prescribeAppt, setPrescribeAppt]     = useState<Appointment | null>(null);
   const [historyAppt, setHistoryAppt]         = useState<Appointment | null>(null);
   const [localPrescribed, setLocalPrescribed] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming]           = useState<string | null>(null);
 
   const { toasts, add: addToast } = useToast();
 
@@ -879,11 +905,29 @@ const DoctorAppointments: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleConfirm = useCallback(async (appt: Appointment) => {
+    setConfirming(appt.id);
+    try {
+      await updateAppointmentStatusDoctor(appt.id, "confirmed" as any);
+      setAppointments((prev) =>
+        prev.map((a) => a.id === appt.id ? { ...a, status: "confirmed" as const } : a),
+      );
+      addToast("Appointment confirmed successfully.", "success");
+    } catch (e: any) {
+      addToast(e.message ?? "Failed to confirm appointment.", "error");
+    } finally {
+      setConfirming(null);
+    }
+  }, [addToast]);
+
   const slotGroups = useMemo<SlotGroup[]>(() => {
-    const confirmed = appointments.filter((a) => a.status === "confirmed");
+    // Show both pending (awaiting doctor confirmation) and confirmed appointments
+    const active = appointments.filter(
+      (a) => a.status === "pending" || a.status === "confirmed",
+    );
     const map = new Map<string, SlotGroup>();
 
-    for (const appt of confirmed) {
+    for (const appt of active) {
       const sid = appt.slotId;
       if (!map.has(sid)) {
         map.set(sid, {
@@ -905,6 +949,7 @@ const DoctorAppointments: React.FC = () => {
   const now            = new Date();
   const upcomingGroups = slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) >= now);
   const pastGroups     = slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) < now);
+  const totalPending   = appointments.filter((a) => a.status === "pending").length;
 
   const handlePrescriptionCreated = useCallback(
     (prescriptionId: string, appointmentId: string) => {
@@ -925,7 +970,7 @@ const DoctorAppointments: React.FC = () => {
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+      <IconSpinner className="h-10 w-10 text-emerald-500" />
     </div>
   );
 
@@ -950,10 +995,16 @@ const DoctorAppointments: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Confirmed patients grouped by channeling slot — view medical history or prescribe directly
+            Patient bookings grouped by slot — confirm pending patients or prescribe for confirmed ones
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {totalPending > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-center">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Pending</p>
+              <p className="text-2xl font-extrabold text-amber-700">{totalPending}</p>
+            </div>
+          )}
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center">
             <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Confirmed</p>
             <p className="text-2xl font-extrabold text-emerald-700">{totalConfirmed}</p>
@@ -993,7 +1044,9 @@ const DoctorAppointments: React.FC = () => {
               group={group}
               onPrescribe={setPrescribeAppt}
               onViewHistory={setHistoryAppt}
+              onConfirm={handleConfirm}
               localPrescribed={localPrescribed}
+              confirming={confirming}
             />
           ))}
         </section>
@@ -1014,7 +1067,9 @@ const DoctorAppointments: React.FC = () => {
               group={group}
               onPrescribe={setPrescribeAppt}
               onViewHistory={setHistoryAppt}
+              onConfirm={handleConfirm}
               localPrescribed={localPrescribed}
+              confirming={confirming}
             />
           ))}
         </section>

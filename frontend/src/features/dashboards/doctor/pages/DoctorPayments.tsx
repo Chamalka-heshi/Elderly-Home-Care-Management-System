@@ -1,32 +1,24 @@
-/**
- * src/features/dashboards/doctor/pages/DoctorPayments.tsx
- * ─────────────────────────────────────────────────────────
- * Displays all payments made by family members for this doctor's appointments.
- * Shows only the consultation fee (doctor's income) — NOT the care-home fee.
- */
-
 import React, { useEffect, useMemo, useState } from "react";
+
 import {
   getDoctorPayments,
   type DoctorPaymentRecord,
-  type DoctorPaymentStatus,
 } from "../../../../api/payments/doctor-payment.api";
-import StatCard from "../../common/widgets/StatCard";
+
+import StatCard                  from "../../common/widgets/StatCard";
 import Badge, { type BadgeTone } from "../../common/widgets/Badge";
-import TableShell from "../../common/widgets/TableShell";
+import TableShell                from "../../common/widgets/TableShell";
+
 import {
   IconCurrency,
-  IconActivity,
   IconCheckCircle,
-  IconAlertCircle,
-  IconClock,
   IconSearch,
   IconRefresh,
   IconCalendar,
   IconUser,
 } from "../../common/icons";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Data Formatting Utilities
 
 const fmt12 = (t: string) => {
   const [h, m] = t.split(":").map(Number);
@@ -36,9 +28,9 @@ const fmt12 = (t: string) => {
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", {
-    day: "2-digit",
+    day:   "2-digit",
     month: "short",
-    year: "numeric",
+    year:  "numeric",
   });
 
 const fmtCurrency = (n: number) =>
@@ -46,48 +38,32 @@ const fmtCurrency = (n: number) =>
 
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
+    day:    "2-digit",
+    month:  "short",
+    year:   "numeric",
+    hour:   "2-digit",
     minute: "2-digit",
   });
 
-// ─── Status helpers ───────────────────────────────────────────────────────────
+// Visual Configuration
 
-type FilterTab = "all" | DoctorPaymentStatus;
-
-const STATUS_CONFIG: Record<
-  DoctorPaymentStatus,
-  { label: string; tone: BadgeTone; dot: string }
-> = {
-  paid:             { label: "Paid",            tone: "emerald", dot: "bg-emerald-500" },
-  pending_approval: { label: "Pending Approval",tone: "amber",   dot: "bg-amber-400"  },
-  pending:          { label: "Pending",         tone: "slate",   dot: "bg-slate-400"  },
-  rejected:         { label: "Rejected",        tone: "red",     dot: "bg-red-500"    },
+const STATUS_CONFIG = {
+  paid: { label: "Paid", tone: "emerald" as BadgeTone, dot: "bg-emerald-500" },
 };
 
 const METHOD_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
-  card:          { label: "💳 Card",          tone: "blue"   },
+  card:          { label: "💳 Card",          tone: "blue" },
   bank_transfer: { label: "🏦 Bank Transfer", tone: "purple" },
 };
 
-const TABS: { key: FilterTab; label: string }[] = [
-  { key: "all",             label: "All"             },
-  { key: "paid",            label: "Paid"            },
-  { key: "pending_approval",label: "Pending Approval"},
-  { key: "pending",         label: "Pending"         },
-  { key: "rejected",        label: "Rejected"        },
-];
+// Revenue Tracking Interface
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
+// Displays all confirmed payments specifically for the doctor's consultation services, excluding system-wide care-home fees.
 const DoctorPayments: React.FC = () => {
   const [payments,    setPayments]    = useState<DoctorPaymentRecord[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
-  const [activeTab,   setActiveTab]   = useState<FilterTab>("all");
   const [search,      setSearch]      = useState("");
 
   const load = async () => {
@@ -106,37 +82,26 @@ const DoctorPayments: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const paid       = payments.filter((p) => p.status === "paid");
-    const pending    = payments.filter((p) => p.status === "pending" || p.status === "pending_approval");
-    const rejected   = payments.filter((p) => p.status === "rejected");
-    return { paid: paid.length, pending: pending.length, rejected: rejected.length };
-  }, [payments]);
+  // Search Logic
 
-  // ── Filtered + searched list ───────────────────────────────────────────────
+  // Filters the payment history based on patient name, family member details, or appointment dates to facilitate rapid record lookup.
   const visible = useMemo(() => {
-    let list = payments;
-    if (activeTab !== "all") list = list.filter((p) => p.status === activeTab);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.patient.fullName.toLowerCase().includes(q) ||
-          p.familyMember.fullName.toLowerCase().includes(q) ||
-          p.familyMember.email.toLowerCase().includes(q) ||
-          (p.slot?.date ?? "").includes(q)
-      );
-    }
-    return list;
-  }, [payments, activeTab, search]);
+    if (!search.trim()) return payments;
+    const q = search.toLowerCase();
+    return payments.filter(
+      (p) =>
+        p.patient.fullName.toLowerCase().includes(q) ||
+        p.familyMember.fullName.toLowerCase().includes(q) ||
+        p.familyMember.email.toLowerCase().includes(q) ||
+        (p.slot?.date ?? "").includes(q)
+    );
+  }, [payments, search]);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  const totalPaid = payments.length;
 
   return (
     <div className="space-y-6">
-
-      {/* ── Page header ── */}
+      {/* Revenue Dashboard Header — Summarizes the doctor's professional earnings and providing manual synchronization with the payment registry. */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
@@ -156,9 +121,10 @@ const DoctorPayments: React.FC = () => {
         </button>
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* Financial Metrics */}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Total income — highlighted green */}
+        {/* Accumulated Income Card */}
         <div className="group relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-600 to-teal-600 p-6 shadow-[0_20px_60px_rgba(5,150,105,0.25)] transition hover:-translate-y-0.5">
           <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
           <p className="text-xs font-semibold text-emerald-100">Total Income</p>
@@ -172,34 +138,22 @@ const DoctorPayments: React.FC = () => {
         </div>
 
         <StatCard
-          title="Total Payments"
-          value={loading ? "—" : payments.length}
-          caption="Across all statuses"
-          icon={IconActivity}
-        />
-        <StatCard
-          title="Paid"
-          value={loading ? "—" : stats.paid}
-          caption="Completed transactions"
+          title="Total Paid"
+          value={loading ? "—" : totalPaid}
+          caption="Admin-approved payments"
           icon={IconCheckCircle}
-        />
-        <StatCard
-          title="Pending / Awaiting"
-          value={loading ? "—" : stats.pending}
-          caption="Awaiting approval or confirmation"
-          icon={IconClock}
         />
       </div>
 
-      {/* ── Error state ── */}
+      {/* System Alerts */}
       {error && (
         <div className="flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
-          <IconAlertCircle className="h-5 w-5 shrink-0" />
+          <span className="shrink-0 text-lg">⚠️</span>
           {error}
         </div>
       )}
 
-      {/* ── Table card ── */}
+      {/* Transaction Ledger */}
       <TableShell
         title="Payment History"
         subtitle={`${visible.length} record${visible.length !== 1 ? "s" : ""} shown`}
@@ -216,33 +170,7 @@ const DoctorPayments: React.FC = () => {
           </div>
         }
       >
-        {/* Filter tabs */}
-        <div className="mb-5 flex flex-wrap gap-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition
-                ${activeTab === tab.key
-                  ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-            >
-              {tab.label}
-              {tab.key !== "all" && (
-                <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]
-                  ${activeTab === tab.key ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}>
-                  {tab.key === "paid" && stats.paid}
-                  {tab.key === "pending_approval" && payments.filter(p => p.status === "pending_approval").length}
-                  {tab.key === "pending" && payments.filter(p => p.status === "pending").length}
-                  {tab.key === "rejected" && stats.rejected}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Loading skeleton */}
+        {/* Loading States */}
         {loading && (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -251,7 +179,7 @@ const DoctorPayments: React.FC = () => {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty State Handler */}
         {!loading && visible.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-slate-100">
@@ -264,7 +192,7 @@ const DoctorPayments: React.FC = () => {
           </div>
         )}
 
-        {/* Payments table */}
+        {/* Payment Registry */}
         {!loading && visible.length > 0 && (
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -281,7 +209,7 @@ const DoctorPayments: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {visible.map((p) => {
-                const statusCfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.pending;
+                const statusCfg = STATUS_CONFIG.paid;
                 const methodCfg = METHOD_CONFIG[p.paymentMethod] ?? { label: p.paymentMethod, tone: "slate" as BadgeTone };
 
                 return (
@@ -289,7 +217,6 @@ const DoctorPayments: React.FC = () => {
                     key={p.id}
                     className="group transition hover:bg-slate-50/60"
                   >
-                    {/* Patient */}
                     <td className="py-4 pr-4">
                       <div className="flex items-center gap-3">
                         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700">
@@ -302,13 +229,11 @@ const DoctorPayments: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* Family member */}
                     <td className="py-4 pr-4">
                       <p className="font-medium text-slate-700">{p.familyMember.fullName}</p>
                       <p className="text-[11px] text-slate-400">{p.familyMember.email}</p>
                     </td>
 
-                    {/* Appointment slot date */}
                     <td className="py-4 pr-4">
                       {p.slot?.date ? (
                         <div className="flex items-start gap-2">
@@ -327,7 +252,6 @@ const DoctorPayments: React.FC = () => {
                       )}
                     </td>
 
-                    {/* Consultation fee (doctor's income — care-home fee excluded) */}
                     <td className="py-4 pr-4">
                       <p className="font-bold text-emerald-700">
                         {fmtCurrency(p.consultationFee)}
@@ -339,12 +263,10 @@ const DoctorPayments: React.FC = () => {
                       )}
                     </td>
 
-                    {/* Payment method */}
                     <td className="py-4 pr-4">
                       <Badge tone={methodCfg.tone as BadgeTone}>{methodCfg.label}</Badge>
                     </td>
 
-                    {/* Status */}
                     <td className="py-4 pr-4">
                       <div className="flex items-center gap-1.5">
                         <span className={`h-2 w-2 rounded-full ${statusCfg.dot}`} />
@@ -352,7 +274,6 @@ const DoctorPayments: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* Paid on (createdAt) */}
                     <td className="py-4 text-xs text-slate-500">
                       {fmtDateTime(p.createdAt)}
                     </td>
@@ -363,36 +284,22 @@ const DoctorPayments: React.FC = () => {
           </table>
         )}
 
-        {/* Income summary footer */}
+        {/* Earnings Aggregate */}
         {!loading && visible.length > 0 && (
           <div className="mt-6 flex flex-col items-end gap-1 border-t border-slate-100 pt-5">
-            {activeTab === "all" || activeTab === "paid" ? (
-              <>
-                <p className="text-xs text-slate-400">
-                  Showing {visible.length} payment{visible.length !== 1 ? "s" : ""}
-                  {activeTab !== "all" ? ` · filtered by "${TABS.find(t => t.key === activeTab)?.label}"` : ""}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Visible consultation fees:{" "}
-                  <span className="font-semibold text-emerald-700">
-                    {fmtCurrency(
-                      visible
-                        .filter((p) => p.status === "paid")
-                        .reduce((s, p) => s + p.consultationFee, 0)
-                    )}
-                  </span>
-                  {" "}(paid only)
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-800">
-                  Total Earned (all time):{" "}
-                  <span className="text-emerald-600">{fmtCurrency(totalIncome)}</span>
-                </p>
-              </>
-            ) : (
-              <p className="text-xs text-slate-400">
-                {visible.length} payment{visible.length !== 1 ? "s" : ""} in this view
-              </p>
-            )}
+            <p className="text-xs text-slate-400">
+              Showing {visible.length} payment{visible.length !== 1 ? "s" : ""}
+            </p>
+            <p className="text-xs text-slate-500">
+              Visible consultation fees:{" "}
+              <span className="font-semibold text-emerald-700">
+                {fmtCurrency(visible.reduce((s, p) => s + p.consultationFee, 0))}
+              </span>
+            </p>
+            <p className="mt-1 text-sm font-bold text-slate-800">
+              Total Earned (all time):{" "}
+              <span className="text-emerald-600">{fmtCurrency(totalIncome)}</span>
+            </p>
           </div>
         )}
       </TableShell>
