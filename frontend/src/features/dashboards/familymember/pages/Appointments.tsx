@@ -38,17 +38,12 @@ import {
 const inputCls =
   'w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10';
 
-// ── Icon helper ───────────────────────────────────────────────────────────────
-const Ico = ({ d, cls = 'h-4 w-4' }: { d: string; cls?: string }) => (
-  <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"
-    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-const docIcon  = 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z';
-const eyeIcon  = 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z';
-const pillIcon = 'M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18';
-const closeIcon = 'M6 18L18 6M6 6l12 12';
+import {
+  IconFileText,
+  IconEye,
+  IconPill,
+  IconX
+} from "../../common/icons";
 
 // ── Prescription detail modal ─────────────────────────────────────────────────
 const PrescriptionModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ rx, onClose }) => {
@@ -57,24 +52,23 @@ const PrescriptionModal: React.FC<{ rx: FamilyPrescription; onClose: () => void 
     try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
     catch { return d; }
   };
-  const statusBg    = rx.status === 'active' ? '#d1fae5' : rx.status === 'completed' ? '#dbeafe' : '#fee2e2';
-  const statusClr   = rx.status === 'active' ? '#065f46' : rx.status === 'completed' ? '#1e40af' : '#991b1b';
-  const statusLbl   = rx.status === 'active' ? 'Active'  : rx.status === 'completed' ? 'Completed' : 'Discontinued';
-  const doctorName  = rx.doctor?.user?.fullName ? `Dr. ${rx.doctor.user.fullName}` : null;
+  const statusBg = rx.status === 'active' ? '#d1fae5' : rx.status === 'completed' ? '#dbeafe' : '#fee2e2';
+  const statusClr = rx.status === 'active' ? '#065f46' : rx.status === 'completed' ? '#1e40af' : '#991b1b';
+  const statusLbl = rx.status === 'active' ? 'Active' : rx.status === 'completed' ? 'Completed' : 'Discontinued';
+  const doctorName = rx.doctor?.user?.fullName ? `Dr. ${rx.doctor.user.fullName}` : null;
 
   return (
     <div className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-10">
       <button className="fixed inset-0" onClick={onClose} type="button" aria-label="Close" />
       <div className="relative w-full max-w-xl rounded-3xl bg-white shadow-2xl">
-        <div className={`h-1.5 rounded-t-3xl ${
-          rx.status === 'active' ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-          : rx.status === 'completed' ? 'bg-gradient-to-r from-blue-400 to-blue-500'
-          : 'bg-gradient-to-r from-red-300 to-red-400'
-        }`} />
+        <div className={`h-1.5 rounded-t-3xl ${rx.status === 'active' ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+            : rx.status === 'completed' ? 'bg-gradient-to-r from-blue-400 to-blue-500'
+              : 'bg-gradient-to-r from-red-300 to-red-400'
+          }`} />
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50">
-              <Ico d={docIcon} cls="h-4 w-4 text-emerald-600" />
+              <IconFileText className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Prescription</p>
@@ -82,7 +76,7 @@ const PrescriptionModal: React.FC<{ rx: FamilyPrescription; onClose: () => void 
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 transition">
-            <Ico d={closeIcon} cls="h-5 w-5" />
+            <IconX className="h-5 w-5" />
           </button>
         </div>
         <div className="p-6 space-y-5">
@@ -210,9 +204,7 @@ const BookModal: React.FC<BookModalProps> = ({ slot, patient, onConfirm, onClose
             <p className="text-xs text-slate-500">You will be redirected to complete payment after booking.</p>
           </div>
           <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <IconX className="h-5 w-5" />
           </button>
         </div>
         <div className="space-y-4 p-6">
@@ -612,7 +604,7 @@ const Appointments: React.FC = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-                            <Ico d={docIcon} cls="h-4 w-4 text-emerald-600" />
+                            <IconFileText className="h-4 w-4 text-emerald-600" />
                           </div>
                           <div>
                             <p className="text-xs font-bold text-emerald-800">Prescription Issued</p>
@@ -627,13 +619,13 @@ const Appointments: React.FC = () => {
                           onClick={() => setViewRx(linkedRx)}
                           className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition"
                         >
-                          <Ico d={eyeIcon} cls="h-3.5 w-3.5" /> View Rx
+                          <IconEye className="h-3.5 w-3.5" /> View Rx
                         </button>
                       </div>
                       <div className="mt-2.5 flex flex-wrap gap-1.5">
                         {linkedRx.medicines.slice(0, 4).map((m, i) => (
                           <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
-                            <Ico d={pillIcon} cls="h-3 w-3" />
+                            <IconPill className="h-3 w-3" />
                             {m.medicineName}
                           </span>
                         ))}

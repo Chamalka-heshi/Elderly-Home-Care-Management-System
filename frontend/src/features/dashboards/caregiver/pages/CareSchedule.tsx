@@ -8,18 +8,18 @@ const statusTone = (s: string) =>
   s === "Completed" ? ("emerald" as const) : s === "In Progress" ? ("blue" as const) : ("amber" as const);
 
 const shiftColor: Record<string, string> = {
-  Morning:   "bg-sky-50 text-sky-700",
+  Morning: "bg-sky-50 text-sky-700",
   Afternoon: "bg-orange-50 text-orange-700",
-  Evening:   "bg-purple-50 text-purple-700",
-  Night:     "bg-indigo-50 text-indigo-700",
+  Evening: "bg-purple-50 text-purple-700",
+  Night: "bg-indigo-50 text-indigo-700",
 };
 
 // Static care schedule tasks per shift type
 const SHIFT_TASKS: Record<string, string[]> = {
-  Morning:   ["Vitals check", "Morning medications", "Hygiene assistance", "Breakfast support", "Doctor rounds"],
+  Morning: ["Vitals check", "Morning medications", "Hygiene assistance", "Breakfast support", "Doctor rounds"],
   Afternoon: ["Vitals check", "Afternoon medications", "Physiotherapy assist", "Lunch support", "Care notes"],
-  Evening:   ["Vitals check", "Evening medications", "Dinner support", "Evening hygiene"],
-  Night:     ["Night checks", "Sleep medications", "Emergency monitoring"],
+  Evening: ["Vitals check", "Evening medications", "Dinner support", "Evening hygiene"],
+  Night: ["Night checks", "Sleep medications", "Emergency monitoring"],
 };
 
 interface Shift {
@@ -37,9 +37,9 @@ function buildSchedule(patients: Patient[]): Shift[] {
   const today = new Date();
   const shifts: Shift[] = [];
   const shiftDefs: { type: "Morning" | "Afternoon" | "Evening" | "Night"; start: string; end: string }[] = [
-    { type: "Morning",   start: "06:00", end: "14:00" },
+    { type: "Morning", start: "06:00", end: "14:00" },
     { type: "Afternoon", start: "14:00", end: "22:00" },
-    { type: "Night",     start: "22:00", end: "06:00" },
+    { type: "Night", start: "22:00", end: "06:00" },
   ];
   for (let d = -1; d <= 5; d++) {
     const date = new Date(today);

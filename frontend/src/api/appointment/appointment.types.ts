@@ -23,6 +23,7 @@ export interface AppointmentPatient {
   currentMedications?: string;
   chronicConditions?: string;
   isActive: boolean;
+  paymentPlan?: string;
 }
 
 // Channeling slot details to define the time and practitioner for medical consultations

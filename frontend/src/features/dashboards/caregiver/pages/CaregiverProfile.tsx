@@ -11,7 +11,7 @@ import DeleteAccountButton from "../../../../components/deleteaccount";
 // ── Common shared components ─────────────────────────────────────────────
 import {
   IconMail, IconPhone, IconChevronLeft, IconAlert,
-  IconUsers, IconSettings, IconShield,
+  IconUsers, IconSettings, IconShield, IconIdCard, IconSpinner,
 } from "../../common/icons";
 import {
   FieldLabel, GlassInput,
@@ -180,7 +180,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
   if (profileLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
+        <IconSpinner className="h-10 w-10 text-emerald-500" />
       </div>
     );
   }
@@ -392,9 +392,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
                 <div>
                   <FieldLabel>
                     <span className="inline-flex items-center gap-2">
-                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
-                      </svg>
+                      <IconIdCard className="h-4 w-4 text-slate-400" />
                       NIC Number
                     </span>
                   </FieldLabel>

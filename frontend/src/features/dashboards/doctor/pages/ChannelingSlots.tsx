@@ -176,6 +176,25 @@ const ChannelingManager: React.FC = () => {
     } catch (err: any) { alert(`Failed to update fee: ${err.message}`); }
   };
 
+  const [slotFilter, setSlotFilter] = useState<'all' | 'pending' | 'active' | 'completed'>('pending');
+
+  const filteredSlots = useMemo(() => {
+    const sorted = [...slots].sort((a, b) => {
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      return a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime);
+    });
+    if (slotFilter === 'all') return sorted;
+    return sorted.filter(s => s.status === slotFilter);
+  }, [slots, slotFilter]);
+
+  const slotCounts = useMemo(() => ({
+    all:       slots.length,
+    pending:   slots.filter(s => s.status === 'pending').length,
+    active:    slots.filter(s => s.status === 'active').length,
+    completed: slots.filter(s => s.status === 'completed').length,
+  }), [slots]);
+
   if (loading) return (
     <div className="flex items-center justify-center py-24">
       <IconSpinner className="h-10 w-10 text-emerald-500" />
@@ -186,23 +205,23 @@ const ChannelingManager: React.FC = () => {
     <div className="space-y-8">
       {/* Availability Configuration — Displays either the preference configuration form or the active registration details based on the current editing state. */}
       {(!hasSetAvailability || isEditing) ? (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
+        <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-bold text-blue-900">
+            <h2 className="text-lg font-bold text-emerald-900">
               {hasSetAvailability ? "Edit Your Availability" : "Set Your Availability"}
             </h2>
             {hasSetAvailability && (
-              <button onClick={() => setIsEditing(false)} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Cancel</button>
+              <button onClick={() => setIsEditing(false)} className="text-sm font-semibold text-emerald-600 hover:text-emerald-800 transition">Cancel</button>
             )}
           </div>
-          <p className="text-sm text-blue-700 mb-4">Indicate your preferred working days and times for the Admin.</p>
-          <form onSubmit={handleSetAvailability} className="space-y-5">
+          <p className="text-sm text-emerald-700 mb-5">Indicate your preferred working days and times for the Admin.</p>
+          <form onSubmit={handleSetAvailability} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-blue-900 mb-2">Preferred Days</label>
+              <label className="block text-sm font-semibold text-emerald-900 mb-3">Preferred Days</label>
               <div className="flex flex-wrap gap-2">
                 {DAYS_OF_WEEK.map(day => (
                   <button type="button" key={day} onClick={() => toggleDay(day)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition ${selectedDays.includes(day) ? "bg-blue-600 text-white shadow-md" : "bg-white text-blue-700 border border-blue-200 hover:bg-blue-100"}`}>
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${selectedDays.includes(day) ? "bg-emerald-600 text-white shadow-md border-transparent" : "bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-100/50"}`}>
                     {day}
                   </button>
                 ))}
@@ -210,38 +229,38 @@ const ChannelingManager: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4 max-w-md">
               <div>
-                <label className="block text-xs font-semibold text-blue-900 mb-1">Start Time</label>
+                <label className="block text-xs font-semibold text-emerald-900 mb-1.5">Start Time</label>
                 <input type="time" required value={startTime} onChange={e => setStartTime(e.target.value)}
-                  className="w-full rounded-xl border border-blue-200 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
+                  className="w-full rounded-xl border border-emerald-200 bg-white p-3 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-blue-900 mb-1">End Time</label>
+                <label className="block text-xs font-semibold text-emerald-900 mb-1.5">End Time</label>
                 <input type="time" required value={endTime} onChange={e => setEndTime(e.target.value)}
-                  className="w-full rounded-xl border border-blue-200 p-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
+                  className="w-full rounded-xl border border-emerald-200 bg-white p-3 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
               </div>
             </div>
-            <button type="submit" className="rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-blue-700 active:scale-95 transition">
+            <button type="submit" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700 active:scale-95 transition">
               {hasSetAvailability ? "Update Availability" : "Submit Availability to Admin"}
             </button>
           </form>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 shadow-sm">
+        <div className="rounded-3xl border border-emerald-100 bg-white p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 shadow-sm">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Registered Availability</p>
-            <p className="text-sm font-semibold text-slate-800 mt-1.5 flex items-center gap-2">
-              <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
+            <p className="text-sm font-semibold text-slate-800 mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg">
                 {parsedAvailableDays.length > 0 ? parsedAvailableDays.join(", ") : "Any day"}
               </span>
-              <span className="text-slate-400">&bull;</span>
-              <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+              <span className="text-slate-300">&bull;</span>
+              <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg">
                 {profileNode.availableTimeStart ? fmt12(profileNode.availableTimeStart) : ""}
                 {" — "}
                 {profileNode.availableTimeEnd ? fmt12(profileNode.availableTimeEnd) : ""}
               </span>
             </p>
           </div>
-          <button onClick={() => setIsEditing(true)} className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
+          <button onClick={() => setIsEditing(true)} className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition shadow-sm">
             Edit Availability
           </button>
         </div>
@@ -250,6 +269,38 @@ const ChannelingManager: React.FC = () => {
       {/* Session Assignment Management */}
 
       <TableShell title="Assigned Slots" subtitle="Approve or reject slots created by the Admin.">
+
+        {/* ── Filter tabs ── */}
+        <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-slate-100 bg-slate-50 p-1 w-fit">
+          {([
+            { key: 'pending',   label: 'Pending',   count: slotCounts.pending   },
+            { key: 'active',    label: 'Active',    count: slotCounts.active    },
+            { key: 'completed', label: 'Completed', count: slotCounts.completed },
+            { key: 'all',       label: 'All',       count: slotCounts.all       },
+          ] as const).map(({ key, label, count }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSlotFilter(key)}
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-semibold transition ${
+                slotFilter === key
+                  ? key === 'pending'   ? 'bg-amber-500 text-white shadow-sm'
+                  : key === 'active'    ? 'bg-blue-600 text-white shadow-sm'
+                  : key === 'completed' ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {label}
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                slotFilter === key ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -260,15 +311,22 @@ const ChannelingManager: React.FC = () => {
                 <th className="px-4 py-3">Booked</th>
                 <th className="px-4 py-3">Consultation Fee</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                {slotFilter === 'pending' || slotFilter === 'all' ? (
+                  <th className="px-4 py-3 text-right">Action</th>
+                ) : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {slots.length === 0 ? (
-                <tr><td colSpan={7} className="p-6 text-center text-slate-500">No slots assigned yet.</td></tr>
-              ) : slots.map(s => {
+              {filteredSlots.length === 0 ? (
+                <tr>
+                  <td colSpan={slotFilter === 'pending' || slotFilter === 'all' ? 7 : 6} className="p-8 text-center text-slate-400">
+                    {slotFilter === 'all' ? 'No slots assigned yet.' : `No ${slotFilter} slots.`}
+                  </td>
+                </tr>
+              ) : filteredSlots.map(s => {
                 const booked = patientCountBySlot[s.id] ?? 0;
                 const isEditingFee = editingFeeSlotId === s.id;
+                const showAction = slotFilter === 'pending' || slotFilter === 'all';
                 return (
                   <tr key={s.id} className={`transition hover:bg-slate-50/60 ${s.status === "pending" ? "bg-amber-50/30" : ""}`}>
                     <td className="px-4 py-3 font-semibold text-slate-800">{fmtDate(s.date)}</td>
@@ -292,21 +350,17 @@ const ChannelingManager: React.FC = () => {
                             className="w-24 rounded-lg border border-blue-300 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             autoFocus
                           />
-                          <button
-                            onClick={() => handleSaveFee(s.id)}
-                            className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-bold text-white hover:bg-blue-700 transition"
-                          >Save</button>
-                          <button
-                            onClick={() => setEditingFeeSlotId(null)}
-                            className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition"
-                          >
+                          <button onClick={() => handleSaveFee(s.id)} className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-bold text-white hover:bg-blue-700 transition">Save</button>
+                          <button onClick={() => setEditingFeeSlotId(null)} className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition">
                             <IconX className="h-3 w-3" />
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-slate-800">
-                            {s.consultationFee != null ? `LKR ${Number(s.consultationFee).toLocaleString()}` : <span className="text-slate-400 text-xs italic">Not set</span>}
+                            {s.consultationFee != null
+                              ? `LKR ${Number(s.consultationFee).toLocaleString()}`
+                              : <span className="text-slate-400 text-xs italic">Not set</span>}
                           </span>
                           <button
                             onClick={() => handleOpenFeeEdit(s)}
@@ -317,20 +371,28 @@ const ChannelingManager: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge tone={s.status === "pending" ? "amber" : s.status === "active" ? "blue" : s.status === "rejected" ? "red" : "slate"}>
+                      <Badge tone={
+                        s.status === "pending"   ? "amber"   :
+                        s.status === "active"    ? "blue"    :
+                        s.status === "rejected"  ? "red"     :
+                        s.status === "completed" ? "emerald" :
+                        "slate"
+                      }>
                         {s.status.toUpperCase()}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      {s.status === "pending" ? (
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => handleAcceptClick(s)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm active:scale-95 transition">Accept</button>
-                          <button onClick={() => handleAction(s.id, "reject")} className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-200 active:scale-95 transition">Reject</button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
+                    {showAction && (
+                      <td className="px-4 py-3 text-right">
+                        {s.status === "pending" ? (
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => handleAcceptClick(s)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm active:scale-95 transition">Accept</button>
+                            <button onClick={() => handleAction(s.id, "reject")} className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-200 active:scale-95 transition">Reject</button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

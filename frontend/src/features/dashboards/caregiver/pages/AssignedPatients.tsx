@@ -16,9 +16,9 @@ function calcAge(dob: string): number {
 
 const AssignedPatients: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-  const [search, setSearch]     = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Patient | null>(null);
 
   useEffect(() => {
@@ -49,9 +49,9 @@ const AssignedPatients: React.FC = () => {
       {/* Summary strip */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total Patients",  value: patients.length,                                           color: "bg-slate-50 border-slate-200"   },
-          { label: "Active",          value: patients.filter((p) => p.isActive).length,                 color: "bg-emerald-50 border-emerald-200" },
-          { label: "Inactive",        value: patients.filter((p) => !p.isActive).length,                color: "bg-amber-50 border-amber-200"   },
+          { label: "Total Patients", value: patients.length, color: "bg-slate-50 border-slate-200" },
+          { label: "Active", value: patients.filter((p) => p.isActive).length, color: "bg-emerald-50 border-emerald-200" },
+          { label: "Inactive", value: patients.filter((p) => !p.isActive).length, color: "bg-amber-50 border-amber-200" },
         ].map(({ label, value, color }) => (
           <div key={label} className={`rounded-2xl border p-5 ${color}`}>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
@@ -159,16 +159,16 @@ const AssignedPatients: React.FC = () => {
             </div>
             <div className="space-y-2.5 text-sm">
               {[
-                { label: "NIC",                value: selected.nic },
-                { label: "Date of Birth",      value: selected.dateOfBirth },
-                { label: "Contact",            value: selected.contactNumber ?? "—" },
-                { label: "Emergency Contact",  value: selected.emergencyContact ?? "—" },
-                { label: "Address",            value: selected.address ?? "—" },
-                { label: "Blood Group",        value: selected.bloodGroup ?? "—" },
-                { label: "Allergies",          value: selected.allergies ?? "—" },
-                { label: "Current Medications",value: selected.currentMedications ?? "—" },
+                { label: "NIC", value: selected.nic },
+                { label: "Date of Birth", value: selected.dateOfBirth },
+                { label: "Contact", value: selected.contactNumber ?? "—" },
+                { label: "Emergency Contact", value: selected.emergencyContact ?? "—" },
+                { label: "Address", value: selected.address ?? "—" },
+                { label: "Blood Group", value: selected.bloodGroup ?? "—" },
+                { label: "Allergies", value: selected.allergies ?? "—" },
+                { label: "Current Medications", value: selected.currentMedications ?? "—" },
                 { label: "Chronic Conditions", value: selected.chronicConditions ?? "—" },
-                { label: "Medical History",    value: selected.medicalHistory ?? "—" },
+                { label: "Medical History", value: selected.medicalHistory ?? "—" },
               ].map(({ label, value }) => (
                 <div key={label} className="flex gap-3">
                   <span className="w-40 shrink-0 text-xs font-semibold text-slate-500">{label}</span>

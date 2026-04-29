@@ -47,10 +47,6 @@ const fmtDateTime = (iso: string) =>
 
 // Visual Configuration
 
-const STATUS_CONFIG = {
-  paid: { label: "Paid", tone: "emerald" as BadgeTone, dot: "bg-emerald-500" },
-};
-
 const METHOD_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
   card:          { label: "💳 Card",          tone: "blue" },
   bank_transfer: { label: "🏦 Bank Transfer", tone: "purple" },
@@ -197,7 +193,7 @@ const DoctorPayments: React.FC = () => {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-100">
-                {["Patient", "Family Member", "Appointment", "Consultation Fee", "Method", "Status", "Paid On"].map((h) => (
+                {["Patient", "Family Member", "Appointment", "Consultation Fee", "Method", "Paid On"].map((h) => (
                   <th
                     key={h}
                     className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 first:pl-0 last:pr-0"
@@ -209,7 +205,6 @@ const DoctorPayments: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {visible.map((p) => {
-                const statusCfg = STATUS_CONFIG.paid;
                 const methodCfg = METHOD_CONFIG[p.paymentMethod] ?? { label: p.paymentMethod, tone: "slate" as BadgeTone };
 
                 return (
@@ -267,12 +262,6 @@ const DoctorPayments: React.FC = () => {
                       <Badge tone={methodCfg.tone as BadgeTone}>{methodCfg.label}</Badge>
                     </td>
 
-                    <td className="py-4 pr-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`h-2 w-2 rounded-full ${statusCfg.dot}`} />
-                        <Badge tone={statusCfg.tone}>{statusCfg.label}</Badge>
-                      </div>
-                    </td>
 
                     <td className="py-4 text-xs text-slate-500">
                       {fmtDateTime(p.createdAt)}

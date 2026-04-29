@@ -23,8 +23,6 @@ import {
   IconUsers,
   IconClock,
   IconCalendar,
-  IconCheckCircle,
-  IconAlertCircle,
   IconSpinner,
 } from "../../common/icons";
 
@@ -131,9 +129,9 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
 
 type BT = "emerald" | "amber" | "red" | "slate" | "blue";
 const tone = (s: string): BT =>
-  s === "confirmed" ? "emerald" : s === "pending" ? "amber" : s === "cancelled" ? "red" : s === "completed" ? "slate" : "blue";
+  s === "pending" ? "amber" : s === "cancelled" ? "red" : s === "completed" ? "slate" : "blue";
 
-type Filter = "" | "pending" | "confirmed" | "completed" | "cancelled";
+type Filter = "" | "pending" | "completed" | "cancelled";
 
 // Patient Management Registry
 
@@ -159,7 +157,6 @@ const PatientManagement: React.FC = () => {
   const stats = useMemo(() => ({
     total:     appointments.length,
     pending:   appointments.filter((a) => a.status === "pending").length,
-    confirmed: appointments.filter((a) => a.status === "confirmed").length,
     completed: appointments.filter((a) => a.status === "completed").length,
     cancelled: appointments.filter((a) => a.status === "cancelled").length,
   }), [appointments]);
@@ -186,13 +183,12 @@ const PatientManagement: React.FC = () => {
       </div>
 
       {/* Engagement Statistics Overview */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total",     value: stats.total,     color: "slate",   icon: <IconUsers className="h-4 w-4" /> },
-          { label: "Pending",   value: stats.pending,   color: "amber",   icon: <IconClock className="h-4 w-4" /> },
-          { label: "Confirmed", value: stats.confirmed, color: "emerald", icon: <IconCheckCircle className="h-4 w-4" /> },
-          { label: "Completed", value: stats.completed, color: "blue",    icon: <IconFileText className="h-4 w-4" /> },
-          { label: "Cancelled", value: stats.cancelled, color: "red",     icon: <IconAlertCircle className="h-4 w-4" /> },
+          { label: "Total",     value: stats.total,     color: "slate", icon: <IconUsers className="h-4 w-4" /> },
+          { label: "Pending",   value: stats.pending,   color: "amber", icon: <IconClock className="h-4 w-4" /> },
+          { label: "Completed", value: stats.completed, color: "blue",  icon: <IconFileText className="h-4 w-4" /> },
+          { label: "Cancelled", value: stats.cancelled, color: "red",   icon: <IconX className="h-4 w-4" /> },
         ].map(({ label, value, color, icon }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className={`flex items-center gap-1.5 text-${color}-500 mb-1`}>{icon}<p className="text-xs font-semibold text-slate-500">{label}</p></div>
@@ -204,7 +200,7 @@ const PatientManagement: React.FC = () => {
       {/* Result Set Filtering */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-slate-500">Filter:</span>
-        {(["", "pending", "confirmed", "completed", "cancelled"] as Filter[]).map((f) => (
+        {(["", "pending", "completed", "cancelled"] as Filter[]).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
             className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${filter === f ? "bg-emerald-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
             {f === "" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}

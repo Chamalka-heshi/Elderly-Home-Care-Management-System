@@ -23,11 +23,9 @@ import {
 
 // Clinical Status Indicators
 
-// Maps clinical patient statuses to specific color tones to provide immediate visual cues on patient trajectory.
+// Maps appointment confirmation status to color tones for immediate visual cues.
 const statusTone = (s: DashboardRecentPatient['status']) =>
-  s === 'Active' ? 'emerald' as const :
-    s === 'Completed' ? 'slate' as const :
-      s === 'Discontinued' ? 'red' as const : 'amber' as const;
+  s === 'Confirmed' ? 'emerald' as const : 'amber' as const;
 
 // Loading States
 
@@ -183,7 +181,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Recent Patients</h3>
-                <p className="text-xs text-slate-500">Latest prescriptions issued by you.</p>
+                <p className="text-xs text-slate-500">Latest appointments across your active channeling slots</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -210,7 +208,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                     <th className="px-4 py-3">Patient</th>
                     <th className="px-4 py-3">Age</th>
                     <th className="px-4 py-3">Blood Group</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Appointment Status</th>
                     <th className="px-4 py-3">Slot Date</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
@@ -240,7 +238,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                         <td className="px-4 py-3">
                           <Badge tone={statusTone(p.status)}>{p.status}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{p.prescriptionDate}</td>
+                        <td className="px-4 py-3 text-slate-600">{p.slotDate ?? p.prescriptionDate}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => onNavigate('Patient Management')}

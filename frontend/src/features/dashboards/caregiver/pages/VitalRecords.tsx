@@ -109,7 +109,7 @@ const VitalRecords: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-4">
-        {[["Normal","bg-emerald-50 border-emerald-200"],["Warning","bg-amber-50 border-amber-200"],["Critical","bg-red-50 border-red-200"]].map(([label, color]) => (
+        {[["Normal", "bg-emerald-50 border-emerald-200"], ["Warning", "bg-amber-50 border-amber-200"], ["Critical", "bg-red-50 border-red-200"]].map(([label, color]) => (
           <div key={label} className={`rounded-2xl border p-5 ${color}`}>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
             <p className="mt-1 text-2xl font-extrabold text-slate-900">{counts[label as keyof typeof counts]}</p>

@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useCallback } from "react";
 import TableShell from "../../common/widgets/TableShell";
-import Badge      from "../../common/widgets/Badge";
+import Badge from "../../common/widgets/Badge";
+import { IconSearch, IconPlus, IconX } from "../../common/icons";
 
 // ── NEW API IMPORTS ──────────────────────────────────────────────────────────
 import { getMyPatients, createPatient } from "../../../../api/patients/family-patient.api";
 import type { Patient, Gender } from "../../../../api/patients/patient.types";
 
 export interface CreatePatientPayload {
-  fullName:           string;
-  nic:                string;
-  dateOfBirth:        string;
-  gender:             Gender;
-  bloodGroup?:        string;
-  contactNumber?:     string;
-  emergencyContact?:  string;
-  address?:           string;
-  medicalHistory?:    string;
-  allergies?:         string;
+  fullName: string;
+  nic: string;
+  dateOfBirth: string;
+  gender: Gender;
+  bloodGroup?: string;
+  contactNumber?: string;
+  emergencyContact?: string;
+  address?: string;
+  medicalHistory?: string;
+  allergies?: string;
+  drugAllergies?: string;
+  foodAllergies?: string;
+  environmentalAllergies?: string;
   currentMedications?: string;
   chronicConditions?: string;
 }
@@ -48,32 +52,36 @@ function isValidPhone(phone: string): boolean {
 // ── Empty form ────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: CreatePatientPayload = {
-  fullName:           "",
-  nic:                "",
-  dateOfBirth:        "",
-  gender:             "male" as Gender,
-  bloodGroup:         "",
-  contactNumber:      "",
-  emergencyContact:   "",
-  address:            "",
-  medicalHistory:     "",
-  allergies:          "",
+  fullName: "",
+  nic: "",
+  dateOfBirth: "",
+  gender: "male" as Gender,
+  bloodGroup: "",
+  contactNumber: "",
+  emergencyContact: "",
+  address: "",
+  medicalHistory: "",
+  allergies: "",
+  drugAllergies: "",
+  foodAllergies: "",
+  environmentalAllergies: "",
   currentMedications: "",
-  chronicConditions:  "",
+  chronicConditions: "",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const ElderlyProfile: React.FC = () => {
-  const [patients,  setPatients]  = useState<Patient[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [search,    setSearch]    = useState("");
-  const [selected,  setSelected]  = useState<Patient | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Patient | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [form,      setForm]      = useState<CreatePatientPayload>(EMPTY_FORM);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [toast,     setToast]     = useState<{ msg: string; ok: boolean } | null>(null);
+  const [form, setForm] = useState<CreatePatientPayload>(EMPTY_FORM);
+  const [allergyFlags, setAllergyFlags] = useState({ drug: false, food: false, environmental: false, other: false });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   // ── Load patients ───────────────────────────────────────────────────────────
 
@@ -123,6 +131,11 @@ const ElderlyProfile: React.FC = () => {
       setError("Date of birth is required.");
       return;
     }
+    const age = calcAge(form.dateOfBirth);
+    if (age < 60) {
+      setError("The patient must be at least 60 years old to be registered.");
+      return;
+    }
     if (form.contactNumber?.trim() && !isValidPhone(form.contactNumber.trim())) {
       setError("Contact number must be exactly 10 digits.");
       return;
@@ -160,18 +173,21 @@ const ElderlyProfile: React.FC = () => {
   if (selected) {
     const age = calcAge(selected.dateOfBirth);
     const details = [
-      { label: "NIC",                 value: selected.nic                              },
-      { label: "Date of Birth",       value: selected.dateOfBirth                      },
-      { label: "Age",                 value: String(age)                               },
-      { label: "Gender",              value: selected.gender                           },
-      { label: "Blood Group",         value: selected.bloodGroup        ?? "—"         },
-      { label: "Contact Number",      value: selected.contactNumber     ?? "—"         },
-      { label: "Address",             value: selected.address           ?? "—"         },
-      { label: "Emergency Contact",   value: selected.emergencyContact  ?? "—"         },
-      { label: "Chronic Conditions",  value: selected.chronicConditions ?? "—"         },
-      { label: "Allergies",           value: selected.allergies         ?? "—"         },
-      { label: "Current Medications", value: selected.currentMedications ?? "—"        },
-      { label: "Status",              value: selected.isActive ? "Active" : "Inactive" },
+      { label: "NIC", value: selected.nic },
+      { label: "Date of Birth", value: selected.dateOfBirth },
+      { label: "Age", value: String(age) },
+      { label: "Gender", value: selected.gender },
+      { label: "Blood Group", value: selected.bloodGroup ?? "—" },
+      { label: "Contact Number", value: selected.contactNumber ?? "—" },
+      { label: "Address", value: selected.address ?? "—" },
+      { label: "Emergency Contact", value: selected.emergencyContact ?? "—" },
+      { label: "Chronic Conditions", value: selected.chronicConditions ?? "—" },
+      { label: "Drug Allergies", value: selected.drugAllergies ?? "—" },
+      { label: "Food Allergies", value: selected.foodAllergies ?? "—" },
+      { label: "Environmental Allergies", value: selected.environmentalAllergies ?? "—" },
+      { label: "Other Allergies", value: selected.allergies ?? "—" },
+      { label: "Current Medications", value: selected.currentMedications ?? "—" },
+      { label: "Status", value: selected.isActive ? "Active" : "Inactive" },
     ];
 
     return (
@@ -227,9 +243,8 @@ const ElderlyProfile: React.FC = () => {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed right-4 top-4 z-[100] rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-xl ${
-            toast.ok ? "bg-emerald-600" : "bg-red-500"
-          }`}
+          className={`fixed right-4 top-4 z-[100] rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-xl ${toast.ok ? "bg-emerald-600" : "bg-red-500"
+            }`}
         >
           {toast.ok ? "✓" : "✕"} {toast.msg}
         </div>
@@ -238,9 +253,7 @@ const ElderlyProfile: React.FC = () => {
       {/* Search + Add */}
       <div className="flex items-center gap-3">
         <div className="flex flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl">
-          <svg className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M11 19a8 8 0 100-16 8 8 0 000 16zm10 2-4.35-4.35" />
-          </svg>
+          <IconSearch className="h-4 w-4 shrink-0 text-slate-400" />
           <input
             placeholder="Search by name, NIC or condition…"
             value={search}
@@ -255,12 +268,15 @@ const ElderlyProfile: React.FC = () => {
         </div>
 
         <button
-          onClick={() => { setForm(EMPTY_FORM); setError(null); setShowModal(true); }}
+          onClick={() => { 
+            setForm(EMPTY_FORM); 
+            setAllergyFlags({ drug: false, food: false, environmental: false, other: false });
+            setError(null); 
+            setShowModal(true); 
+          }}
           className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
+          <IconPlus className="h-4 w-4" />
           Add Elderly Member
         </button>
       </div>
@@ -345,9 +361,7 @@ const ElderlyProfile: React.FC = () => {
                   onClick={() => setShowModal(false)}
                   className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <IconX className="h-5 w-5" />
                 </button>
               </div>
 
@@ -483,14 +497,99 @@ const ElderlyProfile: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className={labelCls}>Allergies</label>
-                      <input
-                        name="allergies"
-                        value={form.allergies}
-                        onChange={handleField}
-                        placeholder="e.g. Penicillin, Peanuts"
-                        className={inputCls}
-                      />
+                      <label className="flex cursor-pointer items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={allergyFlags.drug}
+                          onChange={(e) => {
+                            setAllergyFlags((prev) => ({ ...prev, drug: e.target.checked }));
+                            if (!e.target.checked) setForm((f) => ({ ...f, drugAllergies: "" }));
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                        />
+                        <span className={labelCls + " !mb-0"}>Drug Allergies</span>
+                      </label>
+                      {allergyFlags.drug && (
+                        <input
+                          name="drugAllergies"
+                          value={form.drugAllergies}
+                          onChange={handleField}
+                          placeholder="Please specify (e.g. Penicillin, Sulfa drugs)"
+                          className={inputCls}
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="flex cursor-pointer items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={allergyFlags.food}
+                          onChange={(e) => {
+                            setAllergyFlags((prev) => ({ ...prev, food: e.target.checked }));
+                            if (!e.target.checked) setForm((f) => ({ ...f, foodAllergies: "" }));
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                        />
+                        <span className={labelCls + " !mb-0"}>Food Allergies</span>
+                      </label>
+                      {allergyFlags.food && (
+                        <input
+                          name="foodAllergies"
+                          value={form.foodAllergies}
+                          onChange={handleField}
+                          placeholder="Please specify (e.g. Peanuts, Dairy, Shellfish)"
+                          className={inputCls}
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="flex cursor-pointer items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={allergyFlags.environmental}
+                          onChange={(e) => {
+                            setAllergyFlags((prev) => ({ ...prev, environmental: e.target.checked }));
+                            if (!e.target.checked) setForm((f) => ({ ...f, environmentalAllergies: "" }));
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                        />
+                        <span className={labelCls + " !mb-0"}>Environmental Allergies</span>
+                      </label>
+                      {allergyFlags.environmental && (
+                        <input
+                          name="environmentalAllergies"
+                          value={form.environmentalAllergies}
+                          onChange={handleField}
+                          placeholder="Please specify (e.g. Pollen, Dust mites, Latex)"
+                          className={inputCls}
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="flex cursor-pointer items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={allergyFlags.other}
+                          onChange={(e) => {
+                            setAllergyFlags((prev) => ({ ...prev, other: e.target.checked }));
+                            if (!e.target.checked) setForm((f) => ({ ...f, allergies: "" }));
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                        />
+                        <span className={labelCls + " !mb-0"}>Other Allergies</span>
+                      </label>
+                      {allergyFlags.other && (
+                        <input
+                          name="allergies"
+                          value={form.allergies}
+                          onChange={handleField}
+                          placeholder="Please specify (e.g. Insect stings, etc.)"
+                          className={inputCls}
+                        />
+                      )}
                     </div>
 
                     <div>

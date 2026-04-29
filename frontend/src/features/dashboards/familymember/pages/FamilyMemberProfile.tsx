@@ -18,7 +18,7 @@ import DeleteAccountButton from "../../../../components/deleteaccount";
 // ── Common shared components ──────────────────────────────────────────────────
 import {
   IconMail, IconPhone, IconChevronLeft, IconAlert,
-  IconUsers, IconSettings,
+  IconUsers, IconSettings, IconLock
 } from "../../common/icons";
 import {
   FieldLabel, GlassInput,
@@ -153,13 +153,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
 
   const tabs: { key: TabKey; label: string; icon: React.FC<{ className?: string }> }[] = [
     { key: "profile",  label: "Profile",     icon: IconUsers },
-    { key: "password", label: "Password",    icon: ({ className }) => (
-        <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M7.5 11V8.8A4.5 4.5 0 0 1 12 4.3a4.5 4.5 0 0 1 4.5 4.5V11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M7.2 11h9.6c1 0 1.7.8 1.7 1.7v6.1c0 1-.8 1.7-1.7 1.7H7.2c-1 0-1.7-.8-1.7-1.7v-6.1c0-1 .8-1.7 1.7-1.7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        </svg>
-      )
-    },
+    { key: "password", label: "Password",    icon: IconLock },
     { key: "danger",   label: "Danger Zone", icon: IconAlert },
   ];
 

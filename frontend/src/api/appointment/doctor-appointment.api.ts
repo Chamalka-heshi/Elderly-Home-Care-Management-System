@@ -1,6 +1,9 @@
 import { apiFetch } from '../core/apiClient';
 import type { Appointment, AppointmentStatus } from './appointment.types';
 
+// Re-export so consumers can import Appointment directly from this module
+export type { Appointment, AppointmentStatus };
+
 // Fetch doctor-specific appointments to allow practitioners to manage their daily patient load
 export const getDoctorAppointments = () =>
   apiFetch<Appointment[]>('/appointments/doctor');

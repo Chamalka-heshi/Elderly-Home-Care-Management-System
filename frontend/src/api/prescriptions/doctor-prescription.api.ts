@@ -88,3 +88,7 @@ export const completePrescription = (id: string) =>
   apiFetch<Prescription>(`/prescriptions/${id}/complete`, {
     method: 'PATCH',
   });
+
+//Provides a history of prescriptions issued to the patient to assist clinical professionals in treatment planning
+export const getPatientPrescriptions = (patientId: string) =>
+  apiFetch<Prescription[]>(`/prescriptions/patient/${patientId}`);

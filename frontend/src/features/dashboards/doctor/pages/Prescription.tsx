@@ -19,7 +19,7 @@ import {
 } from '../../../../api/prescriptions/doctor-prescription.api';
 
 export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
-type FilterTab = 'all' | 'active' | 'completed';
+type FilterTab = 'all' | 'active' | 'completed' | 'discontinued';
 
 // Clinical Formatting Utilities
 
@@ -317,9 +317,10 @@ const PrescriptionPage: React.FC = () => {
   });
 
   const counts = {
-    all:       total,
-    active:    prescriptions.filter(r => r.status === 'active').length,
-    completed: prescriptions.filter(r => r.status === 'completed').length,
+    all:          total,
+    active:       prescriptions.filter(r => r.status === 'active').length,
+    completed:    prescriptions.filter(r => r.status === 'completed').length,
+    discontinued: prescriptions.filter(r => r.status === 'discontinued').length,
   };
 
   // Clinical Lifecycle Handlers
@@ -342,9 +343,10 @@ const PrescriptionPage: React.FC = () => {
 
 
   const TABS: { key: FilterTab; label: string }[] = [
-    { key: 'all',       label: `All (${counts.all})` },
-    { key: 'active',    label: `Active (${counts.active})` },
-    { key: 'completed', label: `Completed (${counts.completed})` },
+    { key: 'all',          label: `All (${counts.all})` },
+    { key: 'active',       label: `Active (${counts.active})` },
+    { key: 'completed',    label: `Completed (${counts.completed})` },
+    { key: 'discontinued', label: `Discontinued (${counts.discontinued})` },
   ];
 
   return (

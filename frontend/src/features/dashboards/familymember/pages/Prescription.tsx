@@ -33,23 +33,15 @@ const statusTone = (s: string): StatusTone =>
 const statusLabel = (s: string): string =>
   s === 'active' ? 'Active' : s === 'completed' ? 'Completed' : 'Discontinued';
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
-
-const Ico = ({ d, cls = 'h-4 w-4' }: { d: string; cls?: string }) => (
-  <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"
-    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-
-const icons = {
-  print:   'M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-10 0h8v4H6v-4z',
-  close:   'M6 18L18 6M6 6l12 12',
-  eye:     'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
-  pill:    'M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18',
-  doc:     'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-  refresh: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
-};
+import {
+  IconPrint,
+  IconX,
+  IconEye,
+  IconPill,
+  IconFileText,
+  IconRefresh,
+  IconSearch
+} from "../../common/icons";
 
 // ── Print-style View Modal ────────────────────────────────────────────────────
 // Opens when the user clicks "View" — rendered like a prescription document.
@@ -117,7 +109,7 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50">
-              <Ico d={icons.doc} cls="h-4 w-4 text-emerald-600" />
+              <IconFileText className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Medical Prescription</p>
@@ -129,11 +121,11 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
               type="button" onClick={handlePrint}
               className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition"
             >
-              <Ico d={icons.print} cls="h-3.5 w-3.5" /> Print / Save PDF
+              <IconPrint className="h-3.5 w-3.5" /> Print / Save PDF
             </button>
             <button type="button" onClick={onClose}
               className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 transition">
-              <Ico d={icons.close} cls="h-5 w-5" />
+              <IconX className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -144,15 +136,13 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
           {/* Title + status */}
           <div className="flex items-start justify-between">
             <div>
-              <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>Medical Prescription</h1>
-              <p style={{ color: '#64748b', fontSize: '.82rem', marginTop: 4 }}>
+              <h1 className="text-[1.4rem] font-bold text-slate-900 m-0">Medical Prescription</h1>
+              <p className="text-[#64748b] text-[.82rem] mt-1">
                 Issued: {fmtDate(rx.issuedDate)}
                 {rx.validUntil ? ` · Valid Until: ${fmtDate(rx.validUntil)}` : ''}
               </p>
             </div>
-            <span style={{
-              display: 'inline-block', padding: '4px 14px', borderRadius: 999,
-              fontSize: '.75rem', fontWeight: 700,
+            <span className="inline-block px-3.5 py-1 rounded-full text-[.75rem] font-bold" style={{
               background: statusBg, color: statusColor,
             }}>
               {statusLabel(rx.status)}
@@ -165,7 +155,7 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
           <div className="grid grid-cols-2 gap-4">
             {/* Patient */}
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <span style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#94a3b8' }}>
+              <span className="text-[.65rem] font-bold tracking-[.08em] uppercase text-[#94a3b8] block">
                 Patient
               </span>
               <p className="mt-1 text-base font-bold text-slate-900">{rx.patientName}</p>
@@ -174,7 +164,7 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
 
             {/* Doctor */}
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <span style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#94a3b8' }}>
+              <span className="text-[.65rem] font-bold tracking-[.08em] uppercase text-[#94a3b8] block">
                 Prescribing Doctor
               </span>
               {doctorDisplay
@@ -192,7 +182,7 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
           {/* Diagnosis */}
           {rx.diagnosis && (
             <div className="rounded-2xl bg-blue-50 px-5 py-4">
-              <span style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#60a5fa' }}>
+              <span className="text-[.65rem] font-bold tracking-[.08em] uppercase text-[#60a5fa] block">
                 Diagnosis
               </span>
               <p className="mt-1 text-sm font-medium text-blue-900">{rx.diagnosis}</p>
@@ -201,12 +191,12 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
 
           {/* Medicines */}
           <div>
-            <span style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#94a3b8' }}>
+            <span className="text-[.65rem] font-bold tracking-[.08em] uppercase text-[#94a3b8] block">
               Prescribed Medicines ({rx.medicines.length})
             </span>
             <div className="mt-3 space-y-2">
               {rx.medicines.map((m, i) => (
-                <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px' }}>
+                <div key={i} className="border border-slate-200 rounded-xl p-[14px_16px]">
                   <div className="flex items-start gap-3">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
                       {i + 1}
@@ -231,7 +221,7 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
           {/* Notes */}
           {rx.notes && (
             <div className="rounded-2xl bg-amber-50 px-5 py-4">
-              <span style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#f59e0b' }}>
+              <span className="text-[.65rem] font-bold tracking-[.08em] uppercase text-[#f59e0b] block">
                 Notes
               </span>
               <p className="mt-1 text-sm text-amber-900">{rx.notes}</p>
@@ -239,7 +229,7 @@ const ViewModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ 
           )}
 
           {/* Footer */}
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14, fontSize: '.72rem', color: '#94a3b8' }}>
+          <div className="border-t border-slate-100 pt-3.5 text-[.72rem] text-[#94a3b8]">
             Generated electronically · Prescription ID: {rx.id}
           </div>
         </div>
@@ -315,7 +305,7 @@ const Prescription: React.FC = () => {
             type="button" onClick={load} disabled={loading}
             className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:shadow-md disabled:opacity-50 transition"
           >
-            <Ico d={icons.refresh} />
+            <IconRefresh className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -324,14 +314,14 @@ const Prescription: React.FC = () => {
         {/* Summary strip */}
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: 'Total',        val: counts.all,          bg: 'bg-slate-100',   icon: icons.doc,  color: 'text-slate-700'   },
-            { label: 'Active',       val: counts.active,       bg: 'bg-emerald-100', icon: icons.pill, color: 'text-emerald-600' },
-            { label: 'Completed',    val: counts.completed,    bg: 'bg-blue-100',    icon: icons.doc,  color: 'text-blue-600'    },
-            { label: 'Discontinued', val: counts.discontinued, bg: 'bg-red-100',     icon: icons.pill, color: 'text-red-500'     },
-          ].map(({ label, val, bg, icon, color }) => (
+            { label: 'Total',        val: counts.all,          bg: 'bg-slate-100',   Icon: IconFileText,  color: 'text-slate-700'   },
+            { label: 'Active',       val: counts.active,       bg: 'bg-emerald-100', Icon: IconPill, color: 'text-emerald-600' },
+            { label: 'Completed',    val: counts.completed,    bg: 'bg-blue-100',    Icon: IconFileText,  color: 'text-blue-600'    },
+            { label: 'Discontinued', val: counts.discontinued, bg: 'bg-red-100',     Icon: IconPill, color: 'text-red-500'     },
+          ].map(({ label, val, bg, Icon, color }) => (
             <div key={label} className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${bg}`}>
-                <Ico d={icon} cls={`h-5 w-5 ${color}`} />
+                <Icon className={`h-5 w-5 ${color}`} />
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{label}</p>
@@ -359,7 +349,7 @@ const Prescription: React.FC = () => {
             ))}
           </div>
           <div className="relative ml-auto w-full sm:w-72">
-            <Ico d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" cls="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
             <input
               type="search"
               className="w-full rounded-2xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/10 transition"
@@ -406,7 +396,7 @@ const Prescription: React.FC = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-white py-24 text-slate-400">
-            <Ico d={icons.doc} cls="mb-3 h-12 w-12 opacity-30" />
+            <IconFileText className="mb-3 h-12 w-12 opacity-30 text-slate-400" />
             <p className="text-base font-semibold">No prescriptions found</p>
             <p className="mt-1 text-sm">
               {search
@@ -470,7 +460,7 @@ const Prescription: React.FC = () => {
                           onClick={() => setViewRx(rx)}
                           className="flex items-center gap-1.5 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
                         >
-                          <Ico d={icons.eye} cls="h-3.5 w-3.5" /> View
+                          <IconEye className="h-3.5 w-3.5" /> View
                         </button>
                       </td>
                     </tr>

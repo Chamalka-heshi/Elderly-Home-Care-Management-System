@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 
 const Settings: React.FC = () => {
-  const [fullName,      setFullName]      = useState("Amali Silva");
-  const [contactEmail,  setContactEmail]  = useState("caregiver@carehome.com");
+  const [fullName, setFullName] = useState("Amali Silva");
+  const [contactEmail, setContactEmail] = useState("caregiver@carehome.com");
   const [contactNumber, setContactNumber] = useState("+94 77 987 6543");
-  const [specialization,setSpecialization]= useState("Elderly & Dementia Care");
-  const [shiftPreference,setShiftPreference]= useState("Morning");
-  const [address,       setAddress]       = useState("45 Hospital Road, Colombo 07");
-  const [saved,         setSaved]         = useState(false);
+  const [specialization, setSpecialization] = useState("Elderly & Dementia Care");
+  const [shiftPreference, setShiftPreference] = useState("Morning");
+  const [address, setAddress] = useState("45 Hospital Road, Colombo 07");
+  const [saved, setSaved] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,10 +116,10 @@ const Settings: React.FC = () => {
 
         <div className="max-w-xl space-y-3">
           {[
-            { label: "Shift Reminders",    desc: "Get notified before your shift starts"        },
-            { label: "Patient Alerts",     desc: "Critical vital sign and health notifications"  },
-            { label: "Medication Reminders",desc: "Due medication administration reminders"      },
-            { label: "Schedule Changes",   desc: "Updates to your care schedule"                 },
+            { label: "Shift Reminders", desc: "Get notified before your shift starts" },
+            { label: "Patient Alerts", desc: "Critical vital sign and health notifications" },
+            { label: "Medication Reminders", desc: "Due medication administration reminders" },
+            { label: "Schedule Changes", desc: "Updates to your care schedule" },
           ].map(({ label, desc }) => (
             <div key={label} className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-3">
               <div>
@@ -143,9 +143,9 @@ const Settings: React.FC = () => {
         </div>
         <div className="max-w-xl space-y-3">
           {[
-            { label: "API Base URL",  value: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api" },
+            { label: "API Base URL", value: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api" },
             { label: "Auth Strategy", value: "Bearer Token (JWT)" },
-            { label: "Current Role",  value: "caregiver" },
+            { label: "Current Role", value: "caregiver" },
             { label: "Panel Version", value: "1.0.0" },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-3">

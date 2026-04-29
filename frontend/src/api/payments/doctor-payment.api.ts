@@ -1,10 +1,6 @@
 import { apiFetch } from '../core/apiClient';
 
-export type DoctorPaymentStatus =
-  | 'pending'
-  | 'paid'
-  | 'pending_approval'
-  | 'rejected';
+export type DoctorPaymentStatus = 'paid';
 
 export type DoctorPaymentMethod = 'card' | 'bank_transfer';
 

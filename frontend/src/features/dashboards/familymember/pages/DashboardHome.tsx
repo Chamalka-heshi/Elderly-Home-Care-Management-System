@@ -9,20 +9,21 @@ import StatCard from "../../common/widgets/StatCard";
 import Badge from "../../common/widgets/Badge";
 import type { MenuLabel } from "../components/Sidebar";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
-const HeartIcon       = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>;
-const ClipboardIcon   = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>;
-const CurrencyIcon    = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const BellIcon        = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
-const SparkleIcon     = ({ className = "h-4 w-4" }: { className?: string }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.2 4.2L17.4 8l-4.2 1.2L12 13.4l-1.2-4.2L6.6 8l4.2-1.8L12 2zm7 7l.8 2.8 2.8.8-2.8.8L19 16.6l-.8-2.8-2.8-.8 2.8-1.2L19 9z" /></svg>;
-const ArrowRightIcon  = () => <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
+import { 
+  IconHeart, 
+  IconClipboard, 
+  IconCurrency, 
+  IconBell, 
+  IconSparkles, 
+  IconArrowRight 
+} from "../../common/icons";
 
 // ── Hardcoded data — family-member relevant ───────────────────────────────────
 const STATS = [
-  { title: "My Patients",       value: 2,  caption: "Linked elderly members",     icon: HeartIcon     },
-  { title: "Active Prescriptions", value: 2, caption: "Currently active",         icon: ClipboardIcon },
-  { title: "Pending Payments",  value: 2,  caption: "Invoices awaiting payment",  icon: CurrencyIcon  },
-  { title: "New Care Updates",  value: 3,  caption: "Unread caregiver notes",     icon: BellIcon      },
+  { title: "My Patients",       value: 2,  caption: "Linked elderly members",     icon: IconHeart     },
+  { title: "Active Prescriptions", value: 2, caption: "Currently active",         icon: IconClipboard },
+  { title: "Pending Payments",  value: 2,  caption: "Invoices awaiting payment",  icon: IconCurrency  },
+  { title: "New Care Updates",  value: 3,  caption: "Unread caregiver notes",     icon: IconBell      },
 ];
 
 const RECENT_PATIENTS = [
@@ -36,11 +37,11 @@ const statusTone = (s: string) =>
   s === "Discharged"? "slate"   as const : "slate" as const;
 
 const QUICK_ACTIONS: { icon: React.FC<{ className?: string }>; title: string; desc: string; page: MenuLabel }[] = [
-  { icon: HeartIcon,     title: "Care Plans",               desc: "Browse available care packages.",              page: "Care Plans"      },
-  { icon: HeartIcon,     title: "View Elderly Profiles",    desc: "See details of your linked patients.",        page: "Elderly Profile" },
-  { icon: ClipboardIcon, title: "Check Medical Reports",    desc: "Read latest doctor-generated reports.",       page: "Medical Reports" },
-  { icon: ClipboardIcon, title: "View Prescriptions",       desc: "See current medications for your patients.",  page: "Prescription"    },
-  { icon: CurrencyIcon,  title: "Manage Payments",          desc: "View invoices and pending payments.",         page: "Payments"        },
+  { icon: IconHeart,     title: "Care Plans",               desc: "Browse available care packages.",              page: "Care Plans"      },
+  { icon: IconHeart,     title: "View Elderly Profiles",    desc: "See details of your linked patients.",        page: "Elderly Profile" },
+  { icon: IconClipboard, title: "Check Medical Reports",    desc: "Read latest doctor-generated reports.",       page: "Medical Reports" },
+  { icon: IconClipboard, title: "View Prescriptions",       desc: "See current medications for your patients.",  page: "Prescription"    },
+  { icon: IconCurrency,  title: "Manage Payments",          desc: "View invoices and pending payments.",         page: "Payments"        },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate, onContact }) => (
       <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-            <SparkleIcon /> Family Member Portal
+            <IconSparkles className="h-4 w-4" /> Family Member Portal
           </div>
           <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Welcome back 👋</h2>
           <p className="mt-1 text-sm text-slate-600">Stay updated on your family member's care, reports, and payments.</p>
@@ -158,7 +159,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate, onContact }) => (
                 <p className="text-sm font-semibold text-slate-900">{title}</p>
                 <p className="text-xs text-slate-500">{desc}</p>
               </div>
-              <ArrowRightIcon />
+              <IconArrowRight className="h-4 w-4 text-slate-400" />
             </button>
           ))}
         </div>

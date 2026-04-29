@@ -10,17 +10,11 @@ import {
 import type { Patient } from "../../../../api/patients/patient.types";
 import type { VitalRecord, MedicationLog } from "../../../../api/caregivers/caregiver.api";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
-const HeartIcon      = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>;
-const UsersIcon      = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
-const ClipboardIcon  = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>;
-const PillIcon       = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>;
-const AlertIcon      = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
-const CalendarIcon   = ({ className = "h-6 w-6" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
-const SparkleIcon    = ({ className = "h-4 w-4" }: { className?: string }) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.2 4.2L17.4 8l-4.2 1.2L12 13.4l-1.2-4.2L6.6 8l4.2-1.8L12 2zm7 7l.8 2.8 2.8.8-2.8.8L19 16.6l-.8-2.8-2.8-.8 2.8-1.2L19 9z" /></svg>;
-const ArrowRightIcon = () => <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
-const PhoneIcon      = ({ className = "h-5 w-5" }: { className?: string }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>;
-const XIcon          = () => <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
+import {
+  IconHeart, IconUsers, IconClipboard, IconPill,
+  IconAlert, IconCalendar, IconSparkles, IconArrowRight,
+  IconPhone, IconX,
+} from "../../common/icons";
 
 const EMERGENCY_CONTACTS = [
   { name: "Dr. Priya Nair",    role: "On-Duty Doctor",    phone: "+94 77 123 4567" },
@@ -29,10 +23,10 @@ const EMERGENCY_CONTACTS = [
 ];
 
 const QUICK_ACTIONS = [
-  { icon: PillIcon,      title: "Manage Medications",  desc: "Review & update medication schedule",  page: "Medication Updates" as MenuLabel, color: "border-amber-200 hover:border-amber-400 bg-amber-50"   },
-  { icon: AlertIcon,     title: "Vital Records",        desc: "Record & review patient vitals",        page: "Vital Records"      as MenuLabel, color: "border-red-200 hover:border-red-400 bg-red-50"         },
-  { icon: CalendarIcon,  title: "Care Schedule",        desc: "View full shift schedule",              page: "Care Schedule"      as MenuLabel, color: "border-sky-200 hover:border-sky-400 bg-sky-50"          },
-  { icon: ClipboardIcon, title: "All Care Notes",       desc: "Add, review & edit care logs",          page: "Care Notes"         as MenuLabel, color: "border-emerald-200 hover:border-emerald-400 bg-emerald-50" },
+  { icon: IconPill,      title: "Manage Medications",  desc: "Review & update medication schedule",  page: "Medication Updates" as MenuLabel, color: "border-amber-200 hover:border-amber-400 bg-amber-50"   },
+  { icon: IconAlert,     title: "Vital Records",        desc: "Record & review patient vitals",        page: "Vital Records"      as MenuLabel, color: "border-red-200 hover:border-red-400 bg-red-50"         },
+  { icon: IconCalendar,  title: "Care Schedule",        desc: "View full shift schedule",              page: "Care Schedule"      as MenuLabel, color: "border-sky-200 hover:border-sky-400 bg-sky-50"          },
+  { icon: IconClipboard, title: "All Care Notes",       desc: "Add, review & edit care logs",          page: "Care Notes"         as MenuLabel, color: "border-emerald-200 hover:border-emerald-400 bg-emerald-50" },
 ];
 
 
@@ -74,7 +68,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ patients, onClose, onSaved 
       <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white/90 backdrop-blur-xl shadow-2xl p-6">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-slate-900">Add Care Note</h3>
-          <button onClick={onClose} className="rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 transition"><XIcon /></button>
+          <button onClick={onClose} className="rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 transition"><IconX className="h-5 w-5" /></button>
         </div>
 
         {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-2.5 text-xs font-semibold text-red-700">{error}</p>}
@@ -171,22 +165,22 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
     {
       title: "Assigned Patients", value: loading ? "—" : patients.length,
       caption: patients.length > 0 ? `${patients.filter(p => p.isActive).length} active · ${patients.filter(p => !p.isActive).length} inactive` : "No patients yet",
-      icon: UsersIcon, color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", page: "Assigned Patients" as MenuLabel,
+      icon: IconUsers, color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", page: "Assigned Patients" as MenuLabel,
     },
     {
       title: "Medications Due Today", value: loading ? "—" : pendingMeds,
       caption: `${administeredMeds} administered · ${pendingMeds} pending`,
-      icon: PillIcon, color: "from-amber-500 to-orange-600", bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", page: "Medication Updates" as MenuLabel,
+      icon: IconPill, color: "from-amber-500 to-orange-600", bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", page: "Medication Updates" as MenuLabel,
     },
     {
       title: "Vital Alerts", value: loading ? "—" : criticalVitals + warningVitals,
       caption: `${criticalVitals} critical · ${warningVitals} warning`,
-      icon: AlertIcon, color: "from-red-500 to-rose-600", bg: "bg-red-50", border: "border-red-200", text: "text-red-700", page: "Vital Records" as MenuLabel,
+      icon: IconAlert, color: "from-red-500 to-rose-600", bg: "bg-red-50", border: "border-red-200", text: "text-red-700", page: "Vital Records" as MenuLabel,
     },
     {
       title: "Total Vitals Logged", value: loading ? "—" : vitals.length,
       caption: `${vitals.filter(v => v.status === "Normal").length} normal readings`,
-      icon: HeartIcon, color: "from-sky-500 to-blue-600", bg: "bg-sky-50", border: "border-sky-200", text: "text-sky-700", page: "Vital Records" as MenuLabel,
+      icon: IconHeart, color: "from-sky-500 to-blue-600", bg: "bg-sky-50", border: "border-sky-200", text: "text-sky-700", page: "Vital Records" as MenuLabel,
     },
   ];
 
@@ -202,7 +196,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
         <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-              <SparkleIcon /> {todayLabel}
+              <IconSparkles className="h-4 w-4" /> {todayLabel}
             </div>
             <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
               Welcome back, Caregiver 👋
@@ -217,11 +211,11 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
           <div className="flex flex-wrap gap-3">
             <button onClick={() => onNavigate("Vital Records")}
               className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700">
-              <HeartIcon className="h-4 w-4" /> Update Vital Records
+              <IconHeart className="h-4 w-4" /> Update Vital Records
             </button>
             <button onClick={() => setShowModal(true)}
               className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <ClipboardIcon className="h-4 w-4" /> Add Care Note
+              <IconClipboard className="h-4 w-4" /> Add Care Note
             </button>
           </div>
         </div>
@@ -242,7 +236,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
               <p className={`text-sm font-semibold ${s.text}`}>{s.title}</p>
               <p className="mt-0.5 text-xs text-slate-500">{s.caption}</p>
               <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${s.text} opacity-0 transition group-hover:opacity-100`}>
-                View details <ArrowRightIcon />
+                <IconArrowRight className="h-4 w-4" />
               </div>
             </button>
           );
@@ -263,7 +257,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
               className={["flex items-start justify-between gap-4 rounded-2xl border p-4 transition",
                 v.status === "Critical" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"].join(" ")}>
               <div className="flex items-start gap-3">
-                <AlertIcon className={`mt-0.5 h-5 w-5 shrink-0 ${v.status === "Critical" ? "text-red-600" : "text-amber-600"}`} />
+                <IconAlert className={`mt-0.5 h-5 w-5 shrink-0 ${v.status === "Critical" ? "text-red-600" : "text-amber-600"}`} />
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className={`text-sm font-bold ${v.status === "Critical" ? "text-red-900" : "text-amber-900"}`}>
@@ -281,7 +275,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
               </div>
               <button onClick={() => setDismissedAlerts((d) => [...d, v.id])}
                 className="shrink-0 rounded-xl p-1.5 text-slate-400 hover:bg-white/60 transition" aria-label="Dismiss">
-                <XIcon />
+                <IconX className="h-5 w-5" />
               </button>
             </div>
           ))}
@@ -367,7 +361,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
           <div className="rounded-3xl border border-red-200/60 bg-red-50/60 shadow-[0_20px_60px_rgba(2,6,23,0.06)] backdrop-blur-xl overflow-hidden">
             <div className="border-b border-red-100 px-6 py-4 flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-xl bg-red-600 shadow-sm">
-                <PhoneIcon className="h-4 w-4 text-white" />
+                <IconPhone className="h-4 w-4 text-white" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-red-900">Emergency Contacts</h3>
@@ -383,7 +377,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                   </div>
                   <a href={`tel:${c.phone}`}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700">
-                    <PhoneIcon className="h-3 w-3" /> {c.phone}
+                    <IconPhone className="h-3 w-3" /> {c.phone}
                   </a>
                 </div>
               ))}

@@ -7,7 +7,10 @@ export interface DashboardRecentPatient {
   age: number;
   bloodGroup: string | null;
   diagnosis: string | null;
-  status: 'Active' | 'Completed' | 'Discontinued';
+  /** Appointment-level status — 'Pending' means awaiting confirmation, 'Confirmed' means doctor accepted */
+  status: 'Pending' | 'Confirmed';
+  slotDate: string;
+  /** @deprecated use slotDate */
   prescriptionDate: string;
 }
 

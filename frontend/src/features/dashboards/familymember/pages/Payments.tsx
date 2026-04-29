@@ -35,9 +35,9 @@ interface Props {
 }
 
 const toneForStatus = (status: PaymentStatus) => {
-  if (status === 'paid')             return 'emerald';
+  if (status === 'paid') return 'emerald';
   if (status === 'pending_approval') return 'amber';
-  if (status === 'rejected')         return 'red';
+  if (status === 'rejected') return 'red';
   return 'slate';
 };
 
@@ -45,30 +45,30 @@ const Payments: React.FC<Props> = ({ addToast }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [loading, setLoading]                         = useState(true);
-  const [payingMethod, setPayingMethod]               = useState<'card' | 'bank_transfer' | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [payingMethod, setPayingMethod] = useState<'card' | 'bank_transfer' | null>(null);
   const [showBankTransferDetails, setShowBankTransferDetails] = useState(false);
-  const [showCardForm, setShowCardForm]               = useState(false);
-  const [cardPaid, setCardPaid]                       = useState(false);
-  const [cardForm, setCardForm]                       = useState({
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [cardPaid, setCardPaid] = useState(false);
+  const [cardForm, setCardForm] = useState({
     cardNumber: '', cardHolderName: '', expiryDate: '', cvv: '',
   });
-  const [cardFormErrors, setCardFormErrors]           = useState({
+  const [cardFormErrors, setCardFormErrors] = useState({
     cardNumber: '', cardHolderName: '', expiryDate: '', cvv: '',
   });
-  const [checkoutNotice, setCheckoutNotice]           = useState<
+  const [checkoutNotice, setCheckoutNotice] = useState<
     | null
     | { kind: 'success'; title: string; message: string }
-    | { kind: 'info';    title: string; message: string }
+    | { kind: 'info'; title: string; message: string }
   >(null);
 
-  const [booking, setBooking]               = useState<Booking | null>(null);
-  const [appointment, setAppointment]       = useState<Appointment | null>(null);
-  const [myPayments, setMyPayments]         = useState<Payment[]>([]);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [myPayments, setMyPayments] = useState<Payment[]>([]);
 
-  const search         = new URLSearchParams(location.search);
-  const bookingId      = search.get('bookingId');
-  const appointmentId  = search.get('appointmentId');
+  const search = new URLSearchParams(location.search);
+  const bookingId = search.get('bookingId');
+  const appointmentId = search.get('appointmentId');
   const isCheckoutPage = location.pathname.includes('/payments/checkout');
 
   const loadData = useCallback(async () => {
@@ -124,7 +124,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
     try {
       setPayingMethod(paymentMethod);
       const res = await createPayment({
-        bookingId:     bookingId    ?? undefined,
+        bookingId: bookingId ?? undefined,
         appointmentId: appointmentId ?? undefined,
         paymentMethod,
       });
@@ -135,16 +135,16 @@ const Payments: React.FC<Props> = ({ addToast }) => {
         setShowCardForm(false);
         setCardPaid(true);
         setCheckoutNotice({
-          kind:    'success',
-          title:   'Payment Completed',
+          kind: 'success',
+          title: 'Payment Completed',
           message: appointmentId
             ? 'Your appointment payment is confirmed. The doctor will review and confirm your appointment shortly.'
             : 'Payment successful. Your care plan booking is now active.',
         });
       } else {
         setCheckoutNotice({
-          kind:    'info',
-          title:   'Bank Transfer Submitted',
+          kind: 'info',
+          title: 'Bank Transfer Submitted',
           message: 'Your bank transfer is awaiting admin approval. You will be notified once approved.',
         });
       }
@@ -166,10 +166,10 @@ const Payments: React.FC<Props> = ({ addToast }) => {
 
   const validateCardForm = () => {
     const errors = {
-      cardNumber:     cardForm.cardNumber.trim()     ? '' : 'Card number is required.',
+      cardNumber: cardForm.cardNumber.trim() ? '' : 'Card number is required.',
       cardHolderName: cardForm.cardHolderName.trim() ? '' : 'Card holder name is required.',
-      expiryDate:     cardForm.expiryDate.trim()     ? '' : 'Expiry date is required.',
-      cvv:            cardForm.cvv.trim()             ? '' : 'CVV is required.',
+      expiryDate: cardForm.expiryDate.trim() ? '' : 'Expiry date is required.',
+      cvv: cardForm.cvv.trim() ? '' : 'CVV is required.',
     };
     setCardFormErrors(errors);
     return !Object.values(errors).some(Boolean);
@@ -182,8 +182,8 @@ const Payments: React.FC<Props> = ({ addToast }) => {
   };
 
   const summary = useMemo(() => {
-    const total   = myPayments.reduce((s, p) => s + Number(p.amount), 0);
-    const paid    = myPayments.filter((p) => p.status === 'paid').reduce((s, p) => s + Number(p.amount), 0);
+    const total = myPayments.reduce((s, p) => s + Number(p.amount), 0);
+    const paid = myPayments.filter((p) => p.status === 'paid').reduce((s, p) => s + Number(p.amount), 0);
     const pending = myPayments.filter((p) => p.status !== 'paid').reduce((s, p) => s + Number(p.amount), 0);
     return { total, paid, pending };
   }, [myPayments]);
@@ -232,19 +232,16 @@ const Payments: React.FC<Props> = ({ addToast }) => {
 
           {/* Notice banner (success / info) */}
           {checkoutNotice && (
-            <div className={`mb-5 rounded-2xl border p-4 ${
-              checkoutNotice.kind === 'success'
+            <div className={`mb-5 rounded-2xl border p-4 ${checkoutNotice.kind === 'success'
                 ? 'border-emerald-200 bg-emerald-50'
                 : 'border-amber-200 bg-amber-50'
-            }`}>
-              <p className={`text-sm font-bold ${
-                checkoutNotice.kind === 'success' ? 'text-emerald-900' : 'text-amber-900'
               }`}>
+              <p className={`text-sm font-bold ${checkoutNotice.kind === 'success' ? 'text-emerald-900' : 'text-amber-900'
+                }`}>
                 {checkoutNotice.title}
               </p>
-              <p className={`mt-1 text-sm ${
-                checkoutNotice.kind === 'success' ? 'text-emerald-800' : 'text-amber-800'
-              }`}>
+              <p className={`mt-1 text-sm ${checkoutNotice.kind === 'success' ? 'text-emerald-800' : 'text-amber-800'
+                }`}>
                 {checkoutNotice.message}
               </p>
               {checkoutNotice.kind === 'success' && (
@@ -333,9 +330,9 @@ const Payments: React.FC<Props> = ({ addToast }) => {
               <div className="rounded-2xl bg-emerald-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Amount to Pay</p>
                 {(() => {
-                  const consultFee  = Number(appointment.slot?.consultationFee ?? 0);
+                  const consultFee = Number(appointment.slot?.consultationFee ?? 0);
                   const careHomeFee = Number(appointment.slot?.careHomeFee ?? 0);
-                  const total       = consultFee + careHomeFee;
+                  const total = consultFee + careHomeFee;
                   return (
                     <>
                       <p className="mt-1 text-2xl font-extrabold text-emerald-800">
@@ -389,10 +386,10 @@ const Payments: React.FC<Props> = ({ addToast }) => {
               <p className="text-sm font-bold text-slate-900">Card payment details</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {([
-                  { field: 'cardNumber',     label: 'Card Number',      placeholder: '1234 5678 9012 3456', type: 'text' },
-                  { field: 'cardHolderName', label: 'Card Holder Name', placeholder: 'John Doe',            type: 'text' },
-                  { field: 'expiryDate',     label: 'Expiry Date',      placeholder: 'MM/YY',               type: 'text' },
-                  { field: 'cvv',            label: 'CVV',              placeholder: '123',                 type: 'password' },
+                  { field: 'cardNumber', label: 'Card Number', placeholder: '1234 5678 9012 3456', type: 'text' },
+                  { field: 'cardHolderName', label: 'Card Holder Name', placeholder: 'John Doe', type: 'text' },
+                  { field: 'expiryDate', label: 'Expiry Date', placeholder: 'MM/YY', type: 'text' },
+                  { field: 'cvv', label: 'CVV', placeholder: '123', type: 'password' },
                 ] as const).map(({ field, label, placeholder, type }) => (
                   <div key={field}>
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</label>
@@ -400,11 +397,10 @@ const Payments: React.FC<Props> = ({ addToast }) => {
                       type={type}
                       value={cardForm[field]}
                       onChange={(e) => handleCardInputChange(field, e.target.value)}
-                      className={`mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-800 outline-none transition ${
-                        cardFormErrors[field]
+                      className={`mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-800 outline-none transition ${cardFormErrors[field]
                           ? 'border-red-300 focus:border-red-400'
                           : 'border-slate-300 focus:border-emerald-400'
-                      }`}
+                        }`}
                       placeholder={placeholder}
                     />
                     {cardFormErrors[field] && (
@@ -526,8 +522,8 @@ const Payments: React.FC<Props> = ({ addToast }) => {
                     {item.appointmentId
                       ? <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">🩺 Appointment</span>
                       : item.bookingId
-                      ? <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">📋 Care Plan</span>
-                      : '—'}
+                        ? <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">📋 Care Plan</span>
+                        : '—'}
                   </td>
                   <td className="px-4 py-3 font-semibold text-slate-800">
                     LKR {Number(item.amount).toLocaleString()}

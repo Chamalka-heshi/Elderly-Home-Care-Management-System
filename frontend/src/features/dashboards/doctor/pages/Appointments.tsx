@@ -8,8 +8,11 @@ import {
 
 import {
   createPrescription,
+  getPatientPrescriptions,
+  discontinuePrescription,
   type Medicine,
   type CreatePrescriptionPayload,
+  type Prescription as RxRecord,
 } from "../../../../api/prescriptions/doctor-prescription.api";
 
 import {
@@ -27,7 +30,6 @@ import {
   IconClock,
   IconFileText,
   IconActivity,
-  IconUserCheck,
   IconX,
   IconPlus,
   IconTrash,
@@ -38,13 +40,12 @@ import {
   IconPill,
   IconUser,
   IconSpinner,
+  IconBan,
 } from "../../common/icons";
 
-// Constants & Utilities
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-// Standardized medication frequency options to ensure consistent clinical documentation.
 const FREQ = [
   "Once daily", "Twice daily", "Three times daily", "Four times daily",
   "Every 6 hours", "Every 8 hours", "Every 12 hours", "PRN (as needed)",
@@ -52,7 +53,7 @@ const FREQ = [
 ];
 
 const inp =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/10 placeholder:text-slate-300";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/10 placeholder:text-slate-300";
 
 const EMPTY_MED: Medicine = {
   medicineName: "",
@@ -62,9 +63,108 @@ const EMPTY_MED: Medicine = {
   instructions: "",
 };
 
-// Prescription Creation Workflow
 
-// Provides a comprehensive interface for issuing digital prescriptions, allowing doctors to detail dosages, frequencies, and clinical notes.
+interface ActiveRxReviewProps {
+  rx: RxRecord;
+  onDiscontinue: (id: string) => Promise<void>;
+  onContinueAndAdd: (rx: RxRecord) => void;
+  isDiscontinuing: boolean;
+}
+
+/**
+ * Shown before the new prescription form when the patient has an ACTIVE prescription.
+ * Doctor must either discontinue or explicitly carry it forward before prescribing.
+ */
+const ActiveRxReview: React.FC<ActiveRxReviewProps> = ({
+  rx,
+  onDiscontinue,
+  onContinueAndAdd,
+  isDiscontinuing,
+}) => (
+  <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/60 overflow-hidden">
+<div className="flex items-center gap-3 border-b border-amber-200 bg-amber-100/60 px-4 py-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-200">
+        <IconPill className="h-4 w-4 text-amber-700" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-amber-900">Active Prescription Detected</p>
+        <p className="text-xs text-amber-700 truncate">
+          {rx.diagnosis ?? "Existing prescription"} ·{" "}
+          Issued {new Date(rx.issuedDate).toLocaleDateString("en-GB", {
+            day: "2-digit", month: "short", year: "numeric",
+          })}
+        </p>
+      </div>
+      <span className="shrink-0 rounded-full bg-amber-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-800">
+        Active
+      </span>
+    </div>
+<div className="overflow-x-auto">
+      <table className="min-w-full text-xs">
+        <thead>
+          <tr className="bg-amber-100/40 text-left">
+            {["Medicine", "Dosage", "Frequency", "Duration", "Instructions"].map((h) => (
+              <th
+                key={h}
+                className="px-4 py-2.5 font-bold uppercase tracking-wider text-amber-700 whitespace-nowrap"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-amber-100">
+          {rx.medicines.map((med, mi) => (
+            <tr key={mi} className="bg-white/50 hover:bg-white/80 transition">
+              <td className="px-4 py-2.5 font-semibold text-slate-800 whitespace-nowrap">{med.medicineName}</td>
+              <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{med.dosage}</td>
+              <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{med.frequency}</td>
+              <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{med.durationDays}d</td>
+              <td className="px-4 py-2.5 text-slate-400 italic">
+                {med.instructions?.trim() || <span className="text-slate-300 not-italic">—</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {rx.notes && (
+      <div className="px-4 py-2.5 border-t border-amber-100 bg-white/40">
+        <span className="text-xs font-bold text-amber-700">Clinical Notes: </span>
+        <span className="text-xs text-amber-800">{rx.notes}</span>
+      </div>
+    )}
+<div className="flex items-center gap-3 border-t border-amber-200 bg-amber-50 px-4 py-3">
+      <p className="flex-1 text-xs text-amber-700 font-medium">
+        How would you like to proceed with this prescription?
+      </p>
+      <button
+        type="button"
+        disabled={isDiscontinuing}
+        onClick={() => onDiscontinue(rx.id)}
+        className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition"
+      >
+        {isDiscontinuing ? (
+          <IconSpinner className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <IconX className="h-3.5 w-3.5" />
+        )}
+        Discontinue
+      </button>
+      <button
+        type="button"
+        onClick={() => onContinueAndAdd(rx)}
+        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm shadow-emerald-600/20"
+      >
+        <IconPlus className="h-3.5 w-3.5" />
+        Continue &amp; Add New
+      </button>
+    </div>
+  </div>
+);
+
+
 interface PrescribeModalProps {
   appointment: Appointment;
   onClose:     () => void;
@@ -77,20 +177,63 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
   onSuccess,
 }) => {
   const { patient, id: appointmentId, familyMember } = appointment;
-  const [diagnosis,  setDiagnosis]   = useState("");
-  const [notes,      setNotes]       = useState("");
-  const [issuedDate, setIssuedDate]  = useState(today());
-  const [validUntil, setValidUntil]  = useState("");
-  const [meds,       setMeds]        = useState<Medicine[]>([{ ...EMPTY_MED }]);
-  const [saving,     setSaving]      = useState(false);
-  const [err,        setErr]         = useState<string | null>(null);
+
+  const [diagnosis,  setDiagnosis]  = useState("");
+  const [notes,      setNotes]      = useState("");
+  const [issuedDate, setIssuedDate] = useState(today());
+  const [validUntil, setValidUntil] = useState("");
+  const [meds,       setMeds]       = useState<Medicine[]>([{ ...EMPTY_MED }]);
+  const [saving,     setSaving]     = useState(false);
+  const [err,        setErr]        = useState<string | null>(null);
+
+  const [activeRx,       setActiveRx]       = useState<RxRecord | null>(null);
+  const [loadingRx,      setLoadingRx]      = useState(true);
+  const [discontinuing,  setDiscontinuing]  = useState(false);
+  const [carriedForward, setCarriedForward] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPatientPrescriptions(patient.id)
+      .then((data) => {
+        if (!cancelled) {
+          const active = data.find((r) => r.status === "active") ?? null;
+          setActiveRx(active);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingRx(false); });
+    return () => { cancelled = true; };
+  }, [patient.id]);
+
+
+  const handleDiscontinue = async (rxId: string) => {
+    setDiscontinuing(true);
+    try {
+      await discontinuePrescription(rxId);
+      setActiveRx(null);
+      setCarriedForward(false);
+    } catch (e: any) {
+      setErr(e.message || "Failed to discontinue prescription.");
+    } finally {
+      setDiscontinuing(false);
+    }
+  };
+
+  /**
+   * "Continue & Add New" — the active Rx stays; do not pre-populate medicines
+   * as per user request to keep the form clear for new details.
+   */
+  const handleContinueAndAdd = (rx: RxRecord) => {
+    setCarriedForward(true);
+    setDiagnosis(rx.diagnosis ?? "");
+  };
+
 
   const addMed    = () => setMeds((m) => [...m, { ...EMPTY_MED }]);
   const removeMed = (i: number) => setMeds((m) => m.filter((_, x) => x !== i));
   const changeMed = (i: number, field: keyof Medicine, val: string | number) =>
     setMeds((m) => m.map((x, idx) => (idx === i ? { ...x, [field]: val } : x)));
 
-  // Persists the prescription to the backend and associates it with the active appointment record.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,13 +249,12 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
       patientName: patient.fullName,
       patientAge:  patient.age ?? 0,
       issuedDate,
-      ...(diagnosis.trim()  && { diagnosis: diagnosis.trim() }),
-      ...(notes.trim()      && { notes:     notes.trim() }),
-      ...(validUntil        && { validUntil }),
+      ...(diagnosis.trim() && { diagnosis: diagnosis.trim() }),
+      ...(notes.trim()     && { notes:     notes.trim() }),
+      ...(validUntil       && { validUntil }),
       medicines: meds.map((m) => ({
         ...m,
         durationDays: Number(m.durationDays),
-        // Omit empty instructions to keep the payload clean
         ...(m.instructions?.trim()
           ? { instructions: m.instructions.trim() }
           : { instructions: undefined }),
@@ -131,17 +273,19 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
     }
   };
 
+  const showNewRxForm = !activeRx || carriedForward;
+
   return (
     <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto p-4 pt-8">
       <button
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         type="button"
+        aria-label="Close"
       />
-      <div className="relative z-10 w-full max-w-2xl rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
 
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+      <div className="relative z-10 w-full max-w-2xl rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200 mb-10">
+<div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100">
               <IconFileText className="h-5 w-5 text-emerald-600" />
@@ -149,11 +293,12 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
             <div>
               <h2 className="text-base font-bold text-slate-900">New Prescription</h2>
               <p className="text-xs text-slate-400">
-                For: <span className="font-semibold text-slate-700">{patient.fullName}</span>
+                For:{" "}
+                <span className="font-semibold text-slate-700">{patient.fullName}</span>
                 {" · "}
-                <span className="text-slate-500">
+                <span>
                   Booked by{" "}
-                  <span className="font-semibold">
+                  <span className="font-semibold text-slate-600">
                     {familyMember?.user?.fullName ?? "—"}
                   </span>
                 </span>
@@ -169,203 +314,265 @@ const PrescribeModal: React.FC<PrescribeModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="divide-y divide-slate-100">
-          {/* Patient info banner */}
-          <div className="p-6 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Patient
-            </h3>
-            <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 grid grid-cols-2 gap-x-6 gap-y-1">
-              <p>Name — {patient.fullName}</p>
-              <p>Gender — {patient.gender ?? "—"}</p>
-              <p>Age — {patient.age != null ? `${patient.age} yrs` : "—"}</p>
-              <p>Blood Group — {patient.bloodGroup ?? "—"}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Issued Date <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="date"
-                  className={inp}
-                  value={issuedDate}
-                  onChange={(e) => setIssuedDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Valid Until
-                </label>
-                <input
-                  type="date"
-                  className={inp}
-                  value={validUntil}
-                  min={issuedDate}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Diagnosis
-                </label>
-                <input
-                  className={inp}
-                  value={diagnosis}
-                  onChange={(e) => setDiagnosis(e.target.value)}
-                  placeholder="e.g. Acute pharyngitis"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Clinical Notes
-                </label>
-                <input
-                  className={inp}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Additional notes…"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Medicines */}
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                Medicines ({meds.length})
-              </h3>
-              <button
-                type="button"
-                onClick={addMed}
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition"
-              >
-                <IconPlus className="h-3.5 w-3.5" /> Add Medicine
-              </button>
-            </div>
-
-            {err && (
-              <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-medium text-red-600">
-                {err}
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {meds.map((med, i) => (
-                <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                      <IconPill className="h-3.5 w-3.5" /> Medicine {i + 1}
-                    </span>
-                    {meds.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeMed(i)}
-                        className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 transition"
-                      >
-                        <IconTrash className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-slate-500">
-                        Name <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        className={inp}
-                        value={med.medicineName}
-                        onChange={(e) => changeMed(i, "medicineName", e.target.value)}
-                        placeholder="e.g. Amoxicillin 500mg"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-500">
-                        Dosage <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        className={inp}
-                        value={med.dosage}
-                        onChange={(e) => changeMed(i, "dosage", e.target.value)}
-                        placeholder="500 mg"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-500">
-                        Duration (days)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={365}
-                        className={inp}
-                        value={med.durationDays}
-                        onChange={(e) => changeMed(i, "durationDays", Number(e.target.value))}
-                        required
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-slate-500">
-                        Frequency
-                      </label>
-                      <select
-                        className={inp}
-                        value={med.frequency}
-                        onChange={(e) => changeMed(i, "frequency", e.target.value)}
-                      >
-                        {FREQ.map((f) => (
-                          <option key={f} value={f}>{f}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-slate-500">
-                        Instructions
-                      </label>
-                      <input
-                        className={inp}
-                        value={med.instructions ?? ""}
-                        onChange={(e) => changeMed(i, "instructions", e.target.value)}
-                        placeholder="e.g. Take after food"
-                      />
-                    </div>
-                  </div>
+        <div className="divide-y divide-slate-100">
+<div className="px-6 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { label: "Name",        value: patient.fullName },
+                { label: "Age",         value: patient.age != null ? `${patient.age} yrs` : "—" },
+                { label: "Gender",      value: patient.gender ?? "—" },
+                { label: "Blood Group", value: patient.bloodGroup ?? "—" },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{label}</p>
+                  <p className="text-xs font-semibold text-slate-800">{value}</p>
                 </div>
               ))}
             </div>
           </div>
+<div className="px-6 py-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                Current Active Prescription
+              </h3>
+            </div>
 
-          {/* Footer */}
-          <div className="flex gap-3 px-6 py-5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-60 disabled:translate-y-0 transition"
-            >
-              {saving ? "Saving…" : "Save Prescription"}
-            </button>
+            {loadingRx ? (
+              <div className="flex items-center justify-center py-6">
+                <IconSpinner className="h-6 w-6 text-slate-300" />
+              </div>
+            ) : !activeRx ? (
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <IconCheckCircle className="h-4 w-4 text-slate-300 shrink-0" />
+                <p className="text-xs text-slate-400 italic">
+                  {carriedForward
+                    ? "Previous prescription discontinued. New prescription pre-filled below."
+                    : "No active prescription — proceed to prescribe below."}
+                </p>
+              </div>
+            ) : !carriedForward ? (
+              <ActiveRxReview
+                rx={activeRx}
+                onDiscontinue={handleDiscontinue}
+                onContinueAndAdd={handleContinueAndAdd}
+                isDiscontinuing={discontinuing}
+              />
+            ) : (
+
+              //Doctor chose "Continue & Add New" — show a compact carried-forward note
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <IconCheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-emerald-800">
+                    Existing prescription remains active
+                  </p>
+                  <p className="text-[11px] text-emerald-600 mt-0.5">
+                    New prescription below has been pre-filled with the current medicines.
+                    Adjust as needed before saving.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        </form>
+{showNewRxForm && (
+            <form onSubmit={handleSubmit}>
+<div className="px-6 py-5 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  Prescription Details
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">
+                      Issued Date <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      className={inp}
+                      value={issuedDate}
+                      onChange={(e) => setIssuedDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">
+                      Valid Until
+                    </label>
+                    <input
+                      type="date"
+                      className={inp}
+                      value={validUntil}
+                      min={issuedDate}
+                      onChange={(e) => setValidUntil(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">
+                      Diagnosis
+                    </label>
+                    <input
+                      className={inp}
+                      value={diagnosis}
+                      onChange={(e) => setDiagnosis(e.target.value)}
+                      placeholder="e.g. Acute pharyngitis"
+                    />
+                  </div>
+                  {patient.paymentPlan && (
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">
+                        Clinical Notes
+                      </label>
+                      <input
+                        className={inp}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Additional notes…"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+<div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Medicines ({meds.length})
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addMed}
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition"
+                  >
+                    <IconPlus className="h-3.5 w-3.5" /> Add Medicine
+                  </button>
+                </div>
+
+                {err && (
+                  <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-medium text-red-600">
+                    {err}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {meds.map((med, i) => (
+                    <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                          <IconPill className="h-3.5 w-3.5" /> Medicine {i + 1}
+                        </span>
+                        {meds.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeMed(i)}
+                            className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 transition"
+                          >
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div className="col-span-2">
+                          <label className="mb-1 block text-xs font-semibold text-slate-500">
+                            Name <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            className={inp}
+                            value={med.medicineName}
+                            onChange={(e) => changeMed(i, "medicineName", e.target.value)}
+                            placeholder="e.g. Amoxicillin 500mg"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-500">
+                            Dosage <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            className={inp}
+                            value={med.dosage}
+                            onChange={(e) => changeMed(i, "dosage", e.target.value)}
+                            placeholder="500 mg"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-500">
+                            Duration (days)
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={365}
+                            className={inp}
+                            value={med.durationDays}
+                            onChange={(e) => changeMed(i, "durationDays", Number(e.target.value))}
+                            required
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="mb-1 block text-xs font-semibold text-slate-500">
+                            Frequency
+                          </label>
+                          <select
+                            className={inp}
+                            value={med.frequency}
+                            onChange={(e) => changeMed(i, "frequency", e.target.value)}
+                          >
+                            {FREQ.map((f) => (
+                              <option key={f} value={f}>{f}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="mb-1 block text-xs font-semibold text-slate-500">
+                            Instructions
+                          </label>
+                          <input
+                            className={inp}
+                            value={med.instructions ?? ""}
+                            onChange={(e) => changeMed(i, "instructions", e.target.value)}
+                            placeholder="e.g. Take after food"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+<div className="flex gap-3 border-t border-slate-100 px-6 py-5">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-60 disabled:translate-y-0 transition"
+                >
+                  {saving ? "Saving…" : "Save Prescription"}
+                </button>
+              </div>
+            </form>
+          )}
+{!showNewRxForm && (
+            <div className="flex gap-3 border-t border-slate-100 px-6 py-5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// Medical History Repository
 
-// Allows doctors to review a patient's clinical background, including vital signs and historical prescriptions, to inform current treatment.
 interface MedicalHistoryModalProps {
   patientId:   string;
   patientName: string;
@@ -389,10 +596,10 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
   patientName,
   onClose,
 }) => {
-  const [data, setData]       = useState<PatientMedicalHistory | null>(null);
+  const [data,    setData]    = useState<PatientMedicalHistory | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
-  const [openRx, setOpenRx]   = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
+  const [openRx,  setOpenRx]  = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -407,26 +614,22 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
   const { patient, vitalRecords = [], prescriptions = [] } = data ?? {};
 
   const calcAge = (dob: string) => {
-    const d = new Date(dob);
+    const d   = new Date(dob);
     const now = new Date();
-    let age = now.getFullYear() - d.getFullYear();
+    let age   = now.getFullYear() - d.getFullYear();
     if (now < new Date(now.getFullYear(), d.getMonth(), d.getDate())) age--;
     return age;
   };
 
   return (
     <div className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto p-4 pt-6">
-      {/* Backdrop */}
       <button
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         type="button"
       />
-
       <div className="relative z-10 w-full max-w-3xl rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200 mb-8">
-
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+<div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100">
               <IconActivity className="h-5 w-5 text-blue-600" />
@@ -447,31 +650,21 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
           </button>
         </div>
 
-        {/* ── Body ────────────────────────────────────────────────────────── */}
         <div className="divide-y divide-slate-100">
-
-          {/* Loading */}
           {loading && (
             <div className="flex items-center justify-center py-20">
               <IconSpinner className="h-9 w-9 text-blue-500" />
             </div>
           )}
-
-          {/* Error */}
           {!loading && error && (
             <div className="p-8 text-center">
               <p className="text-sm font-semibold text-red-600">{error}</p>
             </div>
           )}
-
-          {/* Content */}
           {!loading && !error && patient && (
             <>
-              {/* ── 1. Patient Details ───────────────────────────────────── */}
-              <div className="p-6 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  Patient Details
-                </h3>
+<div className="p-6 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Patient Details</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     { label: "Full Name",   value: patient.fullName },
@@ -483,28 +676,21 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                     { label: "Emergency",   value: patient.emergencyContact ?? "—" },
                     { label: "Address",     value: patient.address ?? "—" },
                   ].map(({ label, value }) => (
-                    <div
-                      key={label}
-                      className="rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100"
-                    >
+                    <div key={label} className="rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{label}</p>
                       <p className="text-xs font-semibold text-slate-800 break-words">{value}</p>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {/* ── 2. Medical Information ───────────────────────────────── */}
-              <div className="p-6 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  Medical Information
-                </h3>
+<div className="p-6 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Medical Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { label: "Medical History",      value: patient.medicalHistory,      color: "bg-blue-50 ring-blue-100" },
-                    { label: "Allergies",            value: patient.allergies,            color: "bg-red-50 ring-red-100" },
-                    { label: "Current Medications",  value: patient.currentMedications,   color: "bg-purple-50 ring-purple-100" },
-                    { label: "Chronic Conditions",   value: patient.chronicConditions,    color: "bg-amber-50 ring-amber-100" },
+                    { label: "Medical History",     value: patient.medicalHistory,    color: "bg-blue-50 ring-blue-100" },
+                    { label: "Allergies",           value: patient.allergies,          color: "bg-red-50 ring-red-100" },
+                    { label: "Current Medications", value: patient.currentMedications, color: "bg-purple-50 ring-purple-100" },
+                    { label: "Chronic Conditions",  value: patient.chronicConditions,  color: "bg-amber-50 ring-amber-100" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className={`rounded-xl px-4 py-3 ring-1 ${color}`}>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">{label}</p>
@@ -515,71 +701,61 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                   ))}
                 </div>
               </div>
-
-              {/* ── 3. Vital Records ─────────────────────────────────────── */}
-              <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Vital Records
-                  </h3>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-                    {vitalRecords.length} record{vitalRecords.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                {vitalRecords.length === 0 ? (
-                  <p className="rounded-xl bg-slate-50 px-4 py-4 text-sm italic text-slate-400 text-center">
-                    No vital records have been recorded yet.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
-                    <table className="min-w-full text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 text-left">
-                          {["Date", "Blood Pressure", "Heart Rate", "Temp (°C)", "O₂ Sat", "Weight (kg)", "Status"].map((h) => (
-                            <th key={h} className="px-3 py-2.5 font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {vitalRecords.map((v) => (
-                          <tr key={v.id} className="hover:bg-slate-50/70 transition">
-                            <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
-                              {new Date(v.recordedAt).toLocaleDateString("en-GB", {
-                                day: "2-digit", month: "short", year: "numeric",
-                              })}
-                            </td>
-                            <td className="px-3 py-2.5 text-slate-600">{v.bloodPressure ?? "—"}</td>
-                            <td className="px-3 py-2.5 text-slate-600">{v.heartRate != null ? `${v.heartRate} bpm` : "—"}</td>
-                            <td className="px-3 py-2.5 text-slate-600">{v.temperature != null ? v.temperature : "—"}</td>
-                            <td className="px-3 py-2.5 text-slate-600">{v.oxygenSaturation != null ? `${v.oxygenSaturation}%` : "—"}</td>
-                            <td className="px-3 py-2.5 text-slate-600">{v.weight != null ? v.weight : "—"}</td>
-                            <td className="px-3 py-2.5">
-                              <span className={`inline-flex rounded-full px-2.5 py-1 font-bold ring-1 ${statusBadge(v.status)}`}>
-                                {v.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+{patient.paymentPlan && (
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Vital Records</h3>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                      {vitalRecords.length} record{vitalRecords.length !== 1 ? "s" : ""}
+                    </span>
                   </div>
-                )}
-              </div>
-
-              {/* ── 4. Previous Prescriptions ────────────────────────────── */}
-              <div className="p-6 space-y-4">
+                  {vitalRecords.length === 0 ? (
+                    <p className="rounded-xl bg-slate-50 px-4 py-4 text-sm italic text-slate-400 text-center">
+                      No vital records have been recorded yet.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="min-w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 text-left">
+                            {["Date", "Blood Pressure", "Heart Rate", "Temp (°C)", "O₂ Sat", "Weight (kg)", "Status"].map((h) => (
+                              <th key={h} className="px-3 py-2.5 font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {vitalRecords.map((v) => (
+                            <tr key={v.id} className="hover:bg-slate-50/70 transition">
+                              <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
+                                {new Date(v.recordedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-600">{v.bloodPressure ?? "—"}</td>
+                              <td className="px-3 py-2.5 text-slate-600">{v.heartRate != null ? `${v.heartRate} bpm` : "—"}</td>
+                              <td className="px-3 py-2.5 text-slate-600">{v.temperature != null ? v.temperature : "—"}</td>
+                              <td className="px-3 py-2.5 text-slate-600">{v.oxygenSaturation != null ? `${v.oxygenSaturation}%` : "—"}</td>
+                              <td className="px-3 py-2.5 text-slate-600">{v.weight != null ? v.weight : "—"}</td>
+                              <td className="px-3 py-2.5">
+                                <span className={`inline-flex rounded-full px-2.5 py-1 font-bold ring-1 ${statusBadge(v.status)}`}>
+                                  {v.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+<div className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Previous Prescriptions
-                  </h3>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Previous Prescriptions</h3>
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
                     {prescriptions.length} prescription{prescriptions.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-
                 {prescriptions.length === 0 ? (
                   <p className="rounded-xl bg-slate-50 px-4 py-4 text-sm italic text-slate-400 text-center">
                     No previous prescriptions on record.
@@ -590,7 +766,6 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                       const isOpen = openRx === rx.id;
                       return (
                         <div key={rx.id} className="rounded-2xl border border-slate-200 overflow-hidden">
-                          {/* Prescription header — clickable to expand */}
                           <button
                             type="button"
                             onClick={() => setOpenRx(isOpen ? null : rx.id)}
@@ -605,13 +780,9 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                                   {rx.diagnosis ?? "Prescription"}
                                 </p>
                                 <p className="text-xs text-slate-400">
-                                  {new Date(rx.issuedDate).toLocaleDateString("en-GB", {
-                                    day: "2-digit", month: "short", year: "numeric",
-                                  })}
+                                  {new Date(rx.issuedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                                   {" · "}
-                                  {rx.doctor?.user?.fullName
-                                    ? `Dr. ${rx.doctor.user.fullName}`
-                                    : "Unknown Doctor"}
+                                  {rx.doctor?.user?.fullName ? `Dr. ${rx.doctor.user.fullName}` : "Unknown Doctor"}
                                   {rx.doctor?.specialization && (
                                     <span className="text-slate-300"> · {rx.doctor.specialization}</span>
                                   )}
@@ -630,8 +801,6 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                                 : <IconChevronDown className="h-4 w-4 text-slate-400" />}
                             </div>
                           </button>
-
-                          {/* Expanded medicine list */}
                           {isOpen && (
                             <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4 pt-3 space-y-3">
                               {rx.notes && (
@@ -639,32 +808,31 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                                   <span className="font-bold">Notes: </span>{rx.notes}
                                 </p>
                               )}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {rx.medicines.map((med, mi) => (
-                                  <div
-                                    key={mi}
-                                    className="rounded-xl bg-white px-3 py-2.5 ring-1 ring-slate-200 space-y-0.5"
-                                  >
-                                    <p className="text-sm font-bold text-slate-800">{med.medicineName}</p>
-                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                                      <span>
-                                        <span className="font-semibold text-slate-600">Dose:</span>{" "}
-                                        {med.dosage}
-                                      </span>
-                                      <span>
-                                        <span className="font-semibold text-slate-600">Freq:</span>{" "}
-                                        {med.frequency}
-                                      </span>
-                                      <span>
-                                        <span className="font-semibold text-slate-600">Duration:</span>{" "}
-                                        {med.durationDays} day{med.durationDays !== 1 ? "s" : ""}
-                                      </span>
-                                    </div>
-                                    {med.instructions && (
-                                      <p className="text-[11px] italic text-slate-400">{med.instructions}</p>
-                                    )}
-                                  </div>
-                                ))}
+                              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="min-w-full text-xs bg-white">
+                                  <thead>
+                                    <tr className="bg-slate-50 text-left border-b border-slate-200">
+                                      {["Medicine", "Dosage", "Frequency", "Duration", "Instructions"].map((h) => (
+                                        <th key={h} className="px-3 py-2 font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+                                          {h}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {rx.medicines.map((med, mi) => (
+                                      <tr key={mi} className="hover:bg-slate-50/60 transition">
+                                        <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{med.medicineName}</td>
+                                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{med.dosage}</td>
+                                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{med.frequency}</td>
+                                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{med.durationDays}d</td>
+                                        <td className="px-3 py-2 text-slate-400 italic">
+                                          {med.instructions?.trim() || <span className="text-slate-300 not-italic">—</span>}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           )}
@@ -678,7 +846,6 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
           )}
         </div>
 
-        {/* Footer close button */}
         <div className="border-t border-slate-100 px-6 py-4 flex justify-end">
           <button
             type="button"
@@ -693,13 +860,12 @@ const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
   );
 };
 
-// ─── Slot Group Card ──────────────────────────────────────────────────────────
 
 interface SlotGroup {
-  slotId:    string;
-  date:      string;
-  startTime: string;
-  endTime:   string;
+  slotId:       string;
+  date:         string;
+  startTime:    string;
+  endTime:      string;
   appointments: Appointment[];
 }
 
@@ -707,12 +873,12 @@ interface SlotCardProps {
   group:           SlotGroup;
   onPrescribe:     (appt: Appointment) => void;
   onViewHistory:   (appt: Appointment) => void;
-  onConfirm:       (appt: Appointment) => void;
+  onCancelAppt:    (appt: Appointment) => void;
   localPrescribed: Set<string>;
-  confirming:      string | null;
+  cancellingId:    string | null;
 }
 
-const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, onConfirm, localPrescribed, confirming }) => {
+const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, onCancelAppt, localPrescribed, cancellingId }) => {
   const [expanded, setExpanded] = useState(true);
   const total  = group.appointments.length;
   const isPast = new Date(`${group.date}T${group.endTime}:00`) < new Date();
@@ -746,10 +912,8 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
             </p>
           </div>
         </div>
-
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
-            <IconUserCheck className="h-3.5 w-3.5" />
             {total} patient{total !== 1 ? "s" : ""}
           </span>
           {expanded
@@ -761,7 +925,6 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
       {expanded && (
         <div className="border-t border-slate-100">
           {group.appointments.map((appt, idx) => {
-            const isPending  = appt.status === "pending";
             const prescribed = !!appt.prescriptionId || localPrescribed.has(appt.id);
             return (
               <div
@@ -770,7 +933,6 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
                   idx < group.appointments.length - 1 ? "border-b border-slate-100" : ""
                 } hover:bg-slate-50/60 transition`}
               >
-                {/* Patient info */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-slate-100">
                     <IconUser className="h-4 w-4 text-slate-500" />
@@ -784,10 +946,7 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
                         <span className="font-medium text-slate-600">{appt.patient.age} yrs</span>
                       )}
                       {appt.patient?.gender && (
-                        <>
-                          <span className="text-slate-300">·</span>
-                          <span>{appt.patient.gender}</span>
-                        </>
+                        <><span className="text-slate-300">·</span><span>{appt.patient.gender}</span></>
                       )}
                       {appt.patient?.bloodGroup && (
                         <>
@@ -801,20 +960,13 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
                   </div>
                 </div>
 
-                {/* Booked by */}
                 <div className="hidden sm:block min-w-0">
                   <p className="text-xs font-semibold text-slate-500">Booked by</p>
-                  <p className="text-sm text-slate-700 truncate">
-                    {appt.familyMember?.user?.fullName ?? "—"}
-                  </p>
-                  <p className="text-xs text-slate-400 truncate">
-                    {appt.familyMember?.user?.email ?? ""}
-                  </p>
+                  <p className="text-sm text-slate-700 truncate">{appt.familyMember?.user?.fullName ?? "—"}</p>
+                  <p className="text-xs text-slate-400 truncate">{appt.familyMember?.user?.email ?? ""}</p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                  {/* View Medical History — always visible */}
                   <button
                     type="button"
                     onClick={() => onViewHistory(appt)}
@@ -824,26 +976,12 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
                     Medical History
                   </button>
 
-                  {/* Pending → Confirm; Confirmed → Prescribe */}
-                  {isPending ? (
-                    <button
-                      type="button"
-                      onClick={() => onConfirm(appt)}
-                      disabled={confirming === appt.id}
-                      className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-600 active:scale-95 disabled:opacity-60 transition"
-                    >
-                      <IconUserCheck className="h-3.5 w-3.5" />
-                      {confirming === appt.id ? "Confirming…" : "Confirm"}
-                    </button>
-                  ) : prescribed ? (
+                  {prescribed ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                      <IconCheckCircle className="h-3.5 w-3.5" /> Prescribed
+                      <IconCheckCircle className="h-3.5 w-3.5" /> Completed
                     </span>
                   ) : (
                     <>
-                      <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-600 ring-1 ring-amber-100">
-                        Not Prescribed
-                      </span>
                       <button
                         type="button"
                         onClick={() => onPrescribe(appt)}
@@ -851,6 +989,17 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
                       >
                         <IconFileText className="h-3.5 w-3.5" />
                         Prescribe
+                      </button>
+                      <button
+                        type="button"
+                        disabled={cancellingId === appt.id}
+                        onClick={() => onCancelAppt(appt)}
+                        className="flex items-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-200 disabled:opacity-50 active:scale-95 transition"
+                      >
+                        {cancellingId === appt.id
+                          ? <IconSpinner className="h-3.5 w-3.5 animate-spin" />
+                          : <IconBan className="h-3.5 w-3.5" />}
+                        Cancel
                       </button>
                     </>
                   )}
@@ -864,7 +1013,6 @@ const SlotCard: React.FC<SlotCardProps> = ({ group, onPrescribe, onViewHistory, 
   );
 };
 
-// ─── Toast hook ───────────────────────────────────────────────────────────────
 
 interface Toast { id: number; msg: string; kind: "success" | "error" }
 
@@ -878,16 +1026,15 @@ const useToast = () => {
   return { toasts, add };
 };
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 const DoctorAppointments: React.FC = () => {
-  const [appointments, setAppointments]       = useState<Appointment[]>([]);
-  const [loading, setLoading]                 = useState(true);
-  const [error, setError]                     = useState<string | null>(null);
-  const [prescribeAppt, setPrescribeAppt]     = useState<Appointment | null>(null);
-  const [historyAppt, setHistoryAppt]         = useState<Appointment | null>(null);
-  const [localPrescribed, setLocalPrescribed] = useState<Set<string>>(new Set());
-  const [confirming, setConfirming]           = useState<string | null>(null);
+  const [appointments,     setAppointments]     = useState<Appointment[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [error,            setError]            = useState<string | null>(null);
+  const [prescribeAppt,    setPrescribeAppt]    = useState<Appointment | null>(null);
+  const [historyAppt,      setHistoryAppt]      = useState<Appointment | null>(null);
+  const [localPrescribed,  setLocalPrescribed]  = useState<Set<string>>(new Set());
+  const [cancellingId,     setCancellingId]     = useState<string | null>(null);
 
   const { toasts, add: addToast } = useToast();
 
@@ -905,28 +1052,14 @@ const DoctorAppointments: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleConfirm = useCallback(async (appt: Appointment) => {
-    setConfirming(appt.id);
-    try {
-      await updateAppointmentStatusDoctor(appt.id, "confirmed" as any);
-      setAppointments((prev) =>
-        prev.map((a) => a.id === appt.id ? { ...a, status: "confirmed" as const } : a),
-      );
-      addToast("Appointment confirmed successfully.", "success");
-    } catch (e: any) {
-      addToast(e.message ?? "Failed to confirm appointment.", "error");
-    } finally {
-      setConfirming(null);
-    }
-  }, [addToast]);
-
   const slotGroups = useMemo<SlotGroup[]>(() => {
-    // Show both pending (awaiting doctor confirmation) and confirmed appointments
     const active = appointments.filter(
-      (a) => a.status === "pending" || a.status === "confirmed",
+      (a) =>
+
+      //FIX: include "pending" — the primary active status after payment (card or bank-transfer approved).
+      a.status === "pending" || a.status === "confirmed",
     );
     const map = new Map<string, SlotGroup>();
-
     for (const appt of active) {
       const sid = appt.slotId;
       if (!map.has(sid)) {
@@ -940,7 +1073,6 @@ const DoctorAppointments: React.FC = () => {
       }
       map.get(sid)!.appointments.push(appt);
     }
-
     return Array.from(map.values()).sort((a, b) =>
       `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`),
     );
@@ -949,7 +1081,6 @@ const DoctorAppointments: React.FC = () => {
   const now            = new Date();
   const upcomingGroups = slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) >= now);
   const pastGroups     = slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) < now);
-  const totalPending   = appointments.filter((a) => a.status === "pending").length;
 
   const handlePrescriptionCreated = useCallback(
     (prescriptionId: string, appointmentId: string) => {
@@ -966,7 +1097,24 @@ const DoctorAppointments: React.FC = () => {
     [addToast],
   );
 
-  // ── Render states ─────────────────────────────────────────────────────────
+  const handleCancelAppointment = useCallback(
+    async (appt: Appointment) => {
+      if (!window.confirm(`Cancel appointment for ${appt.patient?.fullName ?? "this patient"}?`)) return;
+      setCancellingId(appt.id);
+      try {
+        await updateAppointmentStatusDoctor(appt.id, "cancelled");
+        setAppointments((prev) =>
+          prev.map((a) => a.id === appt.id ? { ...a, status: "cancelled" as const } : a),
+        );
+        addToast("Appointment cancelled.", "success");
+      } catch (e: any) {
+        addToast(e.message ?? "Failed to cancel appointment.", "error");
+      } finally {
+        setCancellingId(null);
+      }
+    },
+    [addToast],
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
@@ -986,50 +1134,31 @@ const DoctorAppointments: React.FC = () => {
     </div>
   );
 
-  const totalConfirmed = appointments.filter((a) => a.status === "confirmed").length;
-
   return (
     <div className="space-y-7">
-      {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Patient bookings grouped by slot — confirm pending patients or prescribe for confirmed ones
+            Patient bookings grouped by slot — prescribe to complete appointments
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {totalPending > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Pending</p>
-              <p className="text-2xl font-extrabold text-amber-700">{totalPending}</p>
-            </div>
-          )}
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Confirmed</p>
-            <p className="text-2xl font-extrabold text-emerald-700">{totalConfirmed}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Slots</p>
-            <p className="text-2xl font-extrabold text-slate-700">{slotGroups.length}</p>
-          </div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Slots</p>
+          <p className="text-2xl font-extrabold text-slate-700">{slotGroups.length}</p>
         </div>
       </div>
 
-      {/* Empty state */}
       {slotGroups.length === 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white py-20 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
             <IconActivity className="h-7 w-7 text-slate-400" />
           </div>
-          <p className="text-sm font-semibold text-slate-600">No confirmed appointments yet</p>
-          <p className="mt-1 text-xs text-slate-400">
-            Confirmed patient bookings will appear here, grouped by slot
-          </p>
+          <p className="text-sm font-semibold text-slate-600">No appointments yet</p>
+          <p className="mt-1 text-xs text-slate-400">Patient bookings will appear here, grouped by slot</p>
         </div>
       )}
 
-      {/* Upcoming slots */}
       {upcomingGroups.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -1044,15 +1173,14 @@ const DoctorAppointments: React.FC = () => {
               group={group}
               onPrescribe={setPrescribeAppt}
               onViewHistory={setHistoryAppt}
-              onConfirm={handleConfirm}
+              onCancelAppt={handleCancelAppointment}
               localPrescribed={localPrescribed}
-              confirming={confirming}
+              cancellingId={cancellingId}
             />
           ))}
         </section>
       )}
 
-      {/* Past slots */}
       {pastGroups.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -1067,15 +1195,14 @@ const DoctorAppointments: React.FC = () => {
               group={group}
               onPrescribe={setPrescribeAppt}
               onViewHistory={setHistoryAppt}
-              onConfirm={handleConfirm}
+              onCancelAppt={handleCancelAppointment}
               localPrescribed={localPrescribed}
-              confirming={confirming}
+              cancellingId={cancellingId}
             />
           ))}
         </section>
       )}
 
-      {/* Prescription modal */}
       {prescribeAppt && (
         <PrescribeModal
           appointment={prescribeAppt}
@@ -1084,7 +1211,6 @@ const DoctorAppointments: React.FC = () => {
         />
       )}
 
-      {/* Medical History modal */}
       {historyAppt && (
         <MedicalHistoryModal
           patientId={historyAppt.patientId}
@@ -1093,7 +1219,6 @@ const DoctorAppointments: React.FC = () => {
         />
       )}
 
-      {/* Toast notifications */}
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map((t) => (
           <div
