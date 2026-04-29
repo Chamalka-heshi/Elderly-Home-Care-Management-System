@@ -33,11 +33,13 @@ interface PrescriptionEmailOpts {
   familyMemberName: string;
   patientName:      string;
   doctorName:       string;
-  issuedDate:       string;
-  validUntil?:      string;
-  diagnosis?:       string;
-  notes?:           string;
-  medicines:        MedicineItem[];
+  prescriptions: {
+    issuedDate:       string;
+    validUntil?:      string;
+    diagnosis?:       string;
+    notes?:           string;
+    medicines:        MedicineItem[];
+  }[];
 }
 
 @Injectable()
@@ -57,9 +59,7 @@ export class MailService implements OnModuleInit {
     });
   }
 
-  // SMTP Configuration
-
-  // Verifies the mail server connectivity during the application initialization phase to ensure reliable notification delivery.
+  // Verifies mail server connectivity at startup to ensure notification reliability
   async onModuleInit(): Promise<void> {
     try {
       await this.transporter.verify();
@@ -91,14 +91,12 @@ export class MailService implements OnModuleInit {
     return err instanceof Error ? err.message : String(err);
   }
 
-  // Message Dispatchers
-
-  // Dispatches raw email payloads using the pre-configured transporter, providing a generic entry point for custom notifications.
+  // Provides a generic entry point for dispatching custom email payloads
   async sendMail(options: nodemailer.SendMailOptions): Promise<void> {
     await this.transporter.sendMail(options);
   }
 
-  // Notifies newly registered users of their role-specific access credentials and provides a direct link to the login portal.
+  // Delivers login access to new users to enable immediate system onboarding
   async sendAccountCredentials(
     email:             string,
     fullName:          string,
@@ -120,7 +118,7 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  // Delivers one-time temporary passwords to users who have initiated a recovery request through the forgot-password flow.
+  // Safely transmits temporary recovery passwords to locked-out users
   async sendPasswordResetEmail(
     email:        string,
     fullName:     string,
@@ -142,7 +140,7 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  // Automates responses to user inquiries, ensuring consistent communication and maintaining a record of the original message.
+  // Automates formal administrative responses to user inquiries
   async sendReplyEmail(
     recipientName:  string,
     recipientEmail: string,
@@ -166,7 +164,7 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  // Informs family members of new clinical instructions and medication orders issued for their associated elderly patients.
+  // Informs family members of clinical updates to ensure medication compliance
   async sendPrescriptionNotification(opts: PrescriptionEmailOpts & { to: string }): Promise<void> {
     const html = this.buildPrescriptionHtml(opts);
 
@@ -183,9 +181,7 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  // HTML Templates
-
-  // Generates a secure, branded HTML layout for delivering temporary recovery credentials to users.
+  // Generates a branded HTML layout for delivering temporary recovery credentials
   private buildPasswordResetHtml(opts: PasswordResetEmailOpts): string {
     const { fullName, email, tempPassword } = opts;
     const year = new Date().getFullYear();
@@ -247,7 +243,7 @@ export class MailService implements OnModuleInit {
 </html>`;
   }
 
-  // Constructs a welcoming HTML template that includes initial login credentials for newly created staff or family accounts.
+  // Constructs a welcoming template with initial login credentials for new accounts
   private buildCredentialsHtml(opts: CredentialsEmailOpts): string {
     const { fullName, email, role, temporaryPassword } = opts;
     const year = new Date().getFullYear();
@@ -311,89 +307,58 @@ export class MailService implements OnModuleInit {
 </html>`;
   }
 
-  // Formats a detailed medical prescription layout to ensure medication schedules and dosages are presented clearly to family members.
+  // Formats a detailed clinical instruction layout for clear presentation to family members
   private buildPrescriptionHtml(opts: PrescriptionEmailOpts): string {
     const {
       familyMemberName, patientName, doctorName,
-      issuedDate, validUntil, diagnosis, notes, medicines,
+      prescriptions,
     } = opts;
     const year = new Date().getFullYear();
 
-    const medicineRows = medicines.map((m) => `
-      <tr>
-        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;font-weight:600;">${m.medicineName}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.dosage}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.frequency}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#64748b;">${m.instructions ?? '—'}</td>
-      </tr>`).join('');
-
-    const diagnosisBlock = diagnosis ? `
-      <tr>
-        <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Diagnosis</td>
-        <td style="padding:10px 0;font-size:15px;color:#0f172a;">${diagnosis}</td>
-      </tr>` : '';
-
-    const notesBlock = notes ? `
-      <tr>
-        <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;vertical-align:top;">Notes</td>
-        <td style="padding:10px 0;font-size:15px;color:#0f172a;line-height:1.6;">${notes.replace(/\n/g, '<br>')}</td>
-      </tr>` : '';
-
-    const validUntilBlock = validUntil ? `
-      <tr>
-        <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Valid Until</td>
-        <td style="padding:10px 0;font-size:15px;color:#0f172a;">${validUntil}</td>
-      </tr>` : '';
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>New Prescription — ${this.systemName}</title>
-</head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:600px;">
+    const prescriptionBlocks = prescriptions.map((p, index) => {
+      const medicineRows = p.medicines.map((m) => `
         <tr>
-          <td style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-.5px;">🏥 ${this.systemName}</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,.85);font-size:14px;">New Prescription Issued</p>
-          </td>
-        </tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;font-weight:600;">${m.medicineName}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.dosage}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.frequency}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#64748b;">${m.instructions ?? '—'}</td>
+        </tr>`).join('');
+
+      const diagnosisBlock = p.diagnosis ? `
         <tr>
-          <td style="padding:32px 40px 0;">
-            <p style="margin:0 0 8px;font-size:16px;color:#0f172a;">Dear <strong>${familyMemberName}</strong>,</p>
-            <p style="margin:0;font-size:15px;color:#475569;line-height:1.7;">Dr. <strong>${doctorName}</strong> has issued a new prescription for <strong>${patientName}</strong>. Please find the full details below.</p>
-          </td>
-        </tr>
+          <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Diagnosis</td>
+          <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.diagnosis}</td>
+        </tr>` : '';
+
+      const notesBlock = p.notes ? `
+        <tr>
+          <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;vertical-align:top;">Notes</td>
+          <td style="padding:10px 0;font-size:15px;color:#0f172a;line-height:1.6;">${p.notes.replace(/\n/g, '<br>')}</td>
+        </tr>` : '';
+
+      const validUntilBlock = p.validUntil ? `
+        <tr>
+          <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Valid Until</td>
+          <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.validUntil}</td>
+        </tr>` : '';
+
+      return `
         <tr>
           <td style="padding:24px 40px 0;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
+            <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">📝 Prescription ${prescriptions.length > 1 ? `#${index + 1}` : ''}</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:16px;">
               <tr>
-                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Patient</td>
-                <td style="padding:10px 0;font-size:15px;color:#0f172a;font-weight:600;">${patientName}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Doctor</td>
-                <td style="padding:10px 0;font-size:15px;color:#0f172a;">Dr. ${doctorName}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Issued Date</td>
-                <td style="padding:10px 0;font-size:15px;color:#0f172a;">${issuedDate}</td>
+                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Issued Date</td>
+                <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.issuedDate}</td>
               </tr>
               ${validUntilBlock}
               ${diagnosisBlock}
               ${notesBlock}
             </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px 40px 0;">
+            
             <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;">💊 Prescribed Medicines</p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;border-collapse:collapse;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;border-collapse:collapse;margin-bottom:16px;">
               <thead>
                 <tr style="background:#f1f5f9;">
                   <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Medicine</th>
@@ -407,12 +372,53 @@ export class MailService implements OnModuleInit {
             </table>
           </td>
         </tr>
+      `;
+    }).join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Active Prescriptions Update — ${this.systemName}</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:600px;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:32px 40px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-.5px;">🏥 ${this.systemName}</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,.85);font-size:14px;">Active Prescriptions Update</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px 0;">
+            <p style="margin:0 0 8px;font-size:16px;color:#0f172a;">Dear <strong>${familyMemberName}</strong>,</p>
+            <p style="margin:0;font-size:15px;color:#475569;line-height:1.7;">Dr. <strong>${doctorName}</strong> has updated the prescriptions for <strong>${patientName}</strong>. Please find the full details of all active prescriptions below.</p>
+          </td>
+        </tr>
         <tr>
           <td style="padding:24px 40px 0;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
               <tr>
-                <td style="padding:14px 18px;font-size:13px;color:#1e40af;line-height:1.6;">
-                  ℹ️ You can view this prescription at any time by logging into your <a href="${this.appUrl}" style="color:#2563eb;font-weight:600;">family member dashboard</a>. If you have any questions, please contact the clinic directly.
+                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Patient</td>
+                <td style="padding:10px 0;font-size:15px;color:#0f172a;font-weight:600;">${patientName}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Doctor</td>
+                <td style="padding:10px 0;font-size:15px;color:#0f172a;">Dr. ${doctorName}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        ${prescriptionBlocks}
+        <tr>
+          <td style="padding:24px 40px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 18px;font-size:13px;color:#065f46;line-height:1.6;">
+                  ℹ️ You can view these prescriptions at any time by logging into your <a href="${this.appUrl}" style="color:#059669;font-weight:600;">family member dashboard</a>. If you have any questions, please contact the clinic directly.
                 </td>
               </tr>
             </table>
@@ -430,7 +436,7 @@ export class MailService implements OnModuleInit {
 </html>`;
   }
 
-  // Generates a professional reply template that quotes the user's original inquiry to provide clear context for the administrative response.
+  // Generates a professional reply template that quotes the user's original inquiry for context
   private buildReplyHtml(opts: ReplyEmailOpts): string {
     const { recipientName, reply, originalMsg, phonePrimary, systemEmail } = opts;
     const safeReply = reply.replace(/\n/g, '<br>');
@@ -449,7 +455,7 @@ export class MailService implements OnModuleInit {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:600px;">
         <tr>
-          <td style="background:#2563eb;padding:28px 40px;text-align:center;">
+          <td style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:28px 40px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:.5px;">🏥 ${this.systemName}</h1>
           </td>
         </tr>
@@ -459,8 +465,8 @@ export class MailService implements OnModuleInit {
             <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">Thank you for contacting us. Our team has reviewed your enquiry and provided the following response:</p>
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:6px;padding:20px 24px;">
-                  <p style="margin:0;font-size:15px;line-height:1.6;color:#1e3a5f;">${safeReply}</p>
+                <td style="background:#ecfdf5;border-left:4px solid #059669;border-radius:6px;padding:20px 24px;">
+                  <p style="margin:0;font-size:15px;line-height:1.6;color:#065f46;">${safeReply}</p>
                 </td>
               </tr>
             </table>
@@ -479,7 +485,7 @@ export class MailService implements OnModuleInit {
                 <td style="padding:4px 0;font-size:14px;color:#374151;">📞 <strong>${phonePrimary}</strong></td>
               </tr>
               <tr>
-                <td style="padding:4px 0;font-size:14px;color:#374151;">✉️ <a href="mailto:${systemEmail}" style="color:#2563eb;text-decoration:none;">${systemEmail}</a></td>
+                <td style="padding:4px 0;font-size:14px;color:#374151;">✉️ <a href="mailto:${systemEmail}" style="color:#059669;text-decoration:none;">${systemEmail}</a></td>
               </tr>
             </table>
             <p style="margin:32px 0 0;font-size:14px;color:#374151;">Warm regards,<br><strong>${this.systemName} Team</strong></p>

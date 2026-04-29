@@ -26,11 +26,11 @@ export class PatientsService {
     private prescriptionRepository: Repository<Prescription>,
   ) {}
 
+//Registers a new patient under a family member's oversight while enforcing unique identity constraints
   async create(
     familyMemberId: string,
     createPatientDto: CreatePatientDto,
   ): Promise<Patient> {
-    // Verify family member exists
     const fm = await this.familyMemberRepository.findOne({ where: { id: familyMemberId } });
     if (!fm) throw new NotFoundException('Family member not found');
 
@@ -44,7 +44,7 @@ export class PatientsService {
     } catch (err: any) {
       if (
         err instanceof QueryFailedError &&
-        (err as any).code === '23505' // Postgres unique_violation
+        (err as any).code === '23505' 
       ) {
         throw new ConflictException(
           'A patient with this NIC number already exists. Please check the NIC and try again.',
@@ -54,6 +54,7 @@ export class PatientsService {
     }
   }
 
+//Retrieves all patients associated with a specific family account for localized management
   async findAllByFamily(familyMemberId: string): Promise<Patient[]> {
     return this.patientsRepository.find({
       where: { familyMemberId },
@@ -61,6 +62,7 @@ export class PatientsService {
     });
   }
 
+//Returns granular details for a single patient to support clinical and administrative reviews
   async findOne(id: string): Promise<Patient> {
     const patient = await this.patientsRepository.findOne({
       where: { id },
@@ -71,7 +73,7 @@ export class PatientsService {
     return patient;
   }
 
-  /** Find a patient by id and verify it belongs to the given family member. */
+//Ensures a patient record belongs to the requesting family member to enforce data ownership boundaries
   async findOneByFamily(id: string, familyMemberId: string): Promise<Patient> {
     const patient = await this.patientsRepository.findOne({
       where: { id, familyMemberId },
@@ -80,6 +82,7 @@ export class PatientsService {
     return patient;
   }
 
+//Permits family members to modify patient details while maintaining strict ownership verification
   async update(
     id: string,
     familyMemberId: string,
@@ -95,6 +98,7 @@ export class PatientsService {
     return this.findOne(id);
   }
 
+//Removes a patient record from the system after verifying the requesting user's authorization
   async delete(id: string, familyMemberId: string): Promise<void> {
     const patient = await this.findOne(id);
 
@@ -105,6 +109,7 @@ export class PatientsService {
     await this.patientsRepository.delete(id);
   }
 
+//Provides a global view of all system patients for administrative oversight and reporting
   async findAll(): Promise<Patient[]> {
     return this.patientsRepository.find({
       relations: ['familyMember'],
@@ -112,22 +117,12 @@ export class PatientsService {
     });
   }
 
-  /** Caregiver-facing: only patients whose family has selected a payment plan */
-  async findAllWithPaymentPlan(): Promise<Patient[]> {
-    return this.patientsRepository.find({
-      where: { paymentPlan: Not(IsNull()) },
-      relations: ['familyMember'],
-      order: { createdAt: 'DESC' },
-    });
-  }
-
-  /** Family member selects or changes the payment plan for a patient they own */
+//Updates the financial coverage level for a patient to unlock advanced care features
   async setPaymentPlan(
     patientId: string,
     familyMemberUserId: string,
     plan: string,
   ): Promise<Patient> {
-    // resolve family member record from user id
     const fm = await this.familyMemberRepository.findOne({
       where: { user: { id: familyMemberUserId } },
       relations: ['user'],
@@ -138,11 +133,7 @@ export class PatientsService {
     return this.patientsRepository.save(patient);
   }
 
-  /**
-   * GET /patients/:id/medical-history
-   * Returns: patient details + vital records + all prescriptions for a patient.
-   * Accessible by DOCTOR role.
-   */
+//Aggregates clinical records and medication history to provide doctors with a complete patient overview
   async getMedicalHistory(patientId: string): Promise<{
     patient: Patient;
     vitalRecords: VitalRecord[];

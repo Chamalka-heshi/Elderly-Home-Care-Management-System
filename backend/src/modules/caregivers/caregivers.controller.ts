@@ -22,29 +22,6 @@ export class CaregiversController {
    * GET /caregivers/me
    * Returns the full caregiver profile for the currently logged-in caregiver.
    */
-  @Get('me')
-  @Roles(UserRole.CAREGIVER)
-  async getMe(@Request() req: any) {
-    const caregiver = await this.caregiversService.findByUserId(req.user.id);
-    if (!caregiver) {
-      return { message: 'Caregiver profile not found' };
-    }
-    return {
-      id:              caregiver.id,
-      fullName:        caregiver.user.fullName,
-      email:           caregiver.user.email,
-      contactNumber:   caregiver.user.contactNumber,
-      nic:             caregiver.nic,
-      address:         caregiver.address,
-      qualification:   caregiver.qualification,
-      experienceYears: caregiver.experienceYears,
-      specializations: caregiver.specializations  ?? [],
-      availableShifts: caregiver.availableShifts  ?? [],
-      emergencyContact:caregiver.emergencyContact,
-      isActive:        caregiver.user.isActive,
-      createdAt:       caregiver.user.createdAt,
-    };
-  }
 
   /**
    * PATCH /caregivers/profile
@@ -82,22 +59,4 @@ export class CaregiversController {
    * Returns all active caregivers.
    * Used by admin and doctors to list caregivers.
    */
-  @Get()
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR)
-  async findAll() {
-    const caregivers = await this.caregiversService.findAllActive();
-    return {
-      caregivers: caregivers.map((c) => ({
-        id:              c.id,
-        fullName:        c.user.fullName,
-        email:           c.user.email,
-        contactNumber:   c.user.contactNumber,
-        specializations: c.specializations  ?? [],
-        availableShifts: c.availableShifts  ?? [],
-        experienceYears: c.experienceYears  ?? 0,
-        isActive:        c.user.isActive,
-      })),
-      total: caregivers.length,
-    };
-  }
 }

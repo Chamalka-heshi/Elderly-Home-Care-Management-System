@@ -16,54 +16,22 @@ import { UserRole }        from '../../common/enums/user-role.enum';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
-  /** GET /patients/assigned — patients for caregiver */
-  /**
-   * GET /patients/assigned
-   * MUST be declared BEFORE GET :id so NestJS does not treat "assigned" as a UUID.
-   *
-   * PHASE 1 (current): Returns ALL patients so caregivers can work with everyone.
-   * PHASE 2 (after payments module is live): Replace findAll() below with
-   *   findAllWithPaymentPlan() so only patients on an active plan are returned.
-   */
+//Surfaces patients for caregivers to enable routine check-ins and clinical monitoring
   @Get('assigned')
   @Roles(UserRole.CAREGIVER)
   async findAssigned() {
-    // TODO Phase 2: switch to this.patientsService.findAllWithPaymentPlan()
     const patients = await this.patientsService.findAll();
     return { patients, total: patients.length };
   }
 
-  /**
-   * GET /patients/:id/medical-history
-   * MUST be declared BEFORE GET :id so NestJS does not treat the literal path as a UUID.
-   * Returns full patient details + vital records + prescriptions for that patient.
-   * Accessible by DOCTOR role.
-   */
+//Provides a consolidated medical timeline to assist doctors in clinical decision-making
   @Get(':id/medical-history')
   @Roles(UserRole.DOCTOR, UserRole.ADMIN)
   async getMedicalHistory(@Param('id', ParseUUIDPipe) id: string) {
     return this.patientsService.getMedicalHistory(id);
   }
 
-  /** GET /patients/:id — single patient */
-  @Get(':id')
-  @Roles(UserRole.FAMILY, UserRole.DOCTOR, UserRole.CAREGIVER, UserRole.ADMIN)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.patientsService.findOne(id);
-  }
-
-  /** GET /patients — all patients (admin / doctor / caregiver) */
-  @Get()
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.CAREGIVER)
-  async findAll() {
-    const patients = await this.patientsService.findAll();
-    return { patients, total: patients.length };
-  }
-
-  /**
-   * POST /patients/:id/plan
-   * Family member selects a payment plan for one of their patients.
-   */
+//Enables family members to subscribe patients to specialized care plans for advanced clinical access
   @Post(':id/plan')
   @Roles(UserRole.FAMILY)
   async selectPlan(

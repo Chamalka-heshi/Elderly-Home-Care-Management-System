@@ -62,6 +62,18 @@ export class CreatePatientDto {
 
   @IsOptional()
   @IsString()
+  drugAllergies?: string;
+
+  @IsOptional()
+  @IsString()
+  foodAllergies?: string;
+
+  @IsOptional()
+  @IsString()
+  environmentalAllergies?: string;
+
+  @IsOptional()
+  @IsString()
   currentMedications?: string;
 
   @IsOptional()

@@ -54,6 +54,15 @@ export class Patient {
   allergies: string;
 
   @Column({ type: 'text', nullable: true })
+  drugAllergies: string;
+
+  @Column({ type: 'text', nullable: true })
+  foodAllergies: string;
+
+  @Column({ type: 'text', nullable: true })
+  environmentalAllergies: string;
+
+  @Column({ type: 'text', nullable: true })
   currentMedications: string;
 
   @Column({ type: 'text', nullable: true })

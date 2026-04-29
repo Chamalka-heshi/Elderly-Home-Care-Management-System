@@ -52,9 +52,7 @@ export class ChannelingSlotService {
     private readonly doctorRepo: Repository<Doctor>,
   ) {}
 
-  // Slot Creation
-
-  // Validates doctor activity, scheduling quotas, and time overlaps before proposing a new consultation window.
+//Validates doctor activity, scheduling quotas, and time overlaps before proposing a new consultation window
   async create(dto: CreateChannelingSlotDto): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({
       where: { id: dto.doctorId },
@@ -116,9 +114,7 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  // Doctor Management
-
-  // Moves a proposed slot into the active pool, signaling the doctor's commitment to the scheduled time.
+//Moves a proposed slot into the active pool to signal clinician availability for patient bookings
   async acceptSlot(id: string, userId: string): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -131,7 +127,7 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  // Rejects a proposed slot, indicating the doctor is unavailable for the system-generated window.
+//Declines a proposed slot to indicate the clinician is unavailable for the system-generated window
   async rejectSlot(id: string, userId: string): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -144,7 +140,7 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  // Permits doctors to override their base fee for a specific session to account for special procedures or complexity.
+//Permits doctors to override their base fee for specific sessions based on clinical complexity
   async updateDoctorSlotFee(
     slotId: string,
     userId: string,
@@ -160,10 +156,26 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  // Administrative Control
+//Marks active slots as completed once their start time is reached to maintain system accuracy
+  async autoCompletePassedSlots(): Promise<void> {
+    await this.slotRepo.query(`
+      UPDATE channeling_slots
+      SET    status = 'completed'
+      WHERE  status = 'active'
+      AND (
+        "date" < CURRENT_DATE
+        OR (
+          "date" = CURRENT_DATE
+          AND start_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+        )
+      )
+    `);
+  }
 
-  // Retrieves all system slots with associated doctor profiles for management and scheduling oversight.
+//Retrieves all platform slots for administrative oversight and operational reporting
   async findAll(query: QueryChannelingSlotsDto): Promise<{ slots: ChannelingSlot[]; total: number }> {
+    await this.autoCompletePassedSlots();
+
     const qb = this.slotRepo
       .createQueryBuilder('slot')
       .leftJoinAndSelect('slot.doctor', 'doctor')
@@ -179,7 +191,7 @@ export class ChannelingSlotService {
     return { slots, total };
   }
 
-  // Returns granular details for a specific slot to support targeted management actions.
+//Returns granular details for a specific slot to support targeted management actions
   async findOne(id: string): Promise<ChannelingSlot> {
     const slot = await this.slotRepo.findOne({
       where:     { id },
@@ -189,7 +201,7 @@ export class ChannelingSlotService {
     return slot;
   }
 
-  // Invalidates a slot to prevent new patient bookings, typically in response to doctor emergencies or scheduling shifts.
+//Invalidates an active slot to prevent new patient bookings during doctor emergencies
   async cancel(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
     if (slot.status === SlotStatus.CANCELLED) throw new BadRequestException('Slot is already cancelled');
@@ -198,16 +210,14 @@ export class ChannelingSlotService {
     return { message: 'Channeling slot cancelled successfully' };
   }
 
-  // Removes a slot record permanently; used for deleting administrative errors before any patient interactions occur.
+//Permanently deletes erroneous slot records before any patient interactions occur
   async remove(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
     await this.slotRepo.remove(slot);
     return { message: 'Channeling slot deleted successfully' };
   }
 
-  // Availability Retrieval
-
-  // Aggregates active consultation windows into weekly clusters to power the public scheduling interface.
+//Aggregates active slots into weekly clusters to power the public discovery interface
   async getWeeklySchedule(doctorId: string): Promise<Record<string, string[]>> {
     const doctor = await this.doctorRepo.findOne({ where: { id: doctorId } });
     if (!doctor) throw new NotFoundException('Doctor not found');
@@ -230,10 +240,12 @@ export class ChannelingSlotService {
     return Object.fromEntries(Object.entries(schedule).map(([wk, days]) => [wk, [...days]]));
   }
 
-  // Fetches all slots linked to a doctor's user identity to populate their private management dashboard.
+//Fetches clinician-specific slots to populate their private management dashboards
   async findSlotsByUserId(userId: string): Promise<ChannelingSlot[]> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found for this user');
+
+    await this.autoCompletePassedSlots();
 
     return this.slotRepo.find({
       where: { doctorId: doctor.id },
@@ -241,11 +253,12 @@ export class ChannelingSlotService {
     });
   }
 
-  // Lists all active and upcoming consultation slots across the entire platform for patient discovery.
+//Lists all active upcoming consultation windows for public patient discovery
   async getAvailableSlotsWithDoctors(): Promise<ChannelingSlot[]> {
-    const today = new Date().toISOString().split('T')[0];
+    await this.autoCompletePassedSlots();
+
     return this.slotRepo.find({
-      where: { status: SlotStatus.ACTIVE, date: MoreThanOrEqual(today) as any },
+      where: { status: SlotStatus.ACTIVE, date: MoreThanOrEqual(new Date().toISOString().split('T')[0]) as any },
       order: { date: 'ASC', startTime: 'ASC' },
     });
   }

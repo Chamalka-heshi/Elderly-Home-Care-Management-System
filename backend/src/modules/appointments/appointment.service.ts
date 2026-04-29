@@ -12,10 +12,10 @@ import { ChannelingSlot, SlotStatus }              from '../channeling-slot/enti
 import { Patient }                                 from '../patients/entities/patient.entity';
 import { FamilyMember }                            from '../family/entities/family-member.entity';
 import { Doctor }                                  from '../doctors/entities/doctor.entity';
-import { 
-  CreateAppointmentDto, 
-  UpdateAppointmentStatusDto, 
-  QueryAppointmentsDto 
+import {
+  CreateAppointmentDto,
+  UpdateAppointmentStatusDto,
+  QueryAppointmentsDto,
 } from './dto/appointment.dto';
 
 const MEDICAL_SENSITIVE_FIELDS = [
@@ -42,9 +42,7 @@ export class AppointmentService {
     private readonly doctorRepo: Repository<Doctor>,
   ) {}
 
-  // Data Security
-
-  // Redacts sensitive clinical information from patient records to prevent unauthorized exposure during administrative reviews.
+//Redacts sensitive information to satisfy data privacy requirements for administrative users
   private stripMedicalDetails(patient: Patient): SafePatient {
     const safe: any = { ...patient };
     for (const field of MEDICAL_SENSITIVE_FIELDS) {
@@ -53,7 +51,7 @@ export class AppointmentService {
     return safe as SafePatient;
   }
 
-  // Wraps appointment data with conditional patient privacy filters based on the required authorization level of the requester.
+//Encapsulates patient record security logic to allow centralized control over medical data visibility
   private buildSafeAppointment(appt: Appointment, includeFullMedical: boolean) {
     return {
       ...appt,
@@ -63,7 +61,7 @@ export class AppointmentService {
     };
   }
 
-  // Calculates the current age based on the date of birth to assist doctors with pediatric or geriatric clinical context.
+//Calculates age at runtime to ensure clinicians have the most accurate patient context for treatment
   private computeAge(dateOfBirth: string | Date): number {
     const dob       = new Date(dateOfBirth);
     const today     = new Date();
@@ -73,7 +71,7 @@ export class AppointmentService {
     return age;
   }
 
-  // Validates slot availability, patient ownership, and prevents double-booking before creating a pending-payment record.
+//Initializes a pending appointment while enforcing slot capacity and preventing double bookings
   async createAppointment(
     userId: string,
     dto: CreateAppointmentDto,
@@ -131,7 +129,7 @@ export class AppointmentService {
     return this.appointmentRepo.save(appointment);
   }
 
-  // Retrieves all historical and upcoming bookings associated with the logged-in family member.
+//Retrieves historical and upcoming bookings for a specific family member
   async getMyAppointments(userId: string): Promise<Appointment[]> {
     const familyMember = await this.familyRepo.findOne({
       where: { user: { id: userId } },
@@ -145,7 +143,7 @@ export class AppointmentService {
     });
   }
 
-  // Marks an appointment as cancelled if it is not yet completed, allowing the slot to be potentially reused.
+//Allows family members to release booked slots before the visit occurs
   async cancelMyAppointment(userId: string, id: string): Promise<{ message: string }> {
     const familyMember = await this.familyRepo.findOne({
       where: { user: { id: userId } },
@@ -166,7 +164,7 @@ export class AppointmentService {
     return { message: 'Appointment cancelled successfully' };
   }
 
-  // Provides doctors with a detailed view of their upcoming patients, including full clinical histories for consultation readiness.
+//Provides doctors with a consolidated view of their clinical schedule
   async getDoctorAppointments(userId: string): Promise<any[]> {
     const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -185,6 +183,7 @@ export class AppointmentService {
           AppointmentStatus.PENDING,
           AppointmentStatus.CONFIRMED,
           AppointmentStatus.COMPLETED,
+          AppointmentStatus.CANCELLED,
         ],
       })
       .orderBy('slot.date', 'DESC')
@@ -200,7 +199,7 @@ export class AppointmentService {
     });
   }
 
-  // Allows clinical staff to update the session status, ensuring accurate billing and patient record updates.
+//Enables clinicians to progress appointment states during the patient encounter
   async updateAppointmentStatusByDoctor(
     userId: string,
     id: string,
@@ -222,7 +221,7 @@ export class AppointmentService {
     return this.appointmentRepo.save(appointment);
   }
 
-  // Provides a comprehensive system view of appointments for operational reporting, with medical redaction applied.
+//Surfaces all system-wide bookings for administrative oversight
   async getAllAppointments(query: QueryAppointmentsDto): Promise<any[]> {
     const qb = this.appointmentRepo
       .createQueryBuilder('appt')
@@ -242,7 +241,7 @@ export class AppointmentService {
     return appointments.map((a) => this.buildSafeAppointment(a, false));
   }
 
-  // Permits administrators to manually adjust appointment statuses to fix data entry errors or billing discrepancies.
+//Grants admins manual control over appointment states for operational flexibility
   async adminUpdateStatus(
     id: string,
     dto: UpdateAppointmentStatusDto,
@@ -256,34 +255,11 @@ export class AppointmentService {
     return { message: 'Appointment status updated' };
   }
 
-  // Removes appointment records entirely, typically used for cleanup or purging erroneous data.
+//Allows permanent removal of erroneous or obsolete appointment records
   async adminDelete(id: string): Promise<{ message: string }> {
     const appointment = await this.appointmentRepo.findOne({ where: { id } });
     if (!appointment) throw new NotFoundException('Appointment not found');
     await this.appointmentRepo.remove(appointment);
     return { message: 'Appointment deleted successfully' };
-  }
-
-  // Promotes an appointment from payment-pending to system-pending once the billing gateway confirms success.
-  async confirmAfterPayment(id: string): Promise<void> {
-    const appointment = await this.appointmentRepo.findOne({ where: { id } });
-    if (!appointment) throw new NotFoundException('Appointment not found');
-    if (appointment.status === AppointmentStatus.PENDING_PAYMENT) {
-      appointment.status = AppointmentStatus.PENDING;
-      await this.appointmentRepo.save(appointment);
-    }
-  }
-
-  // Automatically cancels bookings that fail the payment phase to release resources back into the pool.
-  async cancelAfterPaymentRejection(id: string): Promise<void> {
-    const appointment = await this.appointmentRepo.findOne({ where: { id } });
-    if (!appointment) return;
-    if (
-      appointment.status === AppointmentStatus.PENDING_PAYMENT ||
-      appointment.status === AppointmentStatus.PENDING
-    ) {
-      appointment.status = AppointmentStatus.CANCELLED;
-      await this.appointmentRepo.save(appointment);
-    }
   }
 }

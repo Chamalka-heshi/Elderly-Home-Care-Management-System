@@ -15,15 +15,13 @@ export class FamilyService {
     private usersService: UsersService,
   ) {}
 
-  /**
-   * Creates a FamilyMember profile record linked to an existing User.
-   * fullName and contactNumber are already stored on the User record.
-   */
+//Initializes a family member profile record linked to a core user identity to enable account-specific data tracking
   async create(data: { user: User }): Promise<FamilyMember> {
     const familyMember = this.familyRepository.create({ user: data.user });
     return this.familyRepository.save(familyMember);
   }
 
+//Resolves the family profile for a specific system user to support personalized dashboard interactions
   async findByUserId(userId: string): Promise<FamilyMember | null> {
     return this.familyRepository.findOne({
       where: { user: { id: userId } },
@@ -43,19 +41,18 @@ export class FamilyService {
     });
   }
 
+//Retrieves granular details for a specific family member to facilitate targeted administrative actions
   async findById(id: string): Promise<FamilyMember> {
     const familyMember = await this.familyRepository.findOne({
       where: { id },
       relations: ['user', 'patients'],
     });
 
-    if (!familyMember) {
-      throw new NotFoundException('Family member not found');
-    }
-
+    if (!familyMember) throw new NotFoundException('Family member not found');
     return familyMember;
   }
 
+//Returns all registered family members to provide a comprehensive overview for system administrators
   async findAll(): Promise<FamilyMember[]> {
     return this.familyRepository.find({
       relations: ['user', 'patients'],
@@ -63,36 +60,7 @@ export class FamilyService {
     });
   }
 
-  async findAllActive(): Promise<FamilyMember[]> {
-    return this.familyRepository.find({
-      where: { user: { isActive: true } },
-      relations: ['user', 'patients'],
-      order: { user: { createdAt: 'DESC' } } as any,
-    });
-  }
-
-  /**
-   * Update common profile fields via the User record (cascade saves automatically).
-   */
-  async update(
-    id: string,
-    updateData: Partial<Pick<User, 'fullName' | 'contactNumber'>>,
-  ): Promise<FamilyMember> {
-    if (!id) throw new BadRequestException('Family member ID is required');
-
-    const member = await this.findById(id);
-
-    if (updateData.fullName) member.user.fullName = updateData.fullName;
-    if (updateData.contactNumber) member.user.contactNumber = updateData.contactNumber;
-
-    return this.familyRepository.save(member);
-  }
-
-  /**
-   * Update the profile of the currently logged-in family member using their userId.
-   * Uses usersService.update() directly (consistent with Doctor/Caregiver pattern)
-   * and re-fetches from DB to return a fresh, fully-populated entity.
-   */
+//Synchronizes profile updates across core user records to maintain data consistency during account edits
   async updateProfileByUserId(
     userId: string,
     dto: UpdateFamilyProfileDto,
@@ -102,11 +70,8 @@ export class FamilyService {
       relations: ['user'],
     });
 
-    if (!member) {
-      throw new NotFoundException('Family member profile not found');
-    }
+    if (!member) throw new NotFoundException('Family member profile not found');
 
-    // Update user fields directly via UsersService (avoids relying on cascade save)
     if (dto.fullName || dto.contactNumber) {
       await this.usersService.update(member.user.id, {
         ...(dto.fullName      && { fullName: dto.fullName }),
@@ -114,19 +79,6 @@ export class FamilyService {
       });
     }
 
-    // Re-fetch from DB so the returned entity has fresh, consistent user fields
     return this.findByUserId(userId) as Promise<FamilyMember>;
-  }
-
-  async deactivate(id: string): Promise<void> {
-    if (!id) throw new BadRequestException('Family member ID is required');
-    const member = await this.findById(id);
-    await this.usersService.deactivateUser(member.user.id);
-  }
-
-  async activate(id: string): Promise<void> {
-    if (!id) throw new BadRequestException('Family member ID is required');
-    const member = await this.findById(id);
-    await this.usersService.activateUser(member.user.id);
   }
 }

@@ -17,8 +17,7 @@ import {
   Appointment,
   AppointmentStatus,
 } from '../appointments/entities/appointment.entity';
-
-
+import { Patient } from '../patients/entities/patient.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -34,8 +33,7 @@ export class PaymentsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  // ── Create payment ──────────────────────────────────────────────────────────
-
+//Handles payment processing and immediate booking activation for seamless user experience
   async createPayment(userId: string, dto: CreatePaymentDto): Promise<Payment> {
     const hasBooking     = !!dto.bookingId;
     const hasAppointment = !!dto.appointmentId;
@@ -46,14 +44,12 @@ export class PaymentsService {
       );
     }
 
-    // Resolve family member (userId is User.id from JWT)
     const familyMember = await this.familyRepo.findOne({
       where: { user: { id: userId } },
       relations: ['user'],
     });
     if (!familyMember) throw new NotFoundException('Family member profile not found');
 
-    // ── Branch A: care-plan booking payment ─────────────────────────────────
     if (dto.bookingId) {
       const booking = await this.bookingRepo.findOne({ where: { id: dto.bookingId } });
       if (!booking) throw new NotFoundException('Booking not found');
@@ -83,6 +79,7 @@ export class PaymentsService {
       return this.dataSource.transaction(async (manager) => {
         const payRepo     = manager.getRepository(Payment);
         const bookingRepo = manager.getRepository(Booking);
+        const patRepo     = manager.getRepository(Patient);
 
         const payment = payRepo.create({
           bookingId:     booking.id,
@@ -98,23 +95,21 @@ export class PaymentsService {
 
         const saved = await payRepo.save(payment);
 
-        // Card payment instantly activates the booking
         if (dto.paymentMethod === PaymentMethod.CARD) {
           booking.status = BookingStatus.ACTIVE;
           await bookingRepo.save(booking);
+          await patRepo.update(booking.patientId, { paymentPlan: booking.carePlanSnapshot.name });
         }
 
         return saved;
       });
     }
 
-    // ── Branch B: doctor appointment payment ─────────────────────────────────
     const appointment = await this.appointmentRepo.findOne({
       where: { id: dto.appointmentId },
     });
     if (!appointment) throw new NotFoundException('Appointment not found');
 
-    // Verify ownership via familyMemberId
     if (appointment.familyMemberId !== familyMember.id) {
       throw new NotFoundException('Appointment not found or does not belong to your account');
     }
@@ -134,8 +129,6 @@ export class PaymentsService {
       );
     }
 
-    // Calculate the real total: doctor consultation fee + care-home service charge.
-    // appointment.slot is always populated (eager relation on Appointment entity).
     const consultationFee   = Number(appointment.slot?.consultationFee ?? 0);
     const careHomeFee       = Number(appointment.slot?.careHomeFee ?? 0);
     const appointmentAmount = consultationFee + careHomeFee;
@@ -164,7 +157,6 @@ export class PaymentsService {
 
       const saved = await payRepo.save(payment);
 
-      // Card payment instantly moves appointment to PENDING (awaiting doctor/admin)
       if (dto.paymentMethod === PaymentMethod.CARD) {
         appointment.status = AppointmentStatus.PENDING;
         await apptRepo.save(appointment);
@@ -174,8 +166,7 @@ export class PaymentsService {
     });
   }
 
-  // ── Get family member's own payments ────────────────────────────────────────
-
+//Retrieves family payments for historical tracking and display
   async getMyPayments(userId: string): Promise<Payment[]> {
     const familyMember = await this.familyRepo.findOne({
       where: { user: { id: userId } },
@@ -189,14 +180,7 @@ export class PaymentsService {
     });
   }
 
-  // ── Doctor: get payments for their appointment slots ────────────────────────
-
-  /**
-   * Returns all payments made by family members for appointments belonging to
-   * this doctor's slots. The amount stored on the payment includes both the
-   * consultation fee AND the care-home fee; this query also surfaces the raw
-   * consultationFee from the slot so the UI can show only the doctor's portion.
-   */
+//Provides doctors with appointment payment history excluding care home fees
   async getDoctorPayments(userId: string): Promise<any[]> {
     const rows = await this.paymentRepo
       .createQueryBuilder('payment')
@@ -209,10 +193,10 @@ export class PaymentsService {
       .leftJoinAndSelect('appointment.patient', 'patient')
       .where('doctorUser.id = :userId', { userId })
       .andWhere('payment.appointmentId IS NOT NULL')
+      .andWhere('payment.status = :status', { status: 'paid' })
       .orderBy('payment.createdAt', 'DESC')
       .getMany();
 
-    // Reshape: expose consultationFee separately so the doctor sees only their cut
     return rows.map((p) => ({
       id:              p.id,
       appointmentId:   p.appointmentId,
@@ -240,8 +224,7 @@ export class PaymentsService {
     }));
   }
 
-  // ── Admin: get all payments pending bank-transfer approval ──────────────────
-
+//Allows admins to review manual bank transfers before finalizing
   async getPendingPayments(): Promise<Payment[]> {
     return this.paymentRepo.find({
       where: {
@@ -253,8 +236,7 @@ export class PaymentsService {
     });
   }
 
-  // ── Admin: get all payments (full history) ───────────────────────────────────
-
+//Fetches complete payment ledger for admin auditing
   async getAllPayments(): Promise<Payment[]> {
     return this.paymentRepo.find({
       relations: ['user', 'user.user', 'booking', 'appointment'],
@@ -262,8 +244,7 @@ export class PaymentsService {
     });
   }
 
-  // ── Admin: approve a bank-transfer payment ───────────────────────────────────
-
+//Finalizes bank transfers and instantly updates associated booking or appointment status
   async approvePayment(id: string): Promise<{ message: string; payment: Payment }> {
     return this.dataSource.transaction(async (manager) => {
       const payRepo  = manager.getRepository(Payment);
@@ -283,7 +264,6 @@ export class PaymentsService {
       const updated  = await payRepo.save(payment);
 
       if (payment.bookingId) {
-        // Activate the care-plan booking
         const booking = await bookRepo.findOne({ where: { id: payment.bookingId } });
         if (!booking) throw new NotFoundException('Linked booking not found');
         if (booking.status === BookingStatus.CANCELLED) {
@@ -292,8 +272,10 @@ export class PaymentsService {
         booking.status = BookingStatus.ACTIVE;
         await bookRepo.save(booking);
 
+        const patRepo = manager.getRepository(Patient);
+        await patRepo.update(booking.patientId, { paymentPlan: booking.carePlanSnapshot.name });
+
       } else if (payment.appointmentId) {
-        // Move appointment from PENDING_PAYMENT → PENDING (awaiting doctor/admin)
         const appt = await apptRepo.findOne({ where: { id: payment.appointmentId } });
         if (!appt) throw new NotFoundException('Linked appointment not found');
         if (appt.status === AppointmentStatus.PENDING_PAYMENT) {
@@ -306,8 +288,7 @@ export class PaymentsService {
     });
   }
 
-  // ── Admin: reject a bank-transfer payment ────────────────────────────────────
-
+//Voids a payment attempt and cancels the linked service to ensure financial integrity
   async rejectPayment(id: string): Promise<{ message: string; payment: Payment }> {
     return this.dataSource.transaction(async (manager) => {
       const payRepo  = manager.getRepository(Payment);

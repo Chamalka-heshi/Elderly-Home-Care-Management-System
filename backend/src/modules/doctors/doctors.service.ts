@@ -16,13 +16,16 @@ import { CreateDoctorDto }                   from './dto/create-doctor.dto';
 import { UpdateDoctorProfileDto }            from './dto/update-doctor-profile.dto';
 
 export interface DashboardRecentPatient {
-  id:               string;
-  name:             string;
-  age:              number;
-  bloodGroup:       string | null;
-  diagnosis:        string | null;
-  status:           'Active' | 'Completed' | 'Discontinued';
-  prescriptionDate: string;
+  id:                string;
+  name:              string;
+  age:               number;
+  bloodGroup:        string | null;
+  diagnosis:         string | null;
+  status:            'Pending' | 'Confirmed';
+  appointmentStatus: string;
+  slotDate:          string;
+  /** @deprecated use slotDate – kept for backwards compat */
+  prescriptionDate:  string;
 }
 
 export interface DoctorDashboardStats {
@@ -47,9 +50,7 @@ export class DoctorsService {
     private usersService: UsersService,
   ) {}
 
-  // Account Management
-
-  // Orchestrates the dual creation of a core user identity and a specific clinical profile, ensuring secure credential handling.
+//Orchestrates the dual creation of a core user identity and a clinical profile to ensure record synchronization
   async create(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
     const { email, password, fullName, contactNumber, ...doctorData } = createDoctorDto;
 
@@ -83,21 +84,19 @@ export class DoctorsService {
     return this.doctorRepository.save(doctor);
   }
 
-  // Suspends the doctor's access to the platform by deactivating their core user account.
+//Suspends the doctor's platform access by disabling their core user account
   async deactivate(id: string): Promise<void> {
     const doctor = await this.findOne(id);
     await this.usersService.deactivateUser(doctor.user.id);
   }
 
-  // Restores the doctor's system access, allowing them to resume clinical operations and scheduling.
+//Restores the doctor's system access to resume clinical operations and scheduling
   async activate(id: string): Promise<void> {
     const doctor = await this.findOne(id);
     await this.usersService.activateUser(doctor.user.id);
   }
 
-  // Data Retrieval
-
-  // Returns a complete list of all registered doctors with their associated user identities for administrative oversight.
+//Returns all registered doctors with associated users for administrative oversight
   async findAll(): Promise<Doctor[]> {
     return this.doctorRepository.find({
       relations: ['user'],
@@ -105,7 +104,7 @@ export class DoctorsService {
     });
   }
 
-  // Retrieves granular details for a single doctor, typically used for profile views or management tasks.
+//Retrieves granular details for a specific doctor to support profile views and management
   async findOne(id: string): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
       where:     { id },
@@ -116,7 +115,7 @@ export class DoctorsService {
     return doctor;
   }
 
-  // Resolves the clinical profile associated with a specific system user ID, applying security filters to the returned data.
+//Resolves the clinical profile for a specific system user to enforce role-based access
   async findByUserId(userId: string): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
       where:  { user: { id: userId } },
@@ -150,9 +149,7 @@ export class DoctorsService {
     return doctor;
   }
 
-  // Dashboard Analytics
-
-  // Aggregates patient counts, appointment schedules, and prescription metrics to provide an operational snapshot for the doctor's landing page.
+//Aggregates clinical and operational metrics to provide an operational snapshot for the doctor
   async getDashboardStats(userId: string): Promise<DoctorDashboardStats> {
     const doctor = await this.doctorRepository.findOne({
       where:     { user: { id: userId } },
@@ -164,7 +161,6 @@ export class DoctorsService {
     const doctorId = doctor.id;
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Counts all distinct patients who ever had any appointment with this doctor (any status).
     const uniquePatientsResult = await this.appointmentRepository
       .createQueryBuilder('appt')
       .innerJoin('appt.slot', 'slot')
@@ -203,15 +199,21 @@ export class DoctorsService {
       .take(10)
       .getMany();
 
-    const recentPatients: DashboardRecentPatient[] = recentAppointments.map((appt) => ({
-      id:               appt.id,
-      name:             appt.patient.fullName,
-      age:              this.computeAge(appt.patient.dateOfBirth),
-      bloodGroup:       appt.patient.bloodGroup ?? null,
-      diagnosis:        null,
-      status:           'Active',
-      prescriptionDate: appt.slot?.date ?? new Date().toISOString().split('T')[0],
-    }));
+    const recentPatients: DashboardRecentPatient[] = recentAppointments.map((appt) => {
+      const isConfirmed = appt.status === AppointmentStatus.CONFIRMED;
+      const slotDate = appt.slot?.date ?? new Date().toISOString().split('T')[0];
+      return {
+        id:                appt.id,
+        name:              appt.patient.fullName,
+        age:               this.computeAge(appt.patient.dateOfBirth),
+        bloodGroup:        appt.patient.bloodGroup ?? null,
+        diagnosis:         null,
+        status:            isConfirmed ? 'Confirmed' : 'Pending',
+        appointmentStatus: appt.status,
+        slotDate,
+        prescriptionDate:  slotDate,
+      };
+    });
 
     return {
       myPatientsCount,
@@ -222,7 +224,7 @@ export class DoctorsService {
     };
   }
 
-  // Calculates chronological age to provide essential clinical context during patient reviews and consultations.
+//Calculates chronological age to provide essential clinical context during patient reviews
   private computeAge(dateOfBirth: Date | string): number {
     const dob       = new Date(dateOfBirth);
     const today     = new Date();
@@ -232,9 +234,7 @@ export class DoctorsService {
     return age;
   }
 
-  // Profile & Availability
-
-  // Synchronizes updates across both the core user record and the clinical profile to maintain data integrity during profile edits.
+//Synchronizes profile updates across core and clinical records to maintain data integrity
   async updateProfileByUserId(userId: string, updateData: UpdateDoctorProfileDto) {
     const doctor = await this.findByUserId(userId);
     if (!doctor) throw new NotFoundException('Doctor profile not found');
@@ -266,7 +266,7 @@ export class DoctorsService {
     };
   }
 
-  // Updates the doctor's recurring availability preferences to assist the administration with automated slot proposals.
+//Updates recurring availability preferences to assist with automated slot proposals
   async setAvailability(
     userId:             string,
     availableDays:      string[],
