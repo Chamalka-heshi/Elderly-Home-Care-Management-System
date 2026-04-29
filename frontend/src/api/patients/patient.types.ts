@@ -22,4 +22,5 @@ export interface Patient {
   familyMemberId: string;
   isActive: boolean;
   createdAt: string;
+  paymentPlan?: string;
 }

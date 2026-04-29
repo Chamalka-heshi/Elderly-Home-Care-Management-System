@@ -9,7 +9,6 @@ const StatusBadge: React.FC<{ status: AppointmentStatus }> = ({ status }) => (
   <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${statusColor[status]}`}>
     <span className={`h-1.5 w-1.5 rounded-full ${
       status === "pending_payment" ? "bg-blue-400 animate-pulse" :
-      status === "pending"         ? "bg-amber-400 animate-pulse" :
       status === "confirmed"       ? "bg-emerald-500" :
       status === "completed"       ? "bg-slate-400" : "bg-red-400"
     }`} />
@@ -168,7 +167,6 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
   const stats = useMemo(() => ({
     total:            appointments.length,
     pendingPayment:   appointments.filter((a) => a.status === "pending_payment").length,
-    pending:          appointments.filter((a) => a.status === "pending").length,
     confirmed:        appointments.filter((a) => a.status === "confirmed").length,
     completed:        appointments.filter((a) => a.status === "completed").length,
     cancelled:        appointments.filter((a) => a.status === "cancelled").length,
@@ -204,11 +202,10 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
       </div>
 
       {/* KPI Stats Grid: Real-time overview of system load */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {([
           { label: "Total",            value: stats.total,            dot: "bg-slate-400",   text: "text-slate-700" },
           { label: "Awaiting Payment", value: stats.pendingPayment,   dot: "bg-blue-400",    text: "text-blue-600"  },
-          { label: "Pending Confirm",  value: stats.pending,          dot: "bg-amber-400",   text: "text-amber-600" },
           { label: "Confirmed",        value: stats.confirmed,        dot: "bg-emerald-500", text: "text-emerald-600"},
           { label: "Completed",        value: stats.completed,        dot: "bg-slate-300",   text: "text-slate-500" },
           { label: "Cancelled",        value: stats.cancelled,        dot: "bg-red-400",     text: "text-red-600"   },
@@ -235,7 +232,6 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
           >
             <option value="">All Statuses</option>
             <option value="pending_payment">Pending Payment</option>
-            <option value="pending">Pending Confirmation</option>
             <option value="confirmed">Confirmed</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
@@ -248,11 +244,6 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-bold text-slate-800">
             All Appointments
-            {stats.pending > 0 && (
-              <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-                {stats.pending}
-              </span>
-            )}
           </h3>
           <p className="text-xs text-slate-500">{appointments.length} records · Click a row to view full details</p>
         </div>
@@ -293,8 +284,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
                     key={appt.id}
                     onClick={() => setSelected(appt)}
                     className={`cursor-pointer transition hover:bg-emerald-50/40 ${
-                      appt.status === "pending_payment" ? "bg-blue-50/20"  :
-                      appt.status === "pending"         ? "bg-amber-50/20" : ""
+                      appt.status === "pending_payment" ? "bg-blue-50/20" : ""
                     }`}
                   >
                     <td className="px-5 py-3.5">
