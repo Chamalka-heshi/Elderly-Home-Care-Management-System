@@ -37,9 +37,9 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
               <tr key={f.id} className="transition hover:bg-slate-50/60">
                 <td className="px-4 py-3 font-semibold text-slate-800">{f.fullName}</td>
                 <td className="px-4 py-3 text-slate-600">{f.email}</td>
-                <td className="px-4 py-3 text-slate-600">{f.contactNumber ?? "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{f.contactNumber || "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{f.patientsCount ?? 0}</td>
-                <td className="px-4 py-3 text-slate-600">{new Date(f.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-slate-600">{new Date((f as any).joinedDate).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <Badge tone={f.isActive ? "emerald" : "red"}>{f.isActive ? "Active" : "Blocked"}</Badge>
                 </td>
@@ -73,4 +73,4 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
   </TableShell>
 );
 
-export default FamilyManagement;
+export default FamilyManagement;

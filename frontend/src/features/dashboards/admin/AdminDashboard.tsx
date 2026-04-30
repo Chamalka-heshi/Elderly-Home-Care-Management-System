@@ -126,24 +126,8 @@ const CAREGIVER_FIELDS: FieldConfig[] = [
     name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
     hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits."
   },
-  {
-    name: "shiftPreference", label: "Shift Preference", required: true,
-    options: [
-      { value: "flexible", label: "Flexible" },
-      { value: "day", label: "Day Shift" },
-      { value: "night", label: "Night Shift" },
-    ],
-  },
   { name: "certifications", label: "Certifications (comma-separated)", placeholder: "CPR, First Aid, BLS" },
   { name: "yearsOfExperience", label: "Years of Experience", type: "number", placeholder: "0" },
-  {
-    name: "availabilityStatus", label: "Availability Status",
-    options: [
-      { value: "available", label: "Available" },
-      { value: "busy", label: "Busy" },
-      { value: "off-duty", label: "Off Duty" },
-    ],
-  },
 ];
 
 interface Toast { id: number; kind: "success" | "error"; message: string; }
@@ -360,10 +344,10 @@ const AdminDashboard: React.FC = () => {
       email: fd.get("email") as string,
       contactNumber: fd.get("contactNumber") as string,
       nic: fd.get("nic") as string,
-      shiftPreference: fd.get("shiftPreference") as "day" | "night" | "flexible",
+      shiftPreference: "flexible",
       certifications: certsRaw ? certsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [],
       yearsOfExperience: parseInt(fd.get("yearsOfExperience") as string, 10) || 0,
-      availabilityStatus: fd.get("availabilityStatus") as "available" | "busy" | "off-duty",
+      availabilityStatus: "available",
     };
     try {
       setModalLoading(true);

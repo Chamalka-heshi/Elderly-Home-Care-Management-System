@@ -4,10 +4,6 @@ import { IconUserPlus } from "../../common/icons";
 import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
 
-// Maps availability status strings to visual badge tones
-const availabilityTone = (s: string) =>
-  s === "available" ? ("emerald" as const) :
-  s === "busy"      ? ("amber"   as const) : ("slate" as const);
 
 interface Props {
   caregivers: Caregiver[];
@@ -43,7 +39,6 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Shift</th>
               <th className="px-4 py-3">Certifications</th>
               <th className="px-4 py-3">Exp.</th>
               <th className="px-4 py-3">Availability</th>
@@ -62,11 +57,10 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
                 <tr key={c.id} className="transition hover:bg-slate-50/60">
                   <td className="px-4 py-3 font-semibold text-slate-800">{fullName}</td>
                   <td className="px-4 py-3 text-slate-600">{email}</td>
-                  <td className="px-4 py-3 capitalize text-slate-600">{c.shiftPreference}</td>
-                  <td className="px-4 py-3 text-slate-600">{(c.certifications ?? []).join(", ") || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{((c as any).specializations ?? []).join(", ")}</td>
                   <td className="px-4 py-3 text-slate-600">{c.yearsOfExperience} yrs</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={availabilityTone(c.availabilityStatus ?? "")}>{c.availabilityStatus ?? "unknown"}</Badge>
+                  <td className="px-4 py-3 text-slate-600 capitalize">
+                    {((c as any).availableShifts ?? []).join(", ") || "Flexible"}
                   </td>
                   <td className="px-4 py-3">
                     <Badge tone={isActive ? "emerald" : "red"}>{isActive ? "Active" : "Inactive"}</Badge>
@@ -89,7 +83,7 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
             })}
             {caregivers.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
                   No caregivers found.
                 </td>
               </tr>
@@ -101,4 +95,4 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
   </TableShell>
 );
 
-export default CaregiverManagement;
+export default CaregiverManagement;

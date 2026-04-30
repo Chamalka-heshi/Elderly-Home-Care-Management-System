@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as contactApi from '../../../../api/contact/admin-contact.api';
 import type { ContactMessage } from '../../../../api/contact/contact.types';
 
-import { IconInbox, IconReply, IconTrash, IconBack, IconClock, IconSpinner } from '../../common/icons';
+import { IconInbox, IconReply, IconTrash, IconBack, IconClock, IconSpinner, IconRefresh } from '../../common/icons';
 
 // Format ISO timestamps into user-friendly localized strings for administrative review
 const fmtDate = (iso: string) =>
@@ -260,7 +260,16 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
             </p>
           </div>
 
-          <div className="flex gap-1 rounded-2xl border border-slate-200 bg-white/80 p-1">
+          <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white/80 p-1">
+            <button
+              onClick={load}
+              disabled={loading}
+              title="Refresh messages"
+              className="flex items-center justify-center rounded-xl px-3 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600 disabled:opacity-50"
+            >
+              <IconRefresh className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+            </button>
+            <div className="h-4 w-px bg-slate-200 mx-1" />
             {(['all', 'pending', 'replied'] as const).map((f) => (
               <button
                 key={f}

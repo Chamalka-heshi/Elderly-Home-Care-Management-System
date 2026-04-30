@@ -338,7 +338,8 @@ export class AdminService {
       emergencyContact:   patient.emergencyContact,
       isActive:           patient.isActive,
       familyMemberId:     patient.familyMemberId,
-      familyName:         patient.familyMember?.user?.fullName || 'N/A',
+      familyName:         patient.familyMember?.user?.fullName,
+      familyEmail:        patient.familyMember?.user?.email,
     };
   }
 }
