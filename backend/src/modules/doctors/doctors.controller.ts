@@ -12,6 +12,7 @@ import { DoctorsService }         from './doctors.service';
 import { Roles }                  from '../../common/decorators/roles.decorator';
 import { UserRole }               from '../../common/enums/user-role.enum';
 import { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto';
+import { GetUser }                from '../../common/decorators/current-user.decorator';
 
 
 // Manages the private workspace and profile of clinical professionals, providing tools for session tracking and availability.
@@ -22,8 +23,7 @@ export class DoctorsController {
   // Retrieves high-level metrics and upcoming session summaries for the doctor's personal management view.
   @Get('dashboard')
   @Roles(UserRole.DOCTOR)
-  getDashboard(@Request() req: any) {
-    const userId = req.user.sub;
+  getDashboard(@GetUser('sub') userId: string) {
     return this.doctorsService.getDashboardStats(userId);
   }
 
@@ -32,10 +32,9 @@ export class DoctorsController {
   @Roles(UserRole.DOCTOR)
   @HttpCode(HttpStatus.OK)
   async updateProfile(
-    @Request() req: any,
+    @GetUser('sub') userId: string,
     @Body() dto: UpdateDoctorProfileDto,
   ) {
-    const userId = req.user.sub;
     const result = await this.doctorsService.updateProfileByUserId(userId, dto);
     return { message: 'Profile updated successfully', ...result };
   }
@@ -44,14 +43,13 @@ export class DoctorsController {
   @Patch('me/availability')
   @Roles(UserRole.DOCTOR)
   setAvailability(
-    @Request() req: any,
+    @GetUser('sub') userId: string,
     @Body() body: {
       availableDays:      string[];
       availableTimeStart: string;
       availableTimeEnd:   string;
     },
   ) {
-    const userId = req.user.sub;
     return this.doctorsService.setAvailability(
       userId,
       body.availableDays,

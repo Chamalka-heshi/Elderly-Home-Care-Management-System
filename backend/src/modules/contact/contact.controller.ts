@@ -14,6 +14,7 @@ import { ContactService } from './contact.service';
 import { Roles }          from '../../common/decorators/roles.decorator';
 import { Public }         from '../../common/decorators/public.decorator';
 import { UserRole }       from '../../common/enums/user-role.enum';
+import { GetUser }        from '../../common/decorators/current-user.decorator';
 import {
   CreateContactMessageDto,
   ReplyContactMessageDto,
@@ -73,10 +74,9 @@ export class ContactController {
   replyToMessage(
     @Param('id') id: string,
     @Body(new ValidationPipe({ whitelist: true })) dto: ReplyContactMessageDto,
-    @Req() req: { user: { sub: string } },
+    @GetUser('sub') admin_user_Id: string,
   ) {
-    const adminId = req.user?.sub;
-    return this.contactService.replyToMessage(id, dto, adminId);
+    return this.contactService.replyToMessage(id, dto, admin_user_Id);
   }
 
   // Permanently removes a message record once it has been processed or resolved.

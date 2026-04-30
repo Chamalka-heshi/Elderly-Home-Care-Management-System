@@ -88,7 +88,7 @@ export class ContactService {
   async replyToMessage(
     id:      string,
     dto:     ReplyContactMessageDto,
-    adminId: string,
+    admin_user_Id: string,
   ): Promise<{ message: string; data: ContactMessage }> {
     const msg = await this.getMessage(id);
 
@@ -98,7 +98,7 @@ export class ContactService {
 
     msg.reply            = dto.reply;
     msg.repliedAt        = new Date();
-    msg.repliedByAdminId = adminId;
+    msg.repliedByAdminId = admin_user_Id;
     msg.status           = REPLIED_MESSAGE_STATUS;
 
     const saved = await this.messageRepo.save(msg);

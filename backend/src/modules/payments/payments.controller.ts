@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { GetUser } from '../../common/decorators/current-user.decorator';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentsService } from './payments.service';
 
@@ -10,15 +11,15 @@ export class PaymentsController {
 
   @Post('create')
   @Roles(UserRole.FAMILY)
-  async createPayment(@Req() req: any, @Body() dto: CreatePaymentDto) {
-    const payment = await this.paymentsService.createPayment(req.user.sub, dto);
+  async createPayment(@GetUser('sub') userId: string, @Body() dto: CreatePaymentDto) {
+    const payment = await this.paymentsService.createPayment(userId, dto);
     return { message: 'Payment created successfully', payment };
   }
 
   @Get('my')
   @Roles(UserRole.FAMILY)
-  async getMyPayments(@Req() req: any) {
-    const payments = await this.paymentsService.getMyPayments(req.user.sub);
+  async getMyPayments(@GetUser('sub') userId: string) {
+    const payments = await this.paymentsService.getMyPayments(userId);
     return { payments, total: payments.length };
   }
 
@@ -29,8 +30,8 @@ export class PaymentsController {
    */
   @Get('doctor')
   @Roles(UserRole.DOCTOR)
-  async getDoctorPayments(@Req() req: any) {
-    const payments = await this.paymentsService.getDoctorPayments(req.user.sub);
+  async getDoctorPayments(@GetUser('sub') userId: string) {
+    const payments = await this.paymentsService.getDoctorPayments(userId);
     const totalIncome = payments
       .filter((p) => p.status === 'paid')
       .reduce((sum, p) => sum + Number(p.consultationFee), 0);

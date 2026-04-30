@@ -201,6 +201,22 @@ export class ChannelingSlotService {
     return slot;
   }
 
+//Updates the details of a specific slot, applying structural changes without affecting status unless specified
+  async update(id: string, dto: UpdateChannelingSlotDto): Promise<ChannelingSlot> {
+    const slot = await this.findOne(id);
+    
+    if (dto.date !== undefined) slot.date = dto.date;
+    if (dto.startTime !== undefined) slot.startTime = dto.startTime;
+    if (dto.endTime !== undefined) slot.endTime = dto.endTime;
+    if (dto.bookingCutoffMinutes !== undefined) slot.bookingCutoffMinutes = dto.bookingCutoffMinutes;
+    if (dto.maxPatients !== undefined) slot.maxPatients = dto.maxPatients;
+    if (dto.status !== undefined) slot.status = dto.status;
+    if (dto.notes !== undefined) slot.notes = dto.notes;
+    if (dto.careHomeFee !== undefined) slot.careHomeFee = dto.careHomeFee;
+
+    return this.slotRepo.save(slot);
+  }
+
 //Invalidates an active slot to prevent new patient bookings during doctor emergencies
   async cancel(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);

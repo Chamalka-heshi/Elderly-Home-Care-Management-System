@@ -171,7 +171,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
         bookingCutoffMinutes: cutoff,
         maxPatients,
         notes: notes || undefined,
-        careHomeFee: careHomeFee !== "" ? careHomeFee : undefined,
+        careHomeFee: careHomeFee !== "" ? Number(careHomeFee) : undefined,
       });
       addToast("success", "Channeling slot created. Waiting for doctor approval.");
       onCreated();
@@ -341,7 +341,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   const [maxPatients, setMaxPatients] = useState(slot.maxPatients);
   const [cutoff, setCutoff]           = useState(slot.bookingCutoffMinutes);
   const [notes, setNotes]             = useState(slot.notes ?? "");
-  const [careHomeFee, setCareHomeFee] = useState<number | "">(slot.careHomeFee ?? "");
+  const [careHomeFee, setCareHomeFee] = useState<number | "">(slot.careHomeFee != null ? Number(slot.careHomeFee) : "");
   const [saving, setSaving]           = useState(false);
 
   const doctorName  = resolveDoctorName(slot, doctors);
@@ -368,7 +368,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
       await channelingApi.updateChannelingSlot(slot.id, {
         startTime, endTime, maxPatients, bookingCutoffMinutes: cutoff,
         notes: notes || undefined,
-        careHomeFee: careHomeFee !== "" ? careHomeFee : undefined,
+        careHomeFee: careHomeFee !== "" ? Number(careHomeFee) : undefined,
       });
       addToast("success", "Channeling slot updated successfully");
       onUpdated();
@@ -391,7 +391,6 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Edit Channeling Slot</p>
-              <p className="text-xs text-slate-500">Changes require doctor re-approval</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition">
@@ -415,8 +414,8 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
                 <div className="text-right shrink-0">
                   <p className="text-[11px] font-semibold text-slate-400 mb-0.5">Session Date</p>
                   <p className="text-sm font-bold text-slate-700">{fmtDate(slot.date)}</p>
-                  <span className="mt-1 inline-flex items-center rounded-xl bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-100">
-                    PENDING
+                  <span className="mt-1 inline-flex items-center rounded-xl bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-100 uppercase">
+                    {slot.status}
                   </span>
                 </div>
               </div>
@@ -469,9 +468,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
               </div>
             </div>
 
-            <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-[11px] text-amber-700 ring-1 ring-amber-100">
-              ⚠️ Editing this pending slot will require the doctor to re-approve it before it goes live.
-            </p>
+
           </div>
 
           <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
@@ -664,11 +661,26 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
         )}
 
         {/* Active (booking open) */}
-        {isBookingOpenNow && null}
+        {isBookingOpenNow && (
+          <div className="flex justify-end gap-1.5">
+            <button
+              onClick={() => onEdit(slot)}
+              className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition"
+            >
+              <IconEdit className="h-3.5 w-3.5" /> Edit
+            </button>
+          </div>
+        )}
 
         {/* Active (booking closed) */}
         {!isPending && !isPast && !isCancelled && !isRejected && !isCompleted && !isBookingOpenNow && (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-1.5">
+            <button
+              onClick={() => onEdit(slot)}
+              className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition"
+            >
+              <IconEdit className="h-3.5 w-3.5" /> Edit
+            </button>
             <button
               onClick={() => onCancel(slot.id)}
               className="flex items-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-200 transition"

@@ -13,15 +13,15 @@ import {
   Req,
   NotFoundException,
 } from '@nestjs/common';
-import { Roles }              from '../../common/decorators/roles.decorator';
-import { GetUser }            from '../../common/decorators/current-user.decorator';
-import { UserRole }           from '../../common/enums/user-role.enum';
-import { FamilyService }      from './family.service';
-import { UsersService }       from '../users/users.service';
-import { PatientsService }    from '../patients/patients.service';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { GetUser } from '../../common/decorators/current-user.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { FamilyService } from './family.service';
+import { UsersService } from '../users/users.service';
+import { PatientsService } from '../patients/patients.service';
 import { AppointmentService } from '../appointments/appointment.service';
 import { PrescriptionService } from '../prescription/prescription.service';
-import { CreatePatientDto }   from '../patients/dto/create-patient.dto';
+import { CreatePatientDto } from '../patients/dto/create-patient.dto';
 import { UpdateFamilyProfileDto } from './dto/update-family-profile.dto';
 import { CreateAppointmentDto } from '../appointments/dto/appointment.dto';
 
@@ -42,7 +42,7 @@ export class FamilyController {
     private readonly patientsService: PatientsService,
     private readonly appointmentService: AppointmentService,
     private readonly prescriptionService: PrescriptionService,
-  ) {}
+  ) { }
 
   /**
    * Finds the FamilyMember row for the current user and, if it is missing
@@ -76,11 +76,11 @@ export class FamilyController {
   ) {
     const updated = await this.familyService.updateProfileByUserId(user.sub, dto);
     return {
-      message:       'Profile updated successfully',
-      id:            updated.user.id,
-      fullName:      updated.user.fullName,
-      email:         updated.user.email,
-      role:          updated.user.role,
+      message: 'Profile updated successfully',
+      id: updated.user.id,
+      fullName: updated.user.fullName,
+      email: updated.user.email,
+      role: updated.user.role,
       contactNumber: updated.user.contactNumber,
     };
   }

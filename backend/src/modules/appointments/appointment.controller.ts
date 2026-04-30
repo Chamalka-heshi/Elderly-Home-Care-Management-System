@@ -15,6 +15,7 @@ import {
 import { AppointmentService }        from './appointment.service';
 import { Roles }                     from '../../common/decorators/roles.decorator';
 import { UserRole }                  from '../../common/enums/user-role.enum';
+import { GetUser }                   from '../../common/decorators/current-user.decorator';
 import { 
   UpdateAppointmentStatusDto, 
   QueryAppointmentsDto 
@@ -24,26 +25,26 @@ import {
 // Orchestrates appointment workflows for doctors and administrators, separating medical oversight from system management.
 @Controller('appointments')
 export class AppointmentController {
-  constructor(private readonly service: AppointmentService) {}
+  constructor(private readonly appointmentService: AppointmentService) {}
 
   // Doctor Management
 
   // Retrieves all confirmed and completed appointments assigned to the logged-in doctor.
   @Get('doctor')
   @Roles(UserRole.DOCTOR)
-  getDoctorAppointments(@Req() req: any) {
-    return this.service.getDoctorAppointments(req.user.sub);
+  getDoctorAppointments(@GetUser('sub') userId: string) {
+    return this.appointmentService.getDoctorAppointments(userId);
   }
 
   // Allows doctors to update appointment stages, ensuring the medical consultation flow is accurately tracked.
   @Patch('doctor/:id/status')
   @Roles(UserRole.DOCTOR)
   updateStatusByDoctor(
-    @Req() req: any,
+    @GetUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAppointmentStatusDto,
   ) {
-    return this.service.updateAppointmentStatusByDoctor(req.user.sub, id, dto);
+    return this.appointmentService.updateAppointmentStatusByDoctor(userId, id, dto);
   }
 
   // Administrative Oversight
@@ -52,7 +53,7 @@ export class AppointmentController {
   @Get('admin')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getAllAppointments(@Query() query: QueryAppointmentsDto) {
-    return this.service.getAllAppointments(query);
+    return this.appointmentService.getAllAppointments(query);
   }
 
   // Permits administrators to override appointment statuses to resolve scheduling conflicts or billing issues.
@@ -63,7 +64,7 @@ export class AppointmentController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAppointmentStatusDto,
   ) {
-    return this.service.adminUpdateStatus(id, dto);
+    return this.appointmentService.adminUpdateStatus(id, dto);
   }
 
   // Facilitates the removal of erroneous or cancelled appointment records from the system.
@@ -71,6 +72,6 @@ export class AppointmentController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   adminDelete(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.adminDelete(id);
+    return this.appointmentService.adminDelete(id);
   }
 }

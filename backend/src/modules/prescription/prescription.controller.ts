@@ -24,7 +24,7 @@ import type { PrescriptionStatus } from './entities/prescription.entity';
 //Manages the issuance and lifecycle of medical prescriptions by clinical staff
 @Controller('prescriptions')
 export class PrescriptionsController {
-  constructor(private readonly service: PrescriptionService) {}
+  constructor(private readonly prescriptionService: PrescriptionService) {}
 
 //Permits authorized doctors to issue clinical instructions and medication orders for specific patients
   @Post()
@@ -34,7 +34,7 @@ export class PrescriptionsController {
     @GetUser('sub') userId: string,
     @Body() dto: CreatePrescriptionDto,
   ) {
-    return this.service.create(userId, dto);
+    return this.prescriptionService.create(userId, dto);
   }
 
 //Retrieves a paginated list of prescriptions issued by the professional to support historical review
@@ -47,7 +47,7 @@ export class PrescriptionsController {
     @Query('page',  new DefaultValuePipe(1),  ParseIntPipe) page  = 1,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit = 50,
   ) {
-    return this.service.findAll(userId, status, patientId, page, limit);
+    return this.prescriptionService.findAll(userId, status, patientId, page, limit);
   }
 
 //Returns clinical instructions for a specific patient to assist in treatment planning
@@ -57,7 +57,7 @@ export class PrescriptionsController {
     @GetUser('sub') userId: string,
     @Param('patientId') patientId: string,
   ) {
-    return this.service.findForPatient(patientId, userId);
+    return this.prescriptionService.findForPatient(patientId, userId);
   }
 
 //Returns granular details for a specific prescription record while verifying clinical ownership
@@ -67,7 +67,7 @@ export class PrescriptionsController {
     @GetUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.findOne(id, userId);
+    return this.prescriptionService.findOne(id, userId);
   }
 
 //Terminates an active medication course prematurely due to clinical findings or patient reaction
@@ -77,7 +77,7 @@ export class PrescriptionsController {
     @GetUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.discontinue(id, userId);
+    return this.prescriptionService.discontinue(id, userId);
   }
 
 //Marks a medication cycle as fully executed to update the patient's active treatment records
@@ -87,6 +87,6 @@ export class PrescriptionsController {
     @GetUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.complete(id, userId);
+    return this.prescriptionService.complete(id, userId);
   }
 }

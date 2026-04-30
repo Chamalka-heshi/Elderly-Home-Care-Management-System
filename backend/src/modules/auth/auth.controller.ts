@@ -29,6 +29,7 @@ import { ResetPasswordDto }            from './dto/reset-password.dto';
 import { Roles }                       from '../../common/decorators/roles.decorator';
 import { Public }                      from '../../common/decorators/public.decorator';
 import { UserRole }                    from '../../common/enums/user-role.enum';
+import { GetUser }                     from '../../common/decorators/current-user.decorator';
 
 interface JwtUser {
   sub:           string;
@@ -111,16 +112,15 @@ export class AuthController {
   // Invalidates the current session token to ensure secure account sign-out.
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Request() req: { user: JwtUser }) {
-    await this.authService.logout(req.user.sub);
+  async logout(@GetUser('sub') userId: string) {
+    await this.authService.logout(userId);
     return { message: 'Logged out successfully' };
   }
 
   // Retrieves the complete profile of the authenticated user based on their JWT identity.
   @Get('profile')
   @HttpCode(HttpStatus.OK)
-  async getProfile(@Request() req: { user: JwtUser }) {
-    const userId = req.user.sub;
+  async getProfile(@GetUser('sub') userId: string) {
     if (!userId) {
       throw new UnauthorizedException('Authentication failed');
     }
@@ -130,8 +130,7 @@ export class AuthController {
   // Permits users to remove their account from the platform, including all associated personal data.
   @Delete('delete-account')
   @HttpCode(HttpStatus.OK)
-  async deleteAccount(@Request() req: { user: JwtUser }) {
-    const userId = req.user.sub;
+  async deleteAccount(@GetUser('sub') userId: string) {
     if (!userId) {
       throw new UnauthorizedException('Authentication failed - no user ID in token');
     }
@@ -142,10 +141,9 @@ export class AuthController {
   @Patch('change-password')
   @HttpCode(HttpStatus.OK)
   async changePassword(
-    @Request() req: { user: JwtUser },
+    @GetUser('sub') userId: string,
     @Body() dto: ChangePasswordDto,
   ) {
-    const userId = req.user.sub;
     if (!userId) {
       throw new UnauthorizedException('Authentication failed');
     }
@@ -158,10 +156,9 @@ export class AuthController {
   @Patch('first-login-change-password')
   @HttpCode(HttpStatus.OK)
   async firstLoginChangePassword(
-    @Request() req: { user: JwtUser },
+    @GetUser('sub') userId: string,
     @Body() dto: FirstLoginChangePasswordDto,
   ) {
-    const userId = req.user.sub;
     if (!userId) {
       throw new UnauthorizedException('Authentication failed');
     }
@@ -179,10 +176,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('avatar', { storage: memoryStorage() }))
   async uploadAvatar(
-    @Request() req: { user: JwtUser },
+    @GetUser('sub') userId: string,
     @UploadedFile() file: { mimetype: string; size: number; buffer: Buffer },
   ) {
-    const userId = req.user.sub;
     if (!userId) throw new UnauthorizedException('Authentication failed');
     if (!file)   throw new UnauthorizedException('No file uploaded');
     return this.authService.uploadAvatar(userId, file);
@@ -191,8 +187,7 @@ export class AuthController {
   // Removes the profile picture, reverting the user avatar to its default system state.
   @Delete('remove-avatar')
   @HttpCode(HttpStatus.OK)
-  async removeAvatar(@Request() req: { user: JwtUser }) {
-    const userId = req.user.sub;
+  async removeAvatar(@GetUser('sub') userId: string) {
     if (!userId) throw new UnauthorizedException('Authentication failed');
     await this.authService.removeAvatar(userId);
     return { message: 'Avatar removed successfully' };
