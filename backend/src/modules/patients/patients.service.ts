@@ -117,6 +117,15 @@ export class PatientsService {
     });
   }
 
+//Returns only patients who have purchased a care plan, for caregiver assignment view
+  async findAllWithPlan(): Promise<Patient[]> {
+    return this.patientsRepository.find({
+      where: { paymentPlan: Not(IsNull()) },
+      relations: ['familyMember'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
 //Updates the financial coverage level for a patient to unlock advanced care features
   async setPaymentPlan(
     patientId: string,

@@ -7,19 +7,16 @@ import {
   Param,
   Body,
   Request,
-  UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { VitalRecordsService } from './vital-records.service';
 import { CreateVitalRecordDto, UpdateVitalRecordDto } from '../dto/vital-record.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../common/enums/user-role.enum';
 
 @Controller('vital-records')
-@UseGuards(JwtAuthGuard)
 export class VitalRecordsController {
   constructor(private readonly svc: VitalRecordsService) {}
 
@@ -28,7 +25,7 @@ export class VitalRecordsController {
   @Roles(UserRole.CAREGIVER)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateVitalRecordDto, @Request() req: any) {
-    return this.svc.create(dto, req.user.id);
+    return this.svc.create(dto, req.user.sub);
   }
 
   /** PATCH /vital-records/:id — caregiver updates their own record */
@@ -40,7 +37,7 @@ export class VitalRecordsController {
     @Body() dto: UpdateVitalRecordDto,
     @Request() req: any,
   ) {
-    return this.svc.update(id, dto, req.user.id);
+    return this.svc.update(id, dto, req.user.sub);
   }
 
   /** GET /vital-records — all records (admin / doctor / caregiver) */
