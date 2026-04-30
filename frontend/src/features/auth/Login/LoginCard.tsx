@@ -7,6 +7,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { signin, googleAuth, isAuthenticated, getCurrentRole } from "../../../api/auth/auth.api";
 import type { SigninRequest } from "../../../api/auth/auth.api";
 import sideImg from "../../../assets/landing/auth-side-art.png";
+import iconImg from "../../../assets/landing/icon.png";
 import { IconGoogle } from "../../dashboards/common/icons";
 
 // Constants
@@ -186,7 +187,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       {/* Right side: Login Form container */}
       <div className="p-5 sm:p-7">
         <div className="inline-flex items-center gap-2">
-          <span className="h-6 w-6 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_10px_20px_rgba(16,185,129,0.28)]" />
+          <img src={iconImg} alt="Care Home Logo" className="h-6 w-6 object-contain" />
           <span className="text-sm font-extrabold tracking-tight text-slate-900">Care Home</span>
         </div>
 

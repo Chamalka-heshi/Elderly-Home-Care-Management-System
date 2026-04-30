@@ -9,6 +9,7 @@ import AuthModal, { type AuthMode } from "../auth/AuthModal";
 
 // UI icons and styling
 import { IconX, IconMenu } from "../../features/dashboards/common/icons";
+import iconImg from "../../assets/landing/icon.png";
 import "./navbar.css";
 
 // Reusable navigation link that handles both internal routing and section scrolling
@@ -104,7 +105,7 @@ const Navbar: React.FC = () => {
             to="/"
             className="flex items-center gap-2 font-extrabold tracking-tight text-base sm:text-lg"
           >
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-600" />
+            <img src={iconImg} alt="Care Home Logo" className="h-6 w-6 object-contain" />
             <span>Care Home</span>
           </Link>
 

@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import { Link } from "react-router-dom";
+import iconImg from "../../assets/landing/icon.png";
 import "./footer.css";
 
 const Footer: FC = () => {
@@ -11,7 +12,7 @@ const Footer: FC = () => {
           {/* Logo & Description */}
           <div className="max-w-md">
             <Link to="/" className="flex items-center gap-2 font-extrabold">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-600" />
+              <img src={iconImg} alt="Care Home Logo" className="h-6 w-6 object-contain" />
               <span>Care Home</span>
             </Link>
 

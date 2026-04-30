@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { firstLoginChangePasswordApi } from "../../../api/auth/auth.api";
 import sideImg from "../../../assets/landing/auth-side-art.png";
+import iconImg from "../../../assets/landing/icon.png";
 
 // Configuration constants
 const MIN_PASSWORD_LENGTH = 8;
@@ -105,7 +106,7 @@ const ForceChangePassword: React.FC = () => {
           {/* Right side: Form container */}
           <div className="overflow-y-auto p-5 sm:p-7" style={{ maxHeight: "90vh" }}>
             <div className="inline-flex items-center gap-2">
-              <span className="h-6 w-6 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_10px_20px_rgba(16,185,129,0.28)]" />
+              <img src={iconImg} alt="Care Home Logo" className="h-6 w-6 object-contain" />
               <span className="text-sm font-extrabold tracking-tight text-slate-900">Care Home</span>
             </div>
 
