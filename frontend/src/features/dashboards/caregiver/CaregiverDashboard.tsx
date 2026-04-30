@@ -10,7 +10,7 @@ import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
 // ── Shared icons from common ──
 import {
   IconLayoutDashboard, IconUsers, IconClipboard,
-  IconHeart, IconCalendar, IconSettings,
+  IconHeart, IconCalendar,
   IconCheckCircle, IconAlertCircle,
   type IconProps,
 } from "../common/icons";
@@ -28,18 +28,16 @@ import CareNotes          from "./pages/CareNotes";
 import VitalRecords       from "./pages/VitalRecords";
 import MedicationUpdates  from "./pages/MedicationUpdates";
 import CareSchedule       from "./pages/CareSchedule";
-import Settings           from "./pages/Settings";
 
 // ── Menu items ──
 
 const MENU_ITEMS: MenuItem[] = [
-  { icon: IconLayoutDashboard,                         label: "Dashboard"          },
-  { icon: IconUsers,                                   label: "Assigned Patients"  },
-  { icon: IconClipboard,                               label: "Care Notes"         },
-  { icon: IconHeart,                                   label: "Vital Records"      },
-  { icon: (p: IconProps) => <IconCalendar {...p} />,   label: "Medication Updates" },
-  { icon: (p: IconProps) => <IconCalendar {...p} />,   label: "Care Schedule"      },
-  { icon: (p: IconProps) => <IconSettings {...p} />,   label: "Settings"           },
+  { icon: IconLayoutDashboard,                       label: "Dashboard"          },
+  { icon: IconUsers,                                 label: "Assigned Patients"  },
+  { icon: IconClipboard,                             label: "Care Notes"         },
+  { icon: IconHeart,                                 label: "Vital Records"      },
+  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Medication Updates" },
+  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Care Schedule"      },
 ];
 
 // ── Shift type options ───
@@ -163,7 +161,6 @@ const CaregiverDashboard: React.FC = () => {
             {activeMenu === "Vital Records"      && <VitalRecords />}
             {activeMenu === "Medication Updates" && <MedicationUpdates />}
             {activeMenu === "Care Schedule"      && <CareSchedule />}
-            {activeMenu === "Settings"           && <Settings />}
           </main>
         </div>
       </div>

@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from "react";
 import SignOutButton from "../../../../components/signoutbtn";
 
-import { IconSearch, IconX } from "../../common/icons";
-import iconImg from "../../../../assets/landing/icon.png"
+import { IconSparkles, IconSearch, IconX } from "../../common/icons";
 
 // ── Types ─
 export type MenuLabel =
@@ -11,8 +10,7 @@ export type MenuLabel =
   | "Care Notes"
   | "Vital Records"
   | "Medication Updates"
-  | "Care Schedule"
-  | "Settings";
+  | "Care Schedule";
 
 export interface MenuItem {
   icon: React.FC<{ className?: string }>;
@@ -43,7 +41,6 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
     "Vital Records":      "Record patient vital signs",
     "Medication Updates": "Track medication status",
     "Care Schedule":      "View assigned care schedule",
-    "Settings":           "Manage settings",
   };
 
   return (
@@ -72,7 +69,9 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
           {/* Brand */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src={iconImg} alt="Care Home Logo" className="h-10 w-10 object-contain" />
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                <IconSparkles className="h-5 w-5" />
+              </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">Care Home</p>
                 <p className="text-xs text-slate-500">Caregiver Panel</p>
