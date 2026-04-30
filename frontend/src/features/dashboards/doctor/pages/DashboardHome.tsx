@@ -4,6 +4,7 @@ import StatCard from '../../common/widgets/StatCard';
 import Badge    from '../../common/widgets/Badge';
 
 import type { MenuLabel } from '../components/Sidebar';
+import iconImg from "../../../../assets/landing/icon.png";
 
 import {
   getDoctorDashboardStats,
@@ -16,7 +17,6 @@ import {
   IconCalendar,
   IconPill,
   IconBell,
-  IconSparkle,
   IconRefresh,
   IconAlertTriangle,
 } from '../../common/icons';
@@ -123,7 +123,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
         <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-              <IconSparkle /> Care Home — Doctor Dashboard
+              <img src={iconImg} alt="Care Home Logo" className="h-4 w-4 object-contain" /> Care Home — Doctor Dashboard
             </div>
             <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
               Welcome back, Doctor 👋

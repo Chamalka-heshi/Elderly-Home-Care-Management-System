@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, ChangeEvent } from "react";
 import { checkEmailForReset, forgotPasswordApi, resetPasswordApi } from "../../../api/auth/auth.api";
+import { Link } from "react-router-dom";
 import sideImg from "../../../assets/landing/auth-side-art.png";
 import iconImg from "../../../assets/landing/icon.png";
 
@@ -219,11 +220,13 @@ export default function ForgotPasswordCard({ onGoLogin }: Props) {
 
   const SideImage = () => (
     <div className="relative hidden lg:block">
-      <img 
-        src={sideImg} 
-        alt="Care Home" 
-        className="h-full w-full object-cover" 
-      />
+      <Link to="/">
+        <img 
+          src={sideImg} 
+          alt="Care Home" 
+          className="h-full w-full object-cover cursor-pointer" 
+        />
+      </Link>
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/35 via-black/10 to-transparent" />
       <div className="absolute bottom-5 left-5 right-5">
         <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-3 text-white backdrop-blur-xl shadow-[0_18px_40px_rgba(2,6,23,0.35)]">

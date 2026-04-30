@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 
 // Auth services
@@ -167,11 +167,13 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
     <div className="grid items-stretch lg:grid-cols-2">
       {/* Left side: Hero Image and Branding */}
       <div className="relative hidden lg:block">
+        <Link to="/">
         <img
           src={sideImg}
           alt="Care Home"
           className="h-full w-full object-cover"
         />
+        </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/35 via-black/10 to-transparent" />
         <div className="absolute bottom-5 left-5 right-5">
           <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-3 text-white backdrop-blur-xl shadow-[0_18px_40px_rgba(2,6,23,0.35)]">

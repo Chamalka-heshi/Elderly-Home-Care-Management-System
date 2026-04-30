@@ -4,9 +4,10 @@ import type { DashboardStats } from "../AdminDashboard";
 import StatCard from "../../common/widgets/StatCard";
 import Badge from "../../common/widgets/Badge";
 import type { MenuLabel } from "../components/Sidebar";
+import iconImg from "../../../../assets/landing/icon.png";
 import {
   IconHeart, IconStethoscope, IconUsers, IconUserPlus,
-  IconShield, IconSettings, IconSparkles,
+  IconShield, IconSettings,
 } from "../../common/icons";
 
 // Determines the visual tone for patient status badges
@@ -57,7 +58,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
       <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-            <IconSparkles className="h-4 w-4" /> Care Home — Admin Dashboard
+            <img src={iconImg} alt="Care Home Logo" className="h-4 w-4 object-contain" /> Care Home — Admin Dashboard
           </div>
           <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Welcome back, Admin 👋</h2>
           <p className="mt-1 text-sm text-slate-600">Quick overview of patients, staff, and families.</p>

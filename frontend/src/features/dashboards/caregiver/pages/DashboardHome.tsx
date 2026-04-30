@@ -10,9 +10,10 @@ import {
 import type { Patient } from "../../../../api/patients/patient.types";
 import type { VitalRecord, MedicationLog } from "../../../../api/caregivers/caregiver.api";
 
+import iconImg from "../../../../assets/landing/icon.png";
 import {
   IconHeart, IconUsers, IconClipboard, IconPill,
-  IconAlert, IconCalendar, IconSparkles, IconArrowRight,
+  IconAlert, IconCalendar, IconArrowRight,
   IconPhone, IconX,
 } from "../../common/icons";
 
@@ -196,7 +197,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
         <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-              <IconSparkles className="h-4 w-4" /> {todayLabel}
+              <img src={iconImg} alt="Care Home Logo" className="h-4 w-4 object-contain" /> {todayLabel}
             </div>
             <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
               Welcome back, Caregiver 👋
