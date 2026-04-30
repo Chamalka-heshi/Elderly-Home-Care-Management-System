@@ -73,9 +73,4 @@ export class BookingsService {
     });
   }
 
-  async getAllBookings(): Promise<Booking[]> {
-    return this.bookingRepo.find({
-      order: { createdAt: 'DESC' },
-    });
-  }
 }

@@ -177,29 +177,6 @@ export class AdminController {
     };
   }
 
-  // Returns a single doctor's full profile including availability and fees.
-  @Get('doctors/:id')
-  async getDoctor(@Param('id') id: string) {
-    const doctor = await this.doctorsService.findOne(id);
-
-    return {
-      id:                  doctor.id,
-      fullName:            doctor.user.fullName,
-      email:               doctor.user.email,
-      contactNumber:       doctor.user.contactNumber,
-      nic:                 doctor.nic,
-      specialization:      doctor.specialization,
-      licenseNumber:       doctor.licenseNumber,
-      yearsOfExperience:   doctor.experienceYears,
-      hospitalAffiliation: doctor.hospitalAffiliation,
-      availableDays:       doctor.availableDays,
-      availableTimeStart:  doctor.availableTimeStart,
-      availableTimeEnd:    doctor.availableTimeEnd,
-      consultationFee:     doctor.consultationFee,
-      isActive:            doctor.user.isActive,
-    };
-  }
-
   // Blocks a doctor from accepting new appointments without deleting their history.
   @Delete('doctors/:id/deactivate')
   @HttpCode(HttpStatus.OK)
@@ -271,27 +248,6 @@ export class AdminController {
     };
   }
 
-  // Returns a single caregiver's full profile including qualifications and emergency contact.
-  @Get('caregivers/:id')
-  async getCaregiver(@Param('id') id: string) {
-    const caregiver = await this.caregiversService.findOne(id);
-
-    return {
-      id:                caregiver.id,
-      fullName:          caregiver.user.fullName,
-      email:             caregiver.user.email,
-      contactNumber:     caregiver.user.contactNumber,
-      nic:               caregiver.nic,
-      specializations:   caregiver.specializations,
-      availableShifts:   caregiver.availableShifts,
-      address:           caregiver.address,
-      qualification:     caregiver.qualification,
-      yearsOfExperience: caregiver.experienceYears,
-      emergencyContact:  caregiver.emergencyContact,
-      isActive:          caregiver.user.isActive,
-    };
-  }
-
   // Blocks a caregiver from being assigned to patients without deleting their records.
   @Delete('caregivers/:id/deactivate')
   @HttpCode(HttpStatus.OK)
@@ -312,12 +268,6 @@ export class AdminController {
   @Get('families')
   async getAllFamilies() {
     return this.adminService.getAllFamilies();
-  }
-
-  // Returns a single family's details including how many patients they have registered.
-  @Get('families/:id')
-  async getFamily(@Param('id') id: string) {
-    return this.adminService.getFamilyById(id);
   }
 
   // Activates or blocks a family account; affects login access for the entire family.

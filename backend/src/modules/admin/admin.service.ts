@@ -178,28 +178,6 @@ export class AdminService {
     };
   }
 
-  // Returns a single family with their patient count for the admin detail view.
-  async getFamilyById(id: string) {
-    const family = await this.familyRepository.findOne({
-      where: { id },
-      relations: ['user', 'patients'],
-    });
-
-    if (!family) {
-      throw new NotFoundException('Family not found');
-    }
-
-    return {
-      id:            family.id,
-      fullName:      family.user.fullName,
-      email:         family.user.email,
-      contactNumber: family.user.contactNumber,
-      isActive:      family.user.isActive,
-      patientsCount: family.patients?.length || 0,
-      joinedDate:    family.user.createdAt,
-    };
-  }
-
   // Centralises activation state on the User record so it propagates to all role-based guards.
   async toggleFamilyStatus(id: string, isActive: boolean) {
     const family = await this.familyRepository.findOne({
