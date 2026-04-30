@@ -57,6 +57,11 @@ export class DoctorsService {
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) throw new BadRequestException('Email already registered');
 
+    if (doctorData.nic) {
+      const existingNic = await this.doctorRepository.findOne({ where: { nic: doctorData.nic } });
+      if (existingNic) throw new BadRequestException('NIC already registered');
+    }
+
     if (!password) throw new BadRequestException('Password is required for account creation');
 
     const user = await this.usersService.create(

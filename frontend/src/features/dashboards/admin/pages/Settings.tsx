@@ -253,31 +253,6 @@ const Settings: React.FC = () => {
         )}
       </TableShell>
 
-      <TableShell
-        title="API Configuration"
-        subtitle="Backend connection details (read-only)."
-      >
-        <div className="grid max-w-xl gap-3 text-sm">
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <span className="font-medium text-slate-600">API Base URL</span>
-            <code className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700">
-              {import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}
-            </code>
-          </div>
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <span className="font-medium text-slate-600">Auth Strategy</span>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-              Bearer Token (JWT)
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <span className="font-medium text-slate-600">Environment</span>
-            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-100">
-              {import.meta.env.MODE ?? 'development'}
-            </span>
-          </div>
-        </div>
-      </TableShell>
 
     </div>
   );

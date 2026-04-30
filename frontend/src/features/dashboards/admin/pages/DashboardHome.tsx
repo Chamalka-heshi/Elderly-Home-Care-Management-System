@@ -158,24 +158,6 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
             <ActionCard title="System settings" subtitle="Configure platform preferences." icon={IconSettings} onClick={() => onNavigate("Settings")} />
           </div>
         </div>
-
-        {/* Financial Highlights: Monthly performance overview */}
-        <div className="rounded-3xl border border-white/10 bg-emerald-600 p-5 shadow-[0_20px_60px_rgba(2,6,23,0.10)]">
-          <p className="text-xs font-semibold text-emerald-100">Monthly Snapshot</p>
-          <p className="mt-2 text-3xl font-extrabold text-white">Rs.{stats?.earnings?.toLocaleString() || "0"}</p>
-          <p className="text-xs text-emerald-200">Estimated monthly earnings</p>
-          
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-white/10 p-3 text-center">
-              <p className="text-xl font-bold text-white">{stats?.newPatientsThisMonth || 0}</p>
-              <p className="text-[10px] text-emerald-200">New patients</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-3 text-center">
-              <p className="text-xl font-bold text-white">{stats?.upcomingAppointments || 0}</p>
-              <p className="text-[10px] text-emerald-200">Upcoming appts</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>

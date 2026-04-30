@@ -23,9 +23,6 @@ export interface DashboardStats {
   totalCaregivers: number;
   totalAdmins: number;
   activePatients: number;
-  newPatientsThisMonth: number;
-  upcomingAppointments: number;
-  earnings: number;
 }
 
 export interface CreateAdminRequest {

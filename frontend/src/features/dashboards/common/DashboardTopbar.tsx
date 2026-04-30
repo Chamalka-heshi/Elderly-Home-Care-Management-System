@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "../../../auth/AuthContext";
-import { IconMenu, IconBell, IconChevronDown } from "./icons";
+import { IconMenu, IconChevronDown } from "./icons";
 
 interface Props {
   activeMenu: string;
@@ -67,14 +67,6 @@ const DashboardTopbar: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            className="relative rounded-xl p-2.5 text-slate-600 transition hover:bg-slate-100"
-            aria-label="Notifications"
-          >
-            <IconBell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-          </button>
-
           <button
             onClick={onProfileClick}
             title="View / edit profile"

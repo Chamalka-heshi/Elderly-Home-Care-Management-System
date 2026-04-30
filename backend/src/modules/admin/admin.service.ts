@@ -129,10 +129,6 @@ export class AdminService {
 
   // Runs all count queries in parallel to minimise response time for the dashboard load.
   async getDashboardStats() {
-    const firstDayOfMonth = new Date();
-    firstDayOfMonth.setDate(1);
-    firstDayOfMonth.setHours(0, 0, 0, 0);
-
     const [
       totalFamilies,
       totalPatients,
@@ -140,7 +136,6 @@ export class AdminService {
       activePatients,
       totalDoctors,
       totalCaregivers,
-      newPatientsThisMonth,
     ] = await Promise.all([
       this.familyRepository.count({ where: { user: { isActive: true } } }),
       this.patientRepository.count(),
@@ -148,13 +143,7 @@ export class AdminService {
       this.patientRepository.count({ where: { isActive: true } }),
       this.doctorRepository.count({ where: { user: { isActive: true } } }),
       this.caregiverRepository.count({ where: { user: { isActive: true } } }),
-      this.patientRepository.count({
-        where: { createdAt: MoreThanOrEqual(firstDayOfMonth) },
-      }),
     ]);
-
-    const earnings             = 125000;
-    const upcomingAppointments = 0;
 
     return {
       totalFamilies,
@@ -163,9 +152,6 @@ export class AdminService {
       totalCaregivers,
       totalAdmins,
       activePatients,
-      newPatientsThisMonth,
-      upcomingAppointments,
-      earnings,
     };
   }
 

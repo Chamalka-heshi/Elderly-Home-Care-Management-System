@@ -28,6 +28,13 @@ export class CaregiversService {
       throw new BadRequestException('Email already registered');
     }
 
+    if (caregiverData.nic) {
+      const existingNic = await this.caregiverRepository.findOne({ where: { nic: caregiverData.nic } });
+      if (existingNic) {
+        throw new BadRequestException('NIC already registered');
+      }
+    }
+
     // password is injected by auth.service (auto-generated); never comes from the request body
     if (!password) {
       throw new BadRequestException('Password is required for account creation');
