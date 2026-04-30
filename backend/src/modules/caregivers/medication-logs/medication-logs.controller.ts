@@ -7,7 +7,6 @@ import {
   Param,
   Body,
   Request,
-  UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
@@ -17,12 +16,10 @@ import {
   CreateMedicationLogDto,
   UpdateMedicationLogDto,
 } from '../dto/medication-log.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../common/enums/user-role.enum';
 
 @Controller('medication-logs')
-@UseGuards(JwtAuthGuard)
 export class MedicationLogsController {
   constructor(private readonly svc: MedicationLogsService) {}
 
@@ -31,7 +28,7 @@ export class MedicationLogsController {
   @Roles(UserRole.CAREGIVER)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateMedicationLogDto, @Request() req: any) {
-    return this.svc.create(dto, req.user.id);
+    return this.svc.create(dto, req.user.sub);
   }
 
   /** PATCH /medication-logs/:id — update status/notes of an existing log */
@@ -43,7 +40,7 @@ export class MedicationLogsController {
     @Body() dto: UpdateMedicationLogDto,
     @Request() req: any,
   ) {
-    return this.svc.update(id, dto, req.user.id);
+    return this.svc.update(id, dto, req.user.sub);
   }
 
   /** GET /medication-logs — all logs (admin / doctor / caregiver) */

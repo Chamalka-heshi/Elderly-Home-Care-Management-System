@@ -12,7 +12,6 @@ import { CaregiversService } from './caregivers.service';
 import { UpdateCaregiverProfileDto } from './dto/update-caregiver-profile.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
-import { GetUser } from '../../common/decorators/current-user.decorator';
 
 // JWT + RolesGuard are enforced globally via APP_GUARD in AppModule.
 @Controller('caregivers')
@@ -33,11 +32,11 @@ export class CaregiversController {
   @Roles(UserRole.CAREGIVER)
   @HttpCode(HttpStatus.OK)
   async updateProfile(
-    @GetUser('sub') userId: string,
+    @Request() req: any,
     @Body() dto: UpdateCaregiverProfileDto,
   ) {
     const updated = await this.caregiversService.updateProfileByUserId(
-      userId,
+      req.user.sub,
       dto,
     );
     return {
