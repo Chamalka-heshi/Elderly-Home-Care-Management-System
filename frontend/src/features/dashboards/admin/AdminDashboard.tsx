@@ -81,6 +81,7 @@ import ContactMessages from "./pages/ContactMessages";
 import Settings from "./pages/Settings";
 import PaymentsApproval from "./pages/PaymentsApproval";
 import CarePlanManagement from "./pages/CarePlanManagement";
+import PatientCarePlans from "./pages/PatientCarePlans";
 
 // Dynamic form configurations for adding new system users with localized validation hints
 const ADMIN_FIELDS: FieldConfig[] = [
@@ -146,6 +147,7 @@ const AdminDashboard: React.FC = () => {
     { icon: IconUserPlus, label: "Caregiver Management" },
     { icon: IconCalendar, label: "Channeling Slot Management" },
     { icon: IconCalendar, label: "Appointment Management" },
+    { icon: IconHeart, label: "Patient Care Plans" },
     { icon: IconHeart, label: "Care Plan Management" },
     { icon: IconCurrency, label: "Payments Management" },
     { icon: IconInbox, label: "Contact Messages" },
@@ -183,6 +185,7 @@ const AdminDashboard: React.FC = () => {
     'Caregiver Management': '/admin/caregiver-management',
     'Channeling Slot Management': '/admin/channeling-slots',
     'Appointment Management': '/admin/appointments',
+    'Patient Care Plans': '/admin/patient-care-plans',
     'Care Plan Management': '/admin/care-plans',
     'Payments Management': '/admin/payments',
     'Contact Messages': '/admin/contact-messages',
@@ -192,6 +195,7 @@ const AdminDashboard: React.FC = () => {
   const pathToMenu = useCallback((path: string): MenuLabel => {
     if (path.includes('/payments')) return 'Payments Management';
     if (path.includes('/care-plans')) return 'Care Plan Management';
+    if (path.includes('/patient-care-plans')) return 'Patient Care Plans';
     if (path.includes('/appointments')) return 'Appointment Management';
     if (path.includes('/channeling-slots')) return 'Channeling Slot Management';
     if (path.includes('/contact-messages')) return 'Contact Messages';
@@ -452,6 +456,9 @@ const AdminDashboard: React.FC = () => {
             )}
             {!pageLoading && activeMenu === "Care Plan Management" && (
               <CarePlanManagement addToast={addToast} />
+            )}
+            {activeMenu === "Patient Care Plans" && (
+              <PatientCarePlans addToast={addToast} />
             )}
             {activeMenu === "Contact Messages" && (
               <ContactMessages addToast={addToast} />
