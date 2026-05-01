@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from "react";
 import SignOutButton from "../../../../components/signoutbtn";
-import { IconSearch, IconX } from "../../common/icons";
+import { IconSparkles, IconSearch, IconX } from "../../common/icons";
 import { useAuth } from "../../../../auth/AuthContext";
-import iconImg from "../../../../assets/landing/icon.png";
 
 // ── Types ──
 export type MenuLabel =
@@ -12,6 +11,7 @@ export type MenuLabel =
   | "Patient Management"
   | "Doctor Management"
   | "Caregiver Management"
+  | "Patient Care Plans"
   | "Care Plan Management"
   | "Payments Management"
   | "Contact Messages"
@@ -68,7 +68,9 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
           {/* Brand */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src={iconImg} alt="Care Home Logo" className="h-10 w-10 object-contain" />
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                <IconSparkles className="h-5 w-5" />
+              </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">Care Home</p>
                 <p className="text-xs text-slate-500">{isSuperAdmin ? 'Super Admin Panel' : 'Admin Panel'}</p>
