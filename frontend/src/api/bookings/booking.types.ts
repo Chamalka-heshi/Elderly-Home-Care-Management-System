@@ -19,4 +19,6 @@ export interface Booking {
   carePlanSnapshot: CarePlanSnapshot;
   createdAt: string;
   updatedAt: string;
+  user?: any;
+  patient?: any;
 }
