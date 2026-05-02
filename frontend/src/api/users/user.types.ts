@@ -9,24 +9,26 @@ export interface BaseUser {
 }
 
 // Administrator role for system-wide oversight and management of facility operations
-export interface Admin extends BaseUser {}
+export interface Admin extends BaseUser {
+  nic?: string | null;
+}
 
 // Medical practitioner role to define specialization, licensing, and session availability
 export interface Doctor extends BaseUser {
   specialization: string;
   licenseNumber: string;
   yearsOfExperience: number;
+  hospitalAffiliation?: string;
   availableDays?: string[];
-  availableTimeStart?: string;
-  availableTimeEnd?: string;
+  availableTimeStart?: string | null;
+  availableTimeEnd?: string | null;
 }
 
 // Staff role for providing direct patient care and managing shift preferences
 export interface Caregiver extends BaseUser {
-  shiftPreference: 'day' | 'night' | 'flexible';
-  certifications: string[];
+  specializations: string[];
+  availableShifts: string[];
   yearsOfExperience: number;
-  availabilityStatus: string;
 }
 
 // User role for family members to manage their registered patients and billing

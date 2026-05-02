@@ -22,4 +22,12 @@ export class BookingsController {
     return { bookings, total: bookings.length };
   }
 
+  @Get('all')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getAllBookings() {
+    const bookings = await this.bookingsService.getAllBookings();
+    return { bookings, total: bookings.length };
+  }
+
+
 }

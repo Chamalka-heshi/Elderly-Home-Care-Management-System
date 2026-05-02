@@ -6,22 +6,19 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  Req,
 } from '@nestjs/common';
 
 import { ChannelingSlotService } from './channeling-slot.service';
 import { Roles }                 from '../../common/decorators/roles.decorator';
 import { UserRole }              from '../../common/enums/user-role.enum';
 import { GetUser }               from '../../common/decorators/current-user.decorator';
-import { 
-  CreateChannelingSlotDto, 
-  UpdateChannelingSlotDto, 
-  UpdateDoctorSlotFeeDto, 
-  QueryChannelingSlotsDto 
+import {
+  CreateChannelingSlotDto,
+  UpdateChannelingSlotDto,
+  UpdateDoctorSlotFeeDto,
 } from './dto/channeling-slot.dto';
 
 @Controller('channeling-slots')
@@ -49,8 +46,8 @@ export class ChannelingSlotController {
   @Patch('my-slots/:id/accept')
   @Roles(UserRole.DOCTOR)
   acceptSlot(
-    @GetUser('sub') userId: string, 
-    @Param('id', ParseUUIDPipe) id: string
+    @GetUser('sub') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.channelingSlotService.acceptSlot(id, userId);
   }
@@ -59,8 +56,8 @@ export class ChannelingSlotController {
   @Patch('my-slots/:id/reject')
   @Roles(UserRole.DOCTOR)
   rejectSlot(
-    @GetUser('sub') userId: string, 
-    @Param('id', ParseUUIDPipe) id: string
+    @GetUser('sub') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.channelingSlotService.rejectSlot(id, userId);
   }
@@ -85,18 +82,11 @@ export class ChannelingSlotController {
     return this.channelingSlotService.create(dto);
   }
 
-  // Returns all system slots with advanced filtering capabilities for operational oversight.
+  // Returns all system slots for operational oversight.
   @Get('admin')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  findAll(@Query() query: QueryChannelingSlotsDto) {
-    return this.channelingSlotService.findAll(query);
-  }
-
-  // Aggregates a specific doctor's weekly availability to assist administrators in workload balancing.
-  @Get('admin/doctor/:doctorId/weekly')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  weeklySchedule(@Param('doctorId', ParseUUIDPipe) doctorId: string) {
-    return this.channelingSlotService.getWeeklySchedule(doctorId);
+  findAll() {
+    return this.channelingSlotService.findAll();
   }
 
   // Retrieves granular details for a single slot, including its current status and assigned participants.

@@ -8,26 +8,9 @@ export const createChannelingSlot = (data: any) =>
     body: JSON.stringify(data),
   });
 
-// Retrieve channeling slots with filters to monitor and manage the facility's channeling schedule
-export const getChannelingSlots = (params: any = {}) => {
-  const filteredParams = Object.entries(params)
-    .filter(([, value]) => value !== undefined);
-
-  const queryParams = new URLSearchParams(Object.fromEntries(filteredParams) as any);
-  const queryString = queryParams.toString();
-
-  const url = `/channeling-slots/admin${queryString ? `?${queryString}` : ''}`;
-
-  return apiFetch<{ slots: ChannelingSlot[]; total: number }>(url);
-};
-
-// Get specific slot details to support administrative review and conflict resolution
-export const getChannelingSlot = (id: string) =>
-  apiFetch<ChannelingSlot>(`/channeling-slots/admin/${id}`);
-
-// Fetch weekly schedules for doctors to assist in clinical resource planning and allocation
-export const getDoctorWeeklySchedule = (id: string) =>
-  apiFetch<Record<string, string[]>>(`/channeling-slots/admin/doctor/${id}/weekly`);
+// Retrieve all channeling slots for administrative oversight
+export const getChannelingSlots = () =>
+  apiFetch<{ slots: ChannelingSlot[]; total: number }>('/channeling-slots/admin');
 
 // Modify existing slots to handle changes in doctor availability or clinic requirements
 export const updateChannelingSlot = (id: string, data: any) =>

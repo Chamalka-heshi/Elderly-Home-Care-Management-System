@@ -73,19 +73,15 @@ const AdminManagement: React.FC<Props> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {admins.map((a) => {
-                const fullName = (a as any).user?.fullName || a.fullName;
-                const email = (a as any).user?.email || a.email;
-                const isActive = (a as any).user?.isActive ?? a.isActive;
-                const contactNumber = (a as any).user?.contactNumber || a.contactNumber;
 
                 return (
                   <tr key={a.id} className="transition hover:bg-slate-50/60">
-                    <td className="px-4 py-3 font-semibold text-slate-800">{fullName}</td>
-                    <td className="px-4 py-3 text-slate-600">{email}</td>
-                    <td className="px-4 py-3 text-slate-600">{contactNumber ?? "—"}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{a.fullName}</td>
+                    <td className="px-4 py-3 text-slate-600">{a.email}</td>
+                    <td className="px-4 py-3 text-slate-600">{a.contactNumber ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <Badge tone={isActive ? "emerald" : "red"}>
-                        {isActive ? "Active" : "Inactive"}
+                      <Badge tone={a.isActive ? "emerald" : "red"}>
+                        {a.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
@@ -94,7 +90,7 @@ const AdminManagement: React.FC<Props> = ({
                     {onDeleteAdmin && (
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => handleDelete(a.id, fullName)}
+                          onClick={() => handleDelete(a.id, a.fullName)}
                           disabled={deletingId === a.id}
                           className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >

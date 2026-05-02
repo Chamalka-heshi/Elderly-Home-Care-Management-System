@@ -106,24 +106,3 @@ export class UpdateDoctorSlotFeeDto {
   @Min(0)
   consultationFee: number;
 }
-
-// Query Slots DTO
-
-// Supports advanced system-wide filtering of consultation windows by doctor, date range, or current lifecycle status.
-export class QueryChannelingSlotsDto {
-  @IsOptional()
-  @IsUUID()
-  doctorId?: string;
-
-  @IsOptional()
-  @IsDateString()
-  fromDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  toDate?: string;
-
-  @IsOptional()
-  @IsEnum(SlotStatus)
-  status?: SlotStatus;
-}

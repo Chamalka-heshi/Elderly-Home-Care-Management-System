@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
+import { Repository, Between, MoreThanOrEqual, In } from 'typeorm';
 
 import { ChannelingSlot, SlotStatus } from './entities/channeling-slot.entity';
 import { Doctor }                      from '../doctors/entities/doctor.entity';
@@ -13,21 +13,9 @@ import {
   CreateChannelingSlotDto,
   UpdateChannelingSlotDto,
   UpdateDoctorSlotFeeDto,
-  QueryChannelingSlotsDto,
 } from './dto/channeling-slot.dto';
 
 // Utility Helpers
-
-// Generates a standardized ISO-style week key (e.g., 2026-W18) to group availability for reporting and scheduling.
-function weekKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = tmp.getUTCDay() || 7; 
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((tmp.valueOf() - yearStart.valueOf()) / 86400000 + 1) / 7);
-  return `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
 
 // Converts time strings into total minutes to facilitate precise overlap detection and duration calculations.
 function toMinutes(hhmm: string): number {
@@ -173,21 +161,16 @@ export class ChannelingSlotService {
   }
 
 //Retrieves all platform slots for administrative oversight and operational reporting
-  async findAll(query: QueryChannelingSlotsDto): Promise<{ slots: ChannelingSlot[]; total: number }> {
+  async findAll(): Promise<{ slots: ChannelingSlot[]; total: number }> {
     await this.autoCompletePassedSlots();
 
-    const qb = this.slotRepo
+    const [slots, total] = await this.slotRepo
       .createQueryBuilder('slot')
       .leftJoinAndSelect('slot.doctor', 'doctor')
       .orderBy('slot.date', 'ASC')
-      .addOrderBy('slot.startTime', 'ASC');
+      .addOrderBy('slot.startTime', 'ASC')
+      .getManyAndCount();
 
-    if (query.doctorId) qb.andWhere('slot.doctorId = :doctorId', { doctorId: query.doctorId });
-    if (query.fromDate) qb.andWhere('slot.date >= :fromDate', { fromDate: query.fromDate });
-    if (query.toDate)   qb.andWhere('slot.date <= :toDate', { toDate: query.toDate });
-    if (query.status)   qb.andWhere('slot.status = :status', { status: query.status });
-
-    const [slots, total] = await qb.getManyAndCount();
     return { slots, total };
   }
 
@@ -231,29 +214,6 @@ export class ChannelingSlotService {
     const slot = await this.findOne(id);
     await this.slotRepo.remove(slot);
     return { message: 'Channeling slot deleted successfully' };
-  }
-
-//Aggregates active slots into weekly clusters to power the public discovery interface
-  async getWeeklySchedule(doctorId: string): Promise<Record<string, string[]>> {
-    const doctor = await this.doctorRepo.findOne({ where: { id: doctorId } });
-    if (!doctor) throw new NotFoundException('Doctor not found');
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const slots = await this.slotRepo.find({
-      where:  { doctorId, status: SlotStatus.ACTIVE, date: MoreThanOrEqual(today) as any },
-      select: ['date'],
-      order:  { date: 'ASC' },
-    });
-
-    const schedule: Record<string, Set<string>> = {};
-    for (const s of slots) {
-      const wk = weekKey(s.date);
-      if (!schedule[wk]) schedule[wk] = new Set();
-      schedule[wk].add(s.date);
-    }
-
-    return Object.fromEntries(Object.entries(schedule).map(([wk, days]) => [wk, [...days]]));
   }
 
 //Fetches clinician-specific slots to populate their private management dashboards

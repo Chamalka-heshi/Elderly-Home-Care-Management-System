@@ -45,34 +45,30 @@ const DoctorManagement: React.FC<Props> = ({ doctors, loading, onAddDoctor, onTo
           </thead>
           <tbody className="divide-y divide-slate-100">
             {doctors.map((d) => {
-              // Safely extract identity fields across potential flat or nested API structures
-              const fullName = (d as any).user?.fullName || d.fullName;
-              const email = (d as any).user?.email || d.email;
-              const isActive = (d as any).user?.isActive ?? d.isActive;
 
               return (
                 <tr key={d.id} className="transition hover:bg-slate-50/60">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{fullName}</td>
-                  <td className="px-4 py-3 text-slate-600">{email}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{d.fullName}</td>
+                  <td className="px-4 py-3 text-slate-600">{d.email}</td>
                   <td className="px-4 py-3 text-slate-600">{d.specialization}</td>
                   <td className="px-4 py-3 text-slate-600">{d.licenseNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{d.yearsOfExperience} yrs</td>
                   <td className="px-4 py-3">
-                    <Badge tone={isActive ? "emerald" : "red"}>
-                      {isActive ? "Active" : "Inactive"}
+                    <Badge tone={d.isActive ? "emerald" : "red"}>
+                      {d.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => onToggleStatus(d.id, isActive)}
+                      onClick={() => onToggleStatus(d.id, d.isActive)}
                       className={[
                         "rounded-xl px-3 py-2 text-xs font-semibold shadow-sm transition",
-                        isActive
+                        d.isActive
                           ? "border border-slate-200 bg-white text-slate-800 hover:shadow-md"
                           : "bg-emerald-600 text-white hover:bg-emerald-700",
                       ].join(" ")}
                     >
-                      {isActive ? "Deactivate" : "Activate"}
+                      {d.isActive ? "Deactivate" : "Activate"}
                     </button>
                   </td>
                 </tr>
@@ -93,4 +89,4 @@ const DoctorManagement: React.FC<Props> = ({ doctors, loading, onAddDoctor, onTo
   </TableShell>
 );
 
-export default DoctorManagement;
+export default DoctorManagement;

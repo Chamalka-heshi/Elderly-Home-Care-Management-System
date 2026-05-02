@@ -12,22 +12,32 @@ import { IconGoogle } from "../../dashboards/common/icons";
 
 // Constants
 const REMEMBERED_EMAIL_STORAGE_KEY = "rememberedEmail";
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Firebase Errors
 const FRIENDLY_FIREBASE_ERRORS: Record<string, string> = {
   "auth/popup-closed-by-user": "Sign-in popup was closed. Please try again.",
   "auth/popup-blocked": "Popup was blocked by your browser. Please allow popups for this site.",
   "auth/cancelled-popup-request": "Sign-in cancelled.",
-  "auth/account-exists-with-different-credential": "An account already exists with this email using a different sign-in method.",
+  "auth/account-exists-with-different-credential":
+    "An account already exists with this email using a different sign-in method.",
   "auth/network-request-failed": "Network error. Please check your connection.",
   "auth/too-many-requests": "Too many attempts. Please try again later.",
   "auth/user-disabled": "This account has been disabled.",
   "auth/operation-not-allowed": "Google sign-in is not enabled. Contact support.",
 };
 
-const getFriendlyFirebaseError = (code: string): string => {
-  return FRIENDLY_FIREBASE_ERRORS[code] ?? "Sign-in failed. Please try again.";
+const getFriendlyFirebaseError = (code: string): string =>
+  FRIENDLY_FIREBASE_ERRORS[code] ?? "Sign-in failed. Please try again.";
+
+// Centralized error state shape — one source of truth for all error display
+type ErrorState = {
+  banner: string;      
+  email: string;        
+  password: string;    
 };
+
+const NO_ERRORS: ErrorState = { banner: "", email: "", password: "" };
 
 // Parameter types for LoginCard
 type Props = {
@@ -47,20 +57,17 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [errorField, setErrorField] = useState<"email" | "password" | null>(null);
+  const [errors, setErrors] = useState<ErrorState>(NO_ERRORS);
 
-  // Redirect if session is active
+  // Redirect if session is already active
   useEffect(() => {
     if (isAuthenticated() && user) {
       const role = getCurrentRole();
-      if (role) {
-        navigate(`/${role}`, { replace: true });
-      }
+      if (role) navigate(`/${role}`, { replace: true });
     }
   }, [user, navigate]);
 
-  // Load remembered email
+  // Pre-fill remembered email on mount
   useEffect(() => {
     const remembered = localStorage.getItem(REMEMBERED_EMAIL_STORAGE_KEY);
     if (remembered) {
@@ -69,33 +76,28 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
     }
   }, []);
 
-  //Set errors
-  const clearErrors = () => {
-    setError("");
-    setErrorField(null);
-  };
+  const clearErrors = () => setErrors(NO_ERRORS);
 
-  const setFieldError = (msg: string) => {
-    setError(msg);
-    const lowerMessage = msg.toLowerCase();
+  // Clears only the error for the field currently being edited
+  const clearFieldError = (field: keyof ErrorState) =>
+    setErrors((prev) => ({ ...prev, [field]: "" }));
 
-    if (lowerMessage.includes("email") || lowerMessage.includes("account") || lowerMessage.includes("no account")) {
-      setErrorField("email");
-    } else if (lowerMessage.includes("password") || lowerMessage.includes("incorrect")) {
-      setErrorField("password");
+  // Maps a server/API error message to the correct field or banner
+  const applyServerError = (msg: string) => {
+    const lower = msg.toLowerCase();
+    if (lower.includes("email") || lower.includes("account") || lower.includes("no account")) {
+      setErrors({ ...NO_ERRORS, email: msg });
+    } else if (lower.includes("password") || lower.includes("incorrect")) {
+      setErrors({ ...NO_ERRORS, password: msg });
     } else {
-      setErrorField(null);
+      setErrors({ ...NO_ERRORS, banner: msg });
     }
   };
 
-  //Check for first time login users and redirect to change password page
+  // Redirect after successful login
   const handleSuccess = (role: string, mustChangePassword?: boolean) => {
     onSuccessClose();
-    if (mustChangePassword) {
-      navigate("/change-password", { replace: true });
-    } else {
-      navigate(`/${role}`, { replace: true });
-    }
+    navigate(mustChangePassword ? "/change-password" : `/${role}`, { replace: true });
   };
 
   // Handle email/password login
@@ -105,14 +107,22 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
 
     const trimmedEmail = email.trim();
 
-    if (!trimmedEmail || !password) {
-      setError("Please fill in all fields.");
-      return;
+    // Validate each field independently so both errors show at once
+    const nextErrors: ErrorState = { ...NO_ERRORS };
+
+    if (!trimmedEmail) {
+      nextErrors.email = "Email is required.";
+    } else if (!EMAIL_REGEX.test(trimmedEmail)) {
+      nextErrors.email = "Please enter a valid email address.";
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      setFieldError("Please enter a valid email address.");
+    if (!password) {
+      nextErrors.password = "Password is required.";
+    }
+
+    // If any field-level errors exist, show them all and bail out
+    if (nextErrors.email || nextErrors.password) {
+      setErrors(nextErrors);
       return;
     }
 
@@ -135,8 +145,8 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       setUser(res.user);
       handleSuccess(res.user.role, res.user.mustChangePassword);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Sign in failed";
-      setFieldError(msg);
+      const msg = err instanceof Error ? err.message : "Sign in failed. Please try again.";
+      applyServerError(msg);
       setPassword("");
     } finally {
       setLoading(false);
@@ -154,8 +164,10 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       handleSuccess(res.user.role, res.user.mustChangePassword);
     } catch (err: any) {
       const code: string = err?.code ?? "";
-      setError(code ? getFriendlyFirebaseError(code) : (err?.message ?? "Google sign-in failed"));
-      setErrorField(null);
+      const msg = code
+        ? getFriendlyFirebaseError(code)
+        : (err?.message ?? "Google sign-in failed. Please try again.");
+      setErrors({ ...NO_ERRORS, banner: msg });
     } finally {
       setGoogleLoading(false);
     }
@@ -168,11 +180,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       {/* Left side: Hero Image and Branding */}
       <div className="relative hidden lg:block">
         <Link to="/">
-        <img
-          src={sideImg}
-          alt="Care Home"
-          className="h-full w-full object-cover"
-        />
+          <img src={sideImg} alt="Care Home" className="h-full w-full object-cover" />
         </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/35 via-black/10 to-transparent" />
         <div className="absolute bottom-5 left-5 right-5">
@@ -186,7 +194,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
         </div>
       </div>
 
-      {/* Right side: Login Form container */}
+      {/* Right side: Login Form */}
       <div className="p-5 sm:p-7">
         <div className="inline-flex items-center gap-2">
           <img src={iconImg} alt="Care Home Logo" className="h-6 w-6 object-contain" />
@@ -198,16 +206,17 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
           Sign in to manage elderly care, appointments and monitoring.
         </p>
 
-        {/* General Error Banner */}
-        {error && !errorField && (
+        {/* Banner: non-field errors (network, Google, etc.) */}
+        {errors.banner && (
           <div className="mt-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             <span>⚠️</span>
-            <span>{error}</span>
+            <span>{errors.banner}</span>
           </div>
         )}
 
         {/* Login Credentials Form */}
-        <form onSubmit={onSubmit} className="mt-5 space-y-3.5">
+        <form onSubmit={onSubmit} className="mt-5 space-y-3.5" noValidate>
+          {/* Email */}
           <div>
             <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-slate-700">
               Email
@@ -216,21 +225,23 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
-                clearErrors();
+                clearFieldError("email");
               }}
               disabled={anyLoading}
               type="email"
               placeholder="example@email.com"
-              className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition hover:border-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50 ${errorField === "email"
+              className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition hover:border-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+                errors.email
                   ? "border-red-400 focus:border-red-400 focus:ring-red-200/60"
                   : "border-slate-200 focus:border-emerald-400 focus:ring-emerald-200/60"
-                }`}
+              }`}
             />
-            {errorField === "email" && (
-              <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {error}</p>
+            {errors.email && (
+              <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {errors.email}</p>
             )}
           </div>
 
+          {/* Password */}
           <div>
             <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-slate-700">
               Password
@@ -240,15 +251,16 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  clearErrors();
+                  clearFieldError("password");
                 }}
                 disabled={anyLoading}
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                className={`w-full rounded-xl border bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50 ${errorField === "password"
+                className={`w-full rounded-xl border bg-white px-4 py-3 pr-12 text-sm outline-none transition hover:border-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+                  errors.password
                     ? "border-red-400 focus:border-red-400 focus:ring-red-200/60"
                     : "border-slate-200 focus:border-emerald-400 focus:ring-emerald-200/60"
-                  }`}
+                }`}
               />
               <button
                 type="button"
@@ -259,8 +271,8 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
                 {showPassword ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
-            {errorField === "password" && (
-              <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {error}</p>
+            {errors.password && (
+              <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {errors.password}</p>
             )}
           </div>
 
@@ -285,7 +297,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
             </button>
           </div>
 
-          {/* Form Submit Button */}
+          {/* Submit */}
           <button
             type="submit"
             disabled={anyLoading}
@@ -307,7 +319,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
           </p>
         </form>
 
-        {/* Alternative Login Divider */}
+        {/* Divider */}
         <div className="my-5 flex items-center gap-3">
           <span className="h-px w-full bg-slate-200" />
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 whitespace-nowrap">
@@ -316,7 +328,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
           <span className="h-px w-full bg-slate-200" />
         </div>
 
-        {/* Social Sign-in Button */}
+        {/* Google Sign-in */}
         <button
           type="button"
           disabled={anyLoading}

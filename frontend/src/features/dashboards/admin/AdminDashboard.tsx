@@ -75,7 +75,7 @@ import DoctorManagement from "./pages/DoctorManagement";
 import CaregiverManagement from "./pages/CaregiverManagement";
 import FamilyManagement from "./pages/FamilyManagement";
 import PatientManagement from "./pages/PatientManagement";
-import AppointmentManagement from "./pages/ChannelingSlotManagement";
+import ChannelingSlotManagement from "./pages/ChannelingSlotManagement";
 import AppointmentRequests from "./pages/AppointmentRequests";
 import ContactMessages from "./pages/ContactMessages";
 import Settings from "./pages/Settings";
@@ -89,7 +89,6 @@ const ADMIN_FIELDS: FieldConfig[] = [
   { name: "email", label: "Email", required: true, type: "email", placeholder: "admin@carehome.com" },
   {
     name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
-    hint: "Used to generate a temporary password — sent to their email."
   },
   {
     name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
@@ -102,7 +101,6 @@ const DOCTOR_FIELDS: FieldConfig[] = [
   { name: "email", label: "Email", required: true, type: "email", placeholder: "doctor@carehome.com" },
   {
     name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
-    hint: "Used to generate a temporary password — sent to their email."
   },
   {
     name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
@@ -118,7 +116,6 @@ const CAREGIVER_FIELDS: FieldConfig[] = [
   { name: "email", label: "Email", required: true, type: "email", placeholder: "caregiver@carehome.com" },
   {
     name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
-    hint: "Used to generate a temporary password — sent to their email."
   },
   {
     name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
@@ -141,10 +138,10 @@ const AdminDashboard: React.FC = () => {
   const MENU_ITEMS: MenuItem[] = [
     { icon: IconLayoutDashboard, label: "Dashboard" },
     ...(isSuperAdmin ? [{ icon: IconShield, label: "Admin Management" as MenuLabel }] : []),
-    { icon: IconUsers, label: "Family Management" },
-    { icon: IconHeart, label: "Patient Management" },
     { icon: IconStethoscope, label: "Doctor Management" },
     { icon: IconUserPlus, label: "Caregiver Management" },
+    { icon: IconUsers, label: "Family Management" },
+    { icon: IconHeart, label: "Patient Management" },
     { icon: IconCalendar, label: "Channeling Slot Management" },
     { icon: IconCalendar, label: "Appointment Management" },
     { icon: IconHeart, label: "Patient Care Plans" },
@@ -449,7 +446,7 @@ const AdminDashboard: React.FC = () => {
               <PatientManagement patients={patients} loading={false} onDelete={handleDeletePatient} />
             )}
             {activeMenu === "Channeling Slot Management" && (
-              <AppointmentManagement addToast={addToast} />
+              <ChannelingSlotManagement addToast={addToast} />
             )}
             {activeMenu === "Appointment Management" && (
               <AppointmentRequests addToast={addToast} />

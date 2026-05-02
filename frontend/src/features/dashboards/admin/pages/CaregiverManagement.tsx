@@ -48,34 +48,30 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
           </thead>
           <tbody className="divide-y divide-slate-100">
             {caregivers.map((c) => {
-              // Extract identity fields safely from nested or flattened structures
-              const fullName = (c as any).user?.fullName || c.fullName;
-              const email = (c as any).user?.email || c.email;
-              const isActive = (c as any).user?.isActive ?? c.isActive;
 
               return (
                 <tr key={c.id} className="transition hover:bg-slate-50/60">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{fullName}</td>
-                  <td className="px-4 py-3 text-slate-600">{email}</td>
-                  <td className="px-4 py-3 text-slate-600">{((c as any).specializations ?? []).join(", ")}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{c.fullName}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.email}</td>
+                  <td className="px-4 py-3 text-slate-600">{(c.specializations ?? []).join(", ")}</td>
                   <td className="px-4 py-3 text-slate-600">{c.yearsOfExperience} yrs</td>
                   <td className="px-4 py-3 text-slate-600 capitalize">
-                    {((c as any).availableShifts ?? []).join(", ") || "Flexible"}
+                    {(c.availableShifts ?? []).join(", ")}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone={isActive ? "emerald" : "red"}>{isActive ? "Active" : "Inactive"}</Badge>
+                    <Badge tone={c.isActive ? "emerald" : "red"}>{c.isActive ? "Active" : "Inactive"}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => onToggleStatus(c.id, isActive)}
+                      onClick={() => onToggleStatus(c.id, c.isActive)}
                       className={[
                         "rounded-xl px-3 py-2 text-xs font-semibold shadow-sm transition",
-                        isActive
+                        c.isActive
                           ? "border border-slate-200 bg-white text-slate-800 hover:shadow-md"
                           : "bg-emerald-600 text-white hover:bg-emerald-700",
                       ].join(" ")}
                     >
-                      {isActive ? "Deactivate" : "Activate"}
+                      {c.isActive ? "Deactivate" : "Activate"}
                     </button>
                   </td>
                 </tr>

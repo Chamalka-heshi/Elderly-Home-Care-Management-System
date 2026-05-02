@@ -27,7 +27,7 @@ export const createDoctor = (data: any) =>
 
 // Retrieve doctor list to support scheduling and resource allocation
 export const getAllDoctors = () =>
-  apiFetch<{ doctors: Doctor[] }>('/admin/doctors');
+  apiFetch<{ doctors: Doctor[]; total: number }>('/admin/doctors');
 
 // Disable doctor accounts to suspend their ability to provide medical services
 export const deactivateDoctor = (id: string) =>

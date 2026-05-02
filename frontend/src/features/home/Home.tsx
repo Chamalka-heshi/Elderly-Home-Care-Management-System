@@ -247,12 +247,14 @@ const Home: React.FC = () => {
             onForgotPassword={() => setAuthMode("forgot")}
           />
         ) : authMode === "forgot" ? (
-          <ForgotPasswordCard onGoLogin={() => setAuthMode("login")} />
-        ) : (
-          <SignupCard onGoLogin={() => setAuthMode("login")} onSuccessClose={closeAuth} />
-        )}
+          <ForgotPasswordCard 
+          onGoLogin={() => setAuthMode("login")} />
+        ) : authMode === "signup" ? (
+          <SignupCard 
+          onGoLogin={() => setAuthMode("login")} 
+          onSuccessClose={closeAuth} />
+        ) : null}
       </AuthModal>
-
       <Footer />
     </div>
   );
