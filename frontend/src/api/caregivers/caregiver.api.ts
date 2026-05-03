@@ -42,12 +42,12 @@ export interface MedicationLog {
 }
 
 // Assigned Patients
-// Retrieve patients assigned to the caregiver to define their current care responsibilities
+// Get patients assigned to the caregiver
 export const getAssignedPatients = () =>
   apiFetch<{ patients: Patient[]; total: number }>('/patients/assigned');
 
 // Care Notes
-// Record daily observations and care activities to maintain a detailed patient history
+// Create a new care note
 export const createCareNote = (data: {
   residentId: string;
   note: string;
@@ -58,7 +58,7 @@ export const createCareNote = (data: {
     body: JSON.stringify(data),
   });
 
-// Modify existing notes to correct information or add follow-up details to care records
+// Update an existing care note
 export const updateCareNote = (
   id: string,
   data: { note?: string; category?: string },
@@ -69,7 +69,7 @@ export const updateCareNote = (
   });
 
 // Vital Records
-// Submit physiological measurements to monitor the patient's immediate health status
+// Create a new vital record
 export const createVitalRecord = (data: {
   patientId: string;
   bloodPressure?: string;
@@ -84,7 +84,7 @@ export const createVitalRecord = (data: {
     body: JSON.stringify(data),
   });
 
-// Update specific vital readings to reflect new measurements or clinical changes
+// Update an existing vital record
 export const updateVitalRecord = (
   id: string,
   data: Partial<
@@ -96,16 +96,16 @@ export const updateVitalRecord = (
     body: JSON.stringify(data),
   });
 
-// Fetch all recorded vitals to facilitate broader clinical analysis and trend spotting
+// Get all vital records
 export const getAllVitalRecords = () =>
   apiFetch<VitalRecord[]>('/vital-records');
 
-// Retrieve vitals for a specific patient to support individualized health tracking
+// Get vitals for a specific patient
 export const getVitalsForPatient = (patientId: string) =>
   apiFetch<VitalRecord[]>(`/vital-records/patient/${patientId}`);
 
 // Medication Logs
-// Record medication administration to ensure compliance with clinical treatment plans
+// Create a new medication log
 export const createMedicationLog = (data: {
   patientId: string;
   medicationName: string;
@@ -121,7 +121,7 @@ export const createMedicationLog = (data: {
     body: JSON.stringify(data),
   });
 
-// Transition medication states to track whether prescriptions were administered or missed
+// Update a medication log status
 export const updateMedicationLog = (
   id: string,
   data: {
@@ -137,16 +137,16 @@ export const updateMedicationLog = (
     body: JSON.stringify(data),
   });
 
-// Fetch all medication activity to monitor adherence and staff performance
+// Get all medication logs
 export const getAllMedicationLogs = () =>
   apiFetch<MedicationLog[]>('/medication-logs');
 
-// Retrieve medication history for a specific patient to verify treatment consistency
+// Get medication logs for a specific patient
 export const getMedicationLogsForPatient = (patientId: string) =>
   apiFetch<MedicationLog[]>(`/medication-logs/patient/${patientId}`);
 
 // Payment Plan
-// Allow family members to select and transition between patient care plans
+// Select a care plan for a patient
 export const selectPaymentPlan = (patientId: string, plan: string) =>
   apiFetch<Patient>(`/patients/${patientId}/plan`, {
     method: 'POST',

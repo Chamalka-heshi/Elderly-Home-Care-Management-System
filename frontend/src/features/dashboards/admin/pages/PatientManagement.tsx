@@ -7,6 +7,7 @@ import TableShell from "../../common/widgets/TableShell";
 import Badge      from "../../common/widgets/Badge";
 
 // Updated to use the boolean isActive field from the backend
+// Choose the badge color based on if the patient is active
 const statusTone = (isActive: boolean) =>
   isActive ? "emerald" as const : "slate" as const;
 
@@ -16,8 +17,11 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
+// PatientManagement
+// Main list for admins to see and manage all patient records
 const PatientManagement: React.FC<Props> = ({ patients, loading, onDelete }) => (
   <TableShell title="Patients" subtitle="View and manage all patient records.">
+    {/* Show loading spinner or the patient list */}
     {loading ? (
       <div className="flex items-center justify-center py-16">
         <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
@@ -38,11 +42,7 @@ const PatientManagement: React.FC<Props> = ({ patients, loading, onDelete }) => 
           </thead>
           <tbody className="divide-y divide-slate-100">
             {patients.map((p: any) => {
-              /**
-               * FIX: Handle Raw SQL Aliases
-               * Your Admin API returns fields like 'Patient_fullName'.
-               * We check for both standard and aliased keys to ensure data shows.
-               */
+              // Map the patient data to simple variables
               const id = p.id;
               const fullName = p.fullName;
               const nic = p.nic;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import { AuthContext, type User } from "./AuthContext";
 import { isTokenExpired } from "./tokenUtils";
@@ -30,8 +30,9 @@ const initUser = (): User | null => {
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUserState] = useState<User | null>(initUser);
 
-  // Synchronizes state changes with local storage for persistence
-  const setUser = (u: User | null) => {
+  // Synchronizes state changes with local storage for persistence.
+  // Wrapped in useCallback so consumers that list setUser as a dependency
+  const setUser = useCallback((u: User | null) => {
     if (u) {
       localStorage.setItem("user", JSON.stringify(u));
     } else {
@@ -39,7 +40,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem("token");
     }
     setUserState(u);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>

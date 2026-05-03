@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 
-// API services to manage system-wide data and administrative users
+// API services to manage system-wide data and administrative users, ensuring all core modules have access to persistent data
 import { getDashboardStats } from "../../../api/users/admin-dashboard.api";
 import {
   getAllAdmins, createAdmin, deleteAdmin,
@@ -83,58 +83,58 @@ import PaymentsApproval from "./pages/PaymentsApproval";
 import CarePlanManagement from "./pages/CarePlanManagement";
 import PatientCarePlans from "./pages/PatientCarePlans";
 
-// Dynamic form configurations for adding new system users with localized validation hints
+// Dynamic form configurations for adding new system users with localized validation hints to reduce data entry errors
+// Shared validation patterns used across all staff account creation forms
+const NIC_PATTERN     = "^([0-9]{9}[VvXx]|[0-9]{12})$";
+const NIC_MESSAGE     = "Enter a valid Sri Lankan NIC (e.g. 123456789V or 200012345678).";
+const PHONE_PATTERN   = "^0[0-9]{9}$";
+const PHONE_MESSAGE   = "Enter a valid 10-digit Sri Lankan number starting with 0 (e.g. 0771234567).";
+
 const ADMIN_FIELDS: FieldConfig[] = [
-  { name: "fullName", label: "Full Name", required: true, placeholder: "Enter full name" },
-  { name: "email", label: "Email", required: true, type: "email", placeholder: "admin@carehome.com" },
-  {
-    name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
-  },
-  {
-    name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
-    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits."
-  },
+  { name: "fullName",      label: "Full Name",      required: true,  placeholder: "Enter full name",         minLength: 2 },
+  { name: "email",         label: "Email",           required: true,  type: "email", placeholder: "admin@carehome.com" },
+  { name: "contactNumber", label: "Contact Number",  required: true,  placeholder: "0771234567",
+    pattern: PHONE_PATTERN, patternMessage: PHONE_MESSAGE },
+  { name: "nic",           label: "NIC Number",      required: true,  placeholder: "e.g. 123456789V or 200012345678",
+    pattern: NIC_PATTERN,   patternMessage: NIC_MESSAGE,
+    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits." },
 ];
 
 const DOCTOR_FIELDS: FieldConfig[] = [
-  { name: "fullName", label: "Full Name", required: true, placeholder: "Dr. Jane Smith" },
-  { name: "email", label: "Email", required: true, type: "email", placeholder: "doctor@carehome.com" },
-  {
-    name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
-  },
-  {
-    name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
-    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits."
-  },
-  { name: "specialization", label: "Specialization", required: true, placeholder: "e.g. Cardiologist" },
-  { name: "licenseNumber", label: "License Number", required: true, placeholder: "MD-XXXXX" },
-  { name: "experienceYears", label: "Years of Experience", required: true, type: "number", placeholder: "0" },
+  { name: "fullName",        label: "Full Name",            required: true,  placeholder: "Dr. Jane Smith",          minLength: 2 },
+  { name: "email",           label: "Email",                required: true,  type: "email", placeholder: "doctor@carehome.com" },
+  { name: "contactNumber",   label: "Contact Number",       required: true,  placeholder: "0771234567",
+    pattern: PHONE_PATTERN,  patternMessage: PHONE_MESSAGE },
+  { name: "nic",             label: "NIC Number",           required: true,  placeholder: "e.g. 123456789V or 200012345678",
+    pattern: NIC_PATTERN,    patternMessage: NIC_MESSAGE,
+    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits." },
+  { name: "specialization",  label: "Specialization",       required: true,  placeholder: "e.g. Cardiologist",       minLength: 2 },
+  { name: "licenseNumber",   label: "License Number",       required: true,  placeholder: "MD-XXXXX",                minLength: 3 },
+  { name: "experienceYears", label: "Years of Experience",  required: true,  type: "number", placeholder: "0", min: 0, max: 60 },
 ];
 
 const CAREGIVER_FIELDS: FieldConfig[] = [
-  { name: "fullName", label: "Full Name", required: true, placeholder: "Enter full name" },
-  { name: "email", label: "Email", required: true, type: "email", placeholder: "caregiver@carehome.com" },
-  {
-    name: "contactNumber", label: "Contact Number", required: true, placeholder: "0771234567",
-  },
-  {
-    name: "nic", label: "NIC Number", required: true, placeholder: "e.g. 123456789V or 200012345678",
-    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits."
-  },
-  { name: "certifications", label: "Certifications (comma-separated)", placeholder: "CPR, First Aid, BLS" },
-  { name: "yearsOfExperience", label: "Years of Experience", type: "number", placeholder: "0" },
+  { name: "fullName",          label: "Full Name",                   required: true,  placeholder: "Enter full name",    minLength: 2 },
+  { name: "email",             label: "Email",                       required: true,  type: "email", placeholder: "caregiver@carehome.com" },
+  { name: "contactNumber",     label: "Contact Number",              required: true,  placeholder: "0771234567",
+    pattern: PHONE_PATTERN,    patternMessage: PHONE_MESSAGE },
+  { name: "nic",               label: "NIC Number",                  required: true,  placeholder: "e.g. 123456789V or 200012345678",
+    pattern: NIC_PATTERN,      patternMessage: NIC_MESSAGE,
+    hint: "Sri Lankan NIC: 9 digits + V/X, or 12 digits." },
+  { name: "certifications",    label: "Certifications (comma-separated)", placeholder: "CPR, First Aid, BLS" },
+  { name: "yearsOfExperience", label: "Years of Experience",         type: "number",  placeholder: "0", min: 0, max: 60 },
 ];
 
 interface Toast { id: number; kind: "success" | "error"; message: string; }
 
-// Main dashboard orchestration component to handle navigation, global state, and modal management
+// Main dashboard orchestration component to handle navigation, global state, and modal management for the administrative module
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
 
-  // Menu items built based on user permissions to control module access
+  // Menu items built based on user permissions to control module access and maintain security boundaries
   const MENU_ITEMS: MenuItem[] = [
     { icon: IconLayoutDashboard, label: "Dashboard" },
     ...(isSuperAdmin ? [{ icon: IconShield, label: "Admin Management" as MenuLabel }] : []),
@@ -172,6 +172,8 @@ const AdminDashboard: React.FC = () => {
   // Loading flags
   const [pageLoading, setPageLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  /** Server-side error to display inside the active creation modal */
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const menuToPath: Record<MenuLabel, string> = {
     Dashboard: '/admin',
@@ -212,14 +214,14 @@ const AdminDashboard: React.FC = () => {
     navigate(target);
   }, [navigate, user?.role]);
 
-  // Toast notification helper to provide immediate user feedback on async operations
+  // Toast notification helper to provide immediate user feedback on async operations and maintain system transparency
   const addToast = useCallback((kind: "success" | "error", message: string) => {
     const id = Date.now();
     setToasts((t) => [...t, { id, kind, message }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
   }, []);
 
-  // Centralized data loaders to refresh specific module data upon activation or state change
+  // Centralized data loaders to refresh specific module data upon activation or state change, ensuring data accuracy
   const loadDashboard = useCallback(async () => {
     try {
       setPageLoading(true);
@@ -277,7 +279,7 @@ const AdminDashboard: React.FC = () => {
     setActiveMenu(pathToMenu(location.pathname));
   }, [location.pathname, pathToMenu]);
 
-  // User management handlers to perform CRUD operations across different system roles
+  // User management handlers to perform CRUD operations across different system roles while maintaining referential integrity
   const handleCreateAdmin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -289,11 +291,17 @@ const AdminDashboard: React.FC = () => {
     };
     try {
       setModalLoading(true);
+      setModalError(null);
       const res = await createAdmin(data);
       addToast("success", (res as any).message || "Admin created successfully");
-      setShowAddAdmin(false); loadAdmins();
-    } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create admin"); }
-    finally { setModalLoading(false); }
+      setShowAddAdmin(false);
+      setModalError(null);
+      loadAdmins();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create admin";
+      setModalError(msg);
+      addToast("error", msg);
+    } finally { setModalLoading(false); }
   };
 
   const handleDeleteAdmin = async (id: string) => {
@@ -317,11 +325,17 @@ const AdminDashboard: React.FC = () => {
     };
     try {
       setModalLoading(true);
+      setModalError(null);
       const res = await createDoctor(data);
       addToast("success", (res as any).message || "Doctor created successfully");
-      setShowAddDoctor(false); loadDoctors();
-    } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create doctor"); }
-    finally { setModalLoading(false); }
+      setShowAddDoctor(false);
+      setModalError(null);
+      loadDoctors();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create doctor";
+      setModalError(msg);
+      addToast("error", msg);
+    } finally { setModalLoading(false); }
   };
 
   const handleToggleDoctorStatus = async (id: string, isActive: boolean) => {
@@ -349,11 +363,17 @@ const AdminDashboard: React.FC = () => {
     };
     try {
       setModalLoading(true);
+      setModalError(null);
       const res = await createCaregiver(data);
       addToast("success", (res as any).message || "Caregiver created successfully");
-      setShowAddCaregiver(false); loadCaregivers();
-    } catch (err) { addToast("error", err instanceof Error ? err.message : "Failed to create caregiver"); }
-    finally { setModalLoading(false); }
+      setShowAddCaregiver(false);
+      setModalError(null);
+      loadCaregivers();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create caregiver";
+      setModalError(msg);
+      addToast("error", msg);
+    } finally { setModalLoading(false); }
   };
 
   const handleToggleCaregiverStatus = async (id: string, isActive: boolean) => {
@@ -426,18 +446,18 @@ const AdminDashboard: React.FC = () => {
                 stats={dashboardStats}
                 patients={patients}
                 onNavigate={setActiveMenu}
-                onAddAdmin={isSuperAdmin ? () => setShowAddAdmin(true) : undefined}
-                onAddDoctor={() => setShowAddDoctor(true)}
+                onAddAdmin={isSuperAdmin ? () => { setModalError(null); setShowAddAdmin(true); } : undefined}
+                onAddDoctor={() => { setModalError(null); setShowAddDoctor(true); }}
               />
             )}
             {!pageLoading && isSuperAdmin && activeMenu === "Admin Management" && (
-              <AdminManagement admins={admins as any} loading={false} canAddAdmin={isSuperAdmin} onAddAdmin={() => setShowAddAdmin(true)} onDeleteAdmin={isSuperAdmin ? handleDeleteAdmin : undefined} />
+              <AdminManagement admins={admins as any} loading={false} canAddAdmin={isSuperAdmin} onAddAdmin={() => { setModalError(null); setShowAddAdmin(true); }} onDeleteAdmin={isSuperAdmin ? handleDeleteAdmin : undefined} />
             )}
             {!pageLoading && activeMenu === "Doctor Management" && (
-              <DoctorManagement doctors={doctors} loading={false} onAddDoctor={() => setShowAddDoctor(true)} onToggleStatus={handleToggleDoctorStatus} />
+              <DoctorManagement doctors={doctors} loading={false} onAddDoctor={() => { setModalError(null); setShowAddDoctor(true); }} onToggleStatus={handleToggleDoctorStatus} />
             )}
             {!pageLoading && activeMenu === "Caregiver Management" && (
-              <CaregiverManagement caregivers={caregivers} loading={false} onAddCaregiver={() => setShowAddCaregiver(true)} onToggleStatus={handleToggleCaregiverStatus} />
+              <CaregiverManagement caregivers={caregivers} loading={false} onAddCaregiver={() => { setModalError(null); setShowAddCaregiver(true); }} onToggleStatus={handleToggleCaregiverStatus} />
             )}
             {!pageLoading && activeMenu === "Family Management" && (
               <FamilyManagement families={families} loading={false} onToggleStatus={handleToggleFamilyStatus} />
@@ -468,9 +488,9 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {isSuperAdmin && <FormModal title="Add New Admin — Password auto-generated & emailed" open={showAddAdmin} loading={modalLoading} onClose={() => setShowAddAdmin(false)} onSubmit={handleCreateAdmin} fields={ADMIN_FIELDS} />}
-      <FormModal title="Add New Doctor — Password auto-generated & emailed" open={showAddDoctor} loading={modalLoading} onClose={() => setShowAddDoctor(false)} onSubmit={handleCreateDoctor} fields={DOCTOR_FIELDS} />
-      <FormModal title="Add New Caregiver — Password auto-generated & emailed" open={showAddCaregiver} loading={modalLoading} onClose={() => setShowAddCaregiver(false)} onSubmit={handleCreateCaregiver} fields={CAREGIVER_FIELDS} />
+      {isSuperAdmin && <FormModal title="Add New Admin — Password auto-generated & emailed" open={showAddAdmin} loading={modalLoading} error={modalError} onErrorClear={() => setModalError(null)} onClose={() => { setShowAddAdmin(false); setModalError(null); }} onSubmit={handleCreateAdmin} fields={ADMIN_FIELDS} />}
+      <FormModal title="Add New Doctor — Password auto-generated & emailed" open={showAddDoctor} loading={modalLoading} error={modalError} onErrorClear={() => setModalError(null)} onClose={() => { setShowAddDoctor(false); setModalError(null); }} onSubmit={handleCreateDoctor} fields={DOCTOR_FIELDS} />
+      <FormModal title="Add New Caregiver — Password auto-generated & emailed" open={showAddCaregiver} loading={modalLoading} error={modalError} onErrorClear={() => setModalError(null)} onClose={() => { setShowAddCaregiver(false); setModalError(null); }} onSubmit={handleCreateCaregiver} fields={CAREGIVER_FIELDS} />
     </div>
   );
 };

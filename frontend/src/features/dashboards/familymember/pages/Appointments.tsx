@@ -4,9 +4,9 @@
  * Family member: pick a patient → browse active channeling slots → book.
  *
  * Payment flow (new):
- *   1. POST /family/appointments  → returns Appointment { status: 'pending_payment' }
+ *   1. POST /family/appointments  → returns Appointment { status: 'payment_pending' }
  *   2. Family member is redirected to /family/payments/checkout?appointmentId=<id>
- *   3. On "My Appointments" tab, any pending_payment appointment shows a "Pay Now" button
+ *   3. On "My Appointments" tab, any payment_pending appointment shows a "Pay Now" button
  *
  * Prescriptions are still shown inline on completed appointments.
  */
@@ -360,7 +360,7 @@ const Appointments: React.FC = () => {
         patientId: selectedPatientId,
         notes: notes || undefined,
       });
-      // Appointment is created with status = 'pending_payment'
+      // Appointment is created with status = 'payment_pending'
       setMyAppointments((prev) => [newAppt, ...prev]);
       setBookingSlot(null);
       showToast('success', 'Appointment booked! Redirecting to payment…');
@@ -479,7 +479,13 @@ const Appointments: React.FC = () => {
                     <SlotCard
                       key={slot.id}
                       slot={slot}
-                      onBook={(s) => selectedPatient && setBookingSlot(s)}
+                      onBook={(s) => {
+                        if (!selectedPatient) {
+                          showToast('error', 'Please select a patient before booking.');
+                          return;
+                        }
+                        setBookingSlot(s);
+                      }}
                     />
                   ))}
                 </div>
@@ -513,7 +519,7 @@ const Appointments: React.FC = () => {
                 <div key={appt.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
 
                   {/* ── Pending-payment notice banner ── */}
-                  {appt.status === 'pending_payment' && (
+                  {appt.status === 'payment_pending' && (
                     <div className="flex items-center justify-between gap-3 bg-blue-50 border-b border-blue-100 px-5 py-3">
                       <div className="flex items-center gap-2 text-sm text-blue-800">
                         <span>💳</span>
@@ -581,8 +587,8 @@ const Appointments: React.FC = () => {
                       <p className="mt-2 text-xs italic text-slate-500">Notes: {appt.notes}</p>
                     )}
 
-                    {/* Cancel — only available for pending (paid, awaiting doctor) appointments */}
-                    {appt.status === 'pending' && (
+                    {/* Cancel — available while payment is pending or prescription is pending */}
+                    {(appt.status === 'prescription_pending' || appt.status === 'payment_pending') && (
                       <div className="mt-4 flex justify-end">
                         <button
                           onClick={() => handleCancel(appt.id)}

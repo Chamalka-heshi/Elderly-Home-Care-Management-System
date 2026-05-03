@@ -1,6 +1,6 @@
 import { apiFetch } from '../core/apiClient';
 
-// Structure for family-accessible prescriptions to track patient medication cycles and clinical advice
+// Prescription data structure for families
 export interface FamilyPrescription {
   id: string;
   appointmentId?: string | null;
@@ -28,10 +28,10 @@ export interface FamilyPrescription {
   createdAt?: string;
 }
 
-// Retrieve all prescriptions issued to the family's registered patients to ensure adherence to treatment
+// Get all prescriptions for the family's patients
 export const getFamilyPrescriptions = () =>
   apiFetch<{ data: FamilyPrescription[]; total: number }>('/family/prescriptions');
 
-// Get specific prescription details to support medication purchase and treatment follow-up
+// Get a specific prescription for the family
 export const getFamilyPrescription = (id: string) =>
   apiFetch<FamilyPrescription>(`/family/prescriptions/${id}`);

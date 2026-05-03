@@ -1,29 +1,29 @@
 import { apiFetch } from '../core/apiClient';
 import type { Patient } from './patient.types';
 
-// Retrieve all patients registered by the family to manage their clinical and care profiles
+// Get all patients registered by the current user
 export const getMyPatients = () =>
   apiFetch<{ patients: Patient[]; total: number }>('/family/patients');
 
-// Get specific patient details to support clinical review and profile management
+// Get a specific patient record
 export const getPatient = (id: string) =>
   apiFetch<Patient>(`/family/patients/${id}`);
 
-// Register a new patient to enable their participation in care plans and consultations
+// Register a new patient
 export const createPatient = (data: any) =>
   apiFetch<{ patient: Patient }>('/family/patients', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 
-// Modify existing patient information to ensure medical and contact records remain accurate
+// Update a patient record
 export const updatePatient = (id: string, data: any) =>
   apiFetch<{ patient: Patient }>(`/family/patients/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 
-// Remove patient profiles when care services are no longer required by the family
+// Delete a patient record
 export const deletePatient = (id: string) =>
   apiFetch<void>(`/family/patients/${id}`, {
     method: 'DELETE',

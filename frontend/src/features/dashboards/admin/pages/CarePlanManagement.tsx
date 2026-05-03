@@ -36,7 +36,8 @@ const emptyForm: CarePlanFormState = {
   durationUnit: "days",
 };
 
-// Interface for managing care plan subscription packages offered to family members
+// CarePlanManagement
+// Page for admins to create and manage the subscription care plans
 const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
   const { user } = useAuth();
   const [plans, setPlans] = useState<CarePlan[]>([]);
@@ -50,7 +51,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
 
   const canManage = user?.role === "admin" || user?.role === "super_admin";
 
-  // Retrieve all existing care plans from the administrative API
+  // Loads the list of care plans from the server
   const loadPlans = useCallback(async () => {
     if (!canManage) return;
 
@@ -110,7 +111,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Submit care plan creation or update with validation
+  // Saves the plan after checking the inputs
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -155,7 +156,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
     }
   };
 
-  // Permanently deactivate a care plan (preventing new subscriptions)
+  // Deactivates a plan so families can't subscribe to it anymore
   const handleDeactivate = async (plan: CarePlan) => {
     if (!plan.isActive) return;
 
@@ -207,12 +208,10 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
         }
       >
         {loading ? (
-          /* Loading Overlay: Animated spinner during data fetch */
           <div className="flex items-center justify-center py-16">
             <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
           </div>
         ) : (
-          /* Care Plan Grid: Overview of all active and inactive packages */
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -282,7 +281,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
         )}
       </TableShell>
 
-      {/* Editor Modal: Modal form for creating and updating care plans */}
+      {/* Popup form for creating or editing a plan */}
       {modalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <button

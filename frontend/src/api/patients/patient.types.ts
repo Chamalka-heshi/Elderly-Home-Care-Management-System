@@ -1,7 +1,7 @@
-// Standardized gender options to maintain consistent demographic data across patient records
+// Patient gender options
 export type Gender = 'male' | 'female' | 'other';
 
-// Core patient profile to track clinical identity, contact details, and basic medical background
+// Patient data structure
 export interface Patient {
   id: string;
   fullName: string;

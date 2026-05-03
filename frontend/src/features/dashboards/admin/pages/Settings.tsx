@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import TableShell from "../../common/widgets/TableShell";
 import { IconSpinner, IconCheck } from "../../common/icons";
 
-// API services to synchronize facility contact details between the dashboard and public interface
+// Import tools to get and update the facility's contact information
 import { getContactInfo } from "../../../../api/contact/public-contact.api";
 import { updateContactInfo } from "../../../../api/contact/admin-contact.api";
 
@@ -31,7 +31,7 @@ const EMPTY_CONTACT: ContactForm = {
   mapUrl:         '',
 };
 
-// CSS utility for consistent input styling across the settings interface
+// Common style for all input boxes
 const inputClass =
   'w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10 disabled:opacity-50';
 
@@ -42,7 +42,8 @@ interface FieldProps {
   children:    React.ReactNode;
 }
 
-// Wrapper for form fields to ensure consistent labeling and validation hint placement
+// Field
+// A wrapper for form inputs that adds a label and a hint
 const Field: React.FC<FieldProps> = ({ label, hint, optional, children }) => (
   <label className="grid gap-1.5">
     <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -58,7 +59,8 @@ const Field: React.FC<FieldProps> = ({ label, hint, optional, children }) => (
   </label>
 );
 
-// Configuration page to manage system-wide metadata and facility-specific contact information
+// Settings
+// Page for admins to change facility details like phone and address
 const Settings: React.FC = () => {
   // Contact info state
   const [contact,     setContact]     = useState<ContactForm>(EMPTY_CONTACT);
@@ -66,7 +68,7 @@ const Settings: React.FC = () => {
   const [saveState,   setSaveState]   = useState<SaveState>('idle');
   const [saveError,   setSaveError]   = useState('');
 
-  // Load the current facility details to pre-populate the form for administrative updates
+  // Gets the current info from the database when the page loads
   useEffect(() => {
     getContactInfo()
       .then((info) => {
@@ -92,7 +94,7 @@ const Settings: React.FC = () => {
     setContact((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Persist updated contact information to the backend to reflect changes on the public website
+  // Sends the updated info to the server
   const handleSaveContact = async () => {
     setSaveState('saving');
     setSaveError('');

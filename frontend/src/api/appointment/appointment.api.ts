@@ -3,7 +3,7 @@ import type { Appointment } from './appointment.types';
 
 export type { Appointment, AppointmentStatus } from './appointment.types';
 
-// Reserve channeling slots to enable family members to book clinical sessions for patients
+// Create a new appointment
 export const createAppointment = (data: {
   slotId: string;
   patientId: string;
@@ -14,11 +14,11 @@ export const createAppointment = (data: {
     body: JSON.stringify(data),
   });
 
-// Retrieve family-specific bookings to allow users to track their upcoming health consultations
+// Get all appointments for the current user
 export const getMyAppointments = () =>
   apiFetch<Appointment[]>('/family/appointments');
 
-// Void existing appointments to allow family members to cancel bookings when no longer needed
+// Cancel an appointment
 export const cancelMyAppointment = (id: string) =>
   apiFetch<{ message: string }>(`/family/appointments/${id}/cancel`, {
     method: 'PATCH',

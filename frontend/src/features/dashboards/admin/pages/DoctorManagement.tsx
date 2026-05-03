@@ -11,7 +11,8 @@ interface Props {
   onToggleStatus: (id: string, isActive: boolean) => void;
 }
 
-// Administrative console for managing the hospital's medical practitioner database
+// DoctorManagement
+// List of all doctors in the system for the admin to manage
 const DoctorManagement: React.FC<Props> = ({ doctors, loading, onAddDoctor, onToggleStatus }) => (
   <TableShell
     title="Doctors"
@@ -23,13 +24,12 @@ const DoctorManagement: React.FC<Props> = ({ doctors, loading, onAddDoctor, onTo
       </button>
     }
   >
-    {/* Content State: Handles loading, empty, and data population results */}
+    {/* Show loading spinner or the doctor list */}
     {loading ? (
       <div className="flex items-center justify-center py-16">
         <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     ) : (
-      /* Medical Staff Database: High-density data grid for practitioner oversight */
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -75,7 +75,6 @@ const DoctorManagement: React.FC<Props> = ({ doctors, loading, onAddDoctor, onTo
               );
             })}
             {doctors.length === 0 && (
-              /* No Results Backdrop */
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
                   No doctors found.

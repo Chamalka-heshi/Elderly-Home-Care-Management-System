@@ -1,4 +1,4 @@
-// Publicly visible contact and location details for the facility to guide user inquiries
+// Facility contact information
 export interface ContactInfo {
   phonePrimary: string;
   phoneEmergency: string;
@@ -11,7 +11,7 @@ export interface ContactInfo {
   mapEmbedUrl?: string;
 }
 
-// Inquiry message structure to track communication between the public and the facility
+// Contact message data structure
 export interface ContactMessage {
   id: string;
   fullName: string;

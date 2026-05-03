@@ -1,6 +1,6 @@
 import { apiFetch } from '../core/apiClient';
 import type { CarePlan } from './care-plan.types';
 
-// Retrieve the list of available healthcare packages to allow users to select appropriate patient care
+// Get all active care plans
 export const getActiveCarePlans = () =>
   apiFetch<CarePlan[]>('/care-plans');

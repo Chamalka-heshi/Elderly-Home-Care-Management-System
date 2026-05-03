@@ -1,7 +1,7 @@
 import { apiFetch } from '../core/apiClient';
 import type { Appointment, AppointmentStatus } from './appointment.types';
 
-// Retrieve appointments with filters to oversee the facility's clinical schedule
+// Retrieve appointments with filters
 export const getAllAppointmentsAdmin = (params?: {
   status?: AppointmentStatus;
   patientId?: string;
@@ -24,7 +24,7 @@ export const getAllAppointmentsAdmin = (params?: {
   return apiFetch<Appointment[]>(`/appointments/admin${queryString}`);
 };
 
-// Update appointment status to resolve scheduling conflicts or administrative errors
+// Update appointment status
 export const updateAppointmentStatusAdmin = (
   id: string,
   status: AppointmentStatus,
@@ -38,7 +38,7 @@ export const updateAppointmentStatusAdmin = (
     }),
   });
 
-// Remove appointment records to maintain database hygiene for cancelled or invalid entries
+// Delete appointment record
 export const deleteAppointmentAdmin = (id: string) =>
   apiFetch<{ message: string }>(`/appointments/admin/${id}`, {
     method: 'DELETE',

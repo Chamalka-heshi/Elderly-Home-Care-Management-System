@@ -66,6 +66,6 @@ export interface PatientMedicalHistory {
   prescriptions: PrescriptionHistory[];
 }
 
-//Provides a consolidated medical timeline to assist doctors in clinical decision-making
+// Get full medical history for a patient
 export const getPatientMedicalHistory = (patientId: string) =>
   apiFetch<PatientMedicalHistory>(`/patients/${patientId}/medical-history`);

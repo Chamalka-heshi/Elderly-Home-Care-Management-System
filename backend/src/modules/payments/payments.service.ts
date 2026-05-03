@@ -113,7 +113,7 @@ export class PaymentsService {
     if (appointment.familyMemberId !== familyMember.id) {
       throw new NotFoundException('Appointment not found or does not belong to your account');
     }
-    if (appointment.status !== AppointmentStatus.PENDING_PAYMENT) {
+    if (appointment.status !== AppointmentStatus.PAYMENT_PENDING) {
       throw new BadRequestException(
         'This appointment is not awaiting payment. Status: ' + appointment.status,
       );
@@ -158,7 +158,7 @@ export class PaymentsService {
       const saved = await payRepo.save(payment);
 
       if (dto.paymentMethod === PaymentMethod.CARD) {
-        appointment.status = AppointmentStatus.PENDING;
+        appointment.status = AppointmentStatus.PRESCRIPTION_PENDING;
         await apptRepo.save(appointment);
       }
 
@@ -278,8 +278,8 @@ export class PaymentsService {
       } else if (payment.appointmentId) {
         const appt = await apptRepo.findOne({ where: { id: payment.appointmentId } });
         if (!appt) throw new NotFoundException('Linked appointment not found');
-        if (appt.status === AppointmentStatus.PENDING_PAYMENT) {
-          appt.status = AppointmentStatus.PENDING;
+        if (appt.status === AppointmentStatus.PAYMENT_PENDING) {
+          appt.status = AppointmentStatus.PRESCRIPTION_PENDING;
           await apptRepo.save(appt);
         }
       }
@@ -315,7 +315,7 @@ export class PaymentsService {
         }
       } else if (payment.appointmentId) {
         const appt = await apptRepo.findOne({ where: { id: payment.appointmentId } });
-        if (appt && appt.status === AppointmentStatus.PENDING_PAYMENT) {
+        if (appt && appt.status === AppointmentStatus.PAYMENT_PENDING) {
           appt.status = AppointmentStatus.CANCELLED;
           await apptRepo.save(appt);
         }

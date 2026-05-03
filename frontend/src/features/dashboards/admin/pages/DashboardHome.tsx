@@ -10,11 +10,12 @@ import {
   IconShield, IconSettings,
 } from "../../common/icons";
 
-// Determines the visual tone for patient status badges
+// Choose the badge color based on if the user is active
 const statusTone = (isActive: boolean) =>
   isActive ? ("emerald" as const) : ("slate" as const);
 
-// Clickable action card for primary administrative tasks
+// ActionCard
+// A button component for quick links with an icon and description
 const ActionCard: React.FC<{
   title: string;
   subtitle: string;
@@ -46,11 +47,12 @@ interface Props {
   onAddDoctor: () => void;
 }
 
-// Main dashboard view providing a high-level operational overview
+// DashboardHome
+// Main home page for the admin dashboard with stats and recent activity
 const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmin, onAddDoctor }) => (
   <div className="space-y-6">
     
-    {/* Hero Banner: Greeting and Global Actions */}
+    {/* Welcome area with action buttons */}
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
       <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
       <div className="absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-lime-400/20 blur-3xl" />
@@ -83,7 +85,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
       </div>
     </div>
 
-    {/* Key Performance Indicators: Statistical Highlights */}
+    {/* Summary boxes with total numbers for the system */}
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard title="Total Patients" value={stats.totalPatients} caption={`${stats.activePatients} active`} icon={IconHeart} />
       <StatCard title="Total Doctors" value={stats.totalDoctors} caption="Registered & active" icon={IconStethoscope} />
@@ -92,7 +94,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
     </div>
 
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-      {/* Recent Activity: Patient Management Table */}
+      {/* List of the most recently admitted patients */}
       <div className="xl:col-span-2">
         <div className="rounded-3xl border border-white/10 bg-white/70 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
@@ -148,7 +150,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
       </div>
 
       <div className="space-y-4">
-        {/* Navigation Sidebar: Shortcuts and Financial Summary */}
+        {/* Quick action buttons for common tasks */}
         <div className="rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
           <h3 className="text-base font-bold text-slate-900">Quick Actions</h3>
           <p className="mt-1 text-xs text-slate-500">Fast navigation for daily admin tasks.</p>

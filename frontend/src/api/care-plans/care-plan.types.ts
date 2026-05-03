@@ -1,7 +1,7 @@
-// Unit options for defining the duration of clinical care plans
+// Care plan duration units
 export type CarePlanDurationUnit = 'days' | 'months';
 
-// Structure for care plan service offerings to define the scope and cost of healthcare packages
+// Care plan data structure
 export interface CarePlan {
   id: string;
   name: string;
@@ -14,7 +14,7 @@ export interface CarePlan {
   updatedAt: string;
 }
 
-// Data required to register a new care plan within the facility's service catalog
+// Payload for creating a care plan
 export interface CreateCarePlanPayload {
   name: string;
   description: string;
@@ -23,7 +23,7 @@ export interface CreateCarePlanPayload {
   durationUnit: CarePlanDurationUnit;
 }
 
-// Flexible structure for updating existing care plan details to reflect service changes
+// Payload for updating a care plan
 export type UpdateCarePlanPayload = Partial<CreateCarePlanPayload> & {
   isActive?: boolean;
 };

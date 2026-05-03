@@ -33,12 +33,13 @@ interface Props {
   onNavigate: (label: MenuLabel) => void;
 }
 
-// ── Component ──
+// Provides a navigational backbone for the admin dashboard, allowing rapid context switching between different management modules
 const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNavigate }) => {
   const [search, setSearch] = useState("");
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
 
+  // Filters navigation items in real-time to assist administrators in quickly locating specific management consoles
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? items.filter((m) => m.label.toLowerCase().includes(q)) : items;
@@ -46,7 +47,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
 
   return (
     <>
-      {/* Mobile backdrop */}
+      {/* Enhances mobile usability by providing a tactile way to dismiss the sidebar overlay */}
       {isOpen && (
         <button
           aria-label="Close sidebar"
@@ -66,7 +67,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
         ].join(" ")}
       >
         <div className="flex flex-1 flex-col overflow-y-auto p-5">
-          {/* Brand */}
+          {/* Establishes the application's visual identity while clearly indicating the administrator's current role and panel scope */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img src={iconImg} alt="Care Home Logo" className="h-10 w-10 object-contain" />
@@ -136,7 +137,7 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
             })}
           </nav>
 
-          {/* Sign out */}
+          {/* Provides a clear termination point for administrative sessions to maintain account security across shared environments */}
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
             <p className="text-xs font-semibold text-slate-700">Account</p>
             <p className="mt-1 text-xs text-slate-500">Securely sign out when you're done.</p>

@@ -101,9 +101,8 @@ export class AppointmentService {
 
     const duplicate = await this.appointmentRepo.findOne({
       where: [
-        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PENDING_PAYMENT },
-        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PENDING },
-        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.CONFIRMED },
+        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PAYMENT_PENDING },
+        { slotId: dto.slotId, patientId: dto.patientId, status: AppointmentStatus.PRESCRIPTION_PENDING },
       ],
     });
     if (duplicate)
@@ -111,8 +110,8 @@ export class AppointmentService {
 
     const booked = await this.appointmentRepo.count({
       where: [
-        { slotId: dto.slotId, status: AppointmentStatus.PENDING },
-        { slotId: dto.slotId, status: AppointmentStatus.CONFIRMED },
+        { slotId: dto.slotId, status: AppointmentStatus.PAYMENT_PENDING },
+        { slotId: dto.slotId, status: AppointmentStatus.PRESCRIPTION_PENDING },
       ],
     });
     if (booked >= slot.maxPatients)
@@ -122,7 +121,7 @@ export class AppointmentService {
       slotId:         dto.slotId,
       patientId:      dto.patientId,
       familyMemberId: familyMember.id,
-      status:         AppointmentStatus.PENDING_PAYMENT,
+      status:         AppointmentStatus.PAYMENT_PENDING,
       notes:          dto.notes ?? null,
     });
 
@@ -180,8 +179,7 @@ export class AppointmentService {
       .where('slot.doctorId = :doctorId', { doctorId: doctor.id })
       .andWhere('appt.status IN (:...statuses)', {
         statuses: [
-          AppointmentStatus.PENDING,
-          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PRESCRIPTION_PENDING,
           AppointmentStatus.COMPLETED,
           AppointmentStatus.CANCELLED,
         ],

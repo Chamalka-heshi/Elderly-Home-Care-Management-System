@@ -12,7 +12,8 @@ interface Props {
   onToggleStatus: (id: string, isActive: boolean) => void;
 }
 
-// Interface for managing caregiver staff, their availability, and account status
+// CaregiverManagement
+// List of all caregivers for admins to manage
 const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregiver, onToggleStatus }) => (
   <TableShell
     title="Caregivers"
@@ -27,12 +28,12 @@ const CaregiverManagement: React.FC<Props> = ({ caregivers, loading, onAddCaregi
     }
   >
     {loading ? (
-      /* Loading Overlay: Animated spinner during data fetch */
+      /* Show loading spinner while fetching data */
       <div className="flex items-center justify-center py-16">
         <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     ) : (
-      /* Caregiver Grid: Tabular overview of staff details and availability */
+      /* Table showing all caregiver details */
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-600">

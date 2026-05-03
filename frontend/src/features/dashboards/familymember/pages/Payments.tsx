@@ -138,7 +138,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
           kind: 'success',
           title: 'Payment Completed',
           message: appointmentId
-            ? 'Your appointment payment is confirmed. The doctor will review and confirm your appointment shortly.'
+            ? 'Your appointment payment is confirmed. The doctor will issue a prescription at your slot.'
             : 'Payment successful. Your care plan booking is now active.',
         });
       } else {
@@ -165,11 +165,26 @@ const Payments: React.FC<Props> = ({ addToast }) => {
   };
 
   const validateCardForm = () => {
+    const rawNum = cardForm.cardNumber.replace(/\s/g, '');
     const errors = {
-      cardNumber: cardForm.cardNumber.trim() ? '' : 'Card number is required.',
-      cardHolderName: cardForm.cardHolderName.trim() ? '' : 'Card holder name is required.',
-      expiryDate: cardForm.expiryDate.trim() ? '' : 'Expiry date is required.',
-      cvv: cardForm.cvv.trim() ? '' : 'CVV is required.',
+      cardNumber:     !rawNum
+                        ? 'Card number is required.'
+                        : !/^\d{13,19}$/.test(rawNum)
+                        ? 'Enter a valid card number (13–19 digits).'
+                        : '',
+      cardHolderName: cardForm.cardHolderName.trim()
+                        ? ''
+                        : 'Card holder name is required.',
+      expiryDate:     !cardForm.expiryDate.trim()
+                        ? 'Expiry date is required.'
+                        : !/^\d{2}\/\d{2}$/.test(cardForm.expiryDate.trim())
+                        ? 'Use MM/YY format (e.g. 08/27).'
+                        : '',
+      cvv:            !cardForm.cvv.trim()
+                        ? 'CVV is required.'
+                        : !/^\d{3,4}$/.test(cardForm.cvv.trim())
+                        ? 'CVV must be 3 or 4 digits.'
+                        : '',
     };
     setCardFormErrors(errors);
     return !Object.values(errors).some(Boolean);
@@ -349,7 +364,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
                         </div>
                       )}
                       <p className="mt-2 text-xs text-emerald-600">
-                        Your appointment will be confirmed after payment.
+                        Your appointment will be ready for the doctor once payment is confirmed.
                       </p>
                     </>
                   );
@@ -448,7 +463,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructions</p>
                 <p className="mt-1 text-sm text-slate-700">
                   Transfer the amount shown above, then click <span className="font-semibold">Confirm Transfer</span>.
-                  An admin will approve and your appointment will be confirmed.
+                  An admin will approve your bank transfer, then the doctor can issue a prescription at your slot.
                 </p>
               </div>
               <div className="mt-4 flex flex-wrap gap-3">

@@ -12,7 +12,8 @@ interface Props {
   onDeleteAdmin?: (id: string) => Promise<void>;
 }
 
-// Interface for managing administrative users with role-based access controls
+// AdminManagement
+// Main list for managing other admin accounts
 const AdminManagement: React.FC<Props> = ({
   admins,
   loading,
@@ -22,7 +23,7 @@ const AdminManagement: React.FC<Props> = ({
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Securely handle administrative account deletion with confirmation
+  // Asks for confirmation before deleting an admin account
   const handleDelete = async (id: string, fullName: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete the account for "${fullName}"? This action cannot be undone.`)) return;
     setDeletingId(id);
@@ -53,12 +54,10 @@ const AdminManagement: React.FC<Props> = ({
       }
     >
       {loading ? (
-        /* Loading Overlay: Animated spinner during data fetch */
         <div className="flex items-center justify-center py-16">
           <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
         </div>
       ) : (
-        /* Administrator Grid: Tabular view of all registered admins */
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-600">

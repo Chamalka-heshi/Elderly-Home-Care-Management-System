@@ -1,4 +1,4 @@
-// Core user properties shared across all roles to maintain consistent identity and contact records
+// Base user properties
 export interface BaseUser {
   id: string;
   fullName: string;
@@ -8,12 +8,12 @@ export interface BaseUser {
   createdAt: string;
 }
 
-// Administrator role for system-wide oversight and management of facility operations
+// Admin user properties
 export interface Admin extends BaseUser {
   nic?: string | null;
 }
 
-// Medical practitioner role to define specialization, licensing, and session availability
+// Doctor user properties
 export interface Doctor extends BaseUser {
   specialization: string;
   licenseNumber: string;
@@ -24,14 +24,14 @@ export interface Doctor extends BaseUser {
   availableTimeEnd?: string | null;
 }
 
-// Staff role for providing direct patient care and managing shift preferences
+// Caregiver user properties
 export interface Caregiver extends BaseUser {
   specializations: string[];
   availableShifts: string[];
   yearsOfExperience: number;
 }
 
-// User role for family members to manage their registered patients and billing
+// Family member user properties
 export interface Family extends BaseUser {
   relationship?: string;
   emergencyContact?: string;

@@ -4,19 +4,20 @@ import type { Appointment, AppointmentStatus } from "../../../../api/appointment
 import { fmt12, fmtDate, statusColor, statusLabel } from "../../../../api/appointment/appointment.types";
 import { IconCalendar, IconFilter, IconUser, IconPrescription, IconX, IconRefresh } from "../../common/icons";
 
-// Visual indicator for appointment status with dynamic styling
+// StatusBadge
+// Shows the current status of the appointment with a colored dot
 const StatusBadge: React.FC<{ status: AppointmentStatus }> = ({ status }) => (
   <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${statusColor[status]}`}>
-    <span className={`h-1.5 w-1.5 rounded-full ${
-      status === "pending_payment" ? "bg-blue-400 animate-pulse" :
-      status === "confirmed"       ? "bg-emerald-500" :
-      status === "completed"       ? "bg-slate-400" : "bg-red-400"
-    }`} />
+    <span className={`h-1.5 w-1.5 rounded-full ${status === "payment_pending" ? "bg-blue-400 animate-pulse" :
+        status === "prescription_pending" ? "bg-amber-400 animate-pulse" :
+          status === "completed" ? "bg-slate-400" : "bg-red-400"
+      }`} />
     {statusLabel[status]}
   </span>
 );
 
-// Badge showing whether a prescription has been issued for the appointment
+// PrescriptionBadge
+// Shows if a prescription has been issued yet
 const PrescriptionBadge: React.FC<{ prescriptionId: string | null }> = ({ prescriptionId }) =>
   prescriptionId ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">
@@ -29,7 +30,8 @@ const PrescriptionBadge: React.FC<{ prescriptionId: string | null }> = ({ prescr
     </span>
   );
 
-// Side drawer for viewing granular appointment and medical details
+// DetailDrawer
+// A side panel that opens to show more details about a specific appointment
 const DetailDrawer: React.FC<{ appt: Appointment; onClose: () => void }> = ({ appt, onClose }) => (
   <div
     className="fixed inset-0 z-[90] flex items-center justify-end bg-black/40 backdrop-blur-sm p-4"
@@ -39,7 +41,7 @@ const DetailDrawer: React.FC<{ appt: Appointment; onClose: () => void }> = ({ ap
       className="flex h-full w-full max-w-md flex-col overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Drawer Header: Navigation and Close Action */}
+      {/* Header with close button */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur px-6 py-4">
         <h3 className="text-sm font-bold text-slate-800">Appointment Details</h3>
         <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100">
@@ -53,19 +55,19 @@ const DetailDrawer: React.FC<{ appt: Appointment; onClose: () => void }> = ({ ap
           <PrescriptionBadge prescriptionId={appt.prescriptionId} />
         </div>
 
-        {/* Patient Profile Information Summary */}
+        {/* Patient information */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Patient</p>
           <p className="mt-1.5 text-sm font-bold text-slate-800">{appt.patient?.fullName ?? "—"}</p>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
-            {appt.patient?.gender     && <span>{appt.patient.gender}</span>}
+            {appt.patient?.gender && <span>{appt.patient.gender}</span>}
             {appt.patient?.bloodGroup && <span>Blood: {appt.patient.bloodGroup}</span>}
-            {appt.patient?.age        && <span>Age: {appt.patient.age}</span>}
+            {appt.patient?.age && <span>Age: {appt.patient.age}</span>}
             {appt.patient?.contactNumber && <span>📞 {appt.patient.contactNumber}</span>}
           </div>
         </div>
 
-        {/* Assignment Details: Doctor and Schedule */}
+        {/* Doctor and time details */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Doctor & Schedule</p>
           <p className="mt-1.5 text-sm font-bold text-slate-800">{appt.slot?.doctor?.user?.fullName ?? "—"}</p>
@@ -91,14 +93,14 @@ const DetailDrawer: React.FC<{ appt: Appointment; onClose: () => void }> = ({ ap
           )}
         </div>
 
-        {/* Responsible Party: Requesting Family Member */}
+        {/* Family member who booked the appointment */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Requested By</p>
           <p className="mt-1.5 text-sm font-bold text-slate-800">{appt.familyMember?.user?.fullName ?? "—"}</p>
           <p className="text-xs text-slate-500">{appt.familyMember?.user?.email ?? ""}</p>
         </div>
 
-        {/* Internal Medical or Administrative Notes */}
+        {/* Special notes from the patient or doctor */}
         {appt.notes && (
           <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Notes</p>
@@ -106,14 +108,8 @@ const DetailDrawer: React.FC<{ appt: Appointment; onClose: () => void }> = ({ ap
           </div>
         )}
 
-        {/* Audit Metadata: Timeline and Identifiers */}
+        {/* Record history and IDs */}
         <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
-          <div>
-            <p className="font-semibold text-slate-400">Created</p>
-            <p>{new Date(appt.createdAt).toLocaleString("en-GB", {
-              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-            })}</p>
-          </div>
           <div>
             <p className="font-semibold text-slate-400">Last Updated</p>
             <p>{new Date(appt.updatedAt).toLocaleString("en-GB", {
@@ -140,15 +136,16 @@ interface Props {
   addToast: (kind: "success" | "error", message: string) => void;
 }
 
-// Global dashboard for managing all patient medical appointments
+// AppointmentManagement
+// Main page for admins to view and filter all appointments in the system
 const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<"" | AppointmentStatus>("");
-  const [showFilters, setShowFilters]   = useState(false);
-  const [selected, setSelected]         = useState<Appointment | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selected, setSelected] = useState<Appointment | null>(null);
 
-  // Load appointment data with optional status filtering
+  // Loads appointments from the server based on the selected filter
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -163,20 +160,19 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  // Pre-calculate statistical summaries for the dashboard cards
+  // Counts how many appointments are in each status for the summary boxes
   const stats = useMemo(() => ({
-    total:            appointments.length,
-    pendingPayment:   appointments.filter((a) => a.status === "pending_payment").length,
-    confirmed:        appointments.filter((a) => a.status === "confirmed").length,
-    completed:        appointments.filter((a) => a.status === "completed").length,
-    cancelled:        appointments.filter((a) => a.status === "cancelled").length,
-    withPrescription: appointments.filter((a) => a.prescriptionId).length,
+    total: appointments.length,
+    paymentPending: appointments.filter((a) => a.status === "payment_pending").length,
+    prescriptionPending: appointments.filter((a) => a.status === "prescription_pending").length,
+    completed: appointments.filter((a) => a.status === "completed").length,
+    cancelled: appointments.filter((a) => a.status === "cancelled").length,
   }), [appointments]);
 
   return (
     <div className="space-y-6">
 
-      {/* Hero Section: Branding and Global Actions */}
+      {/* Page Title and Refresh button */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Appointment Management</h1>
@@ -201,15 +197,14 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
         </div>
       </div>
 
-      {/* KPI Stats Grid: Real-time overview of system load */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      {/* Summary boxes with numbers for each status */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         {([
-          { label: "Total",            value: stats.total,            dot: "bg-slate-400",   text: "text-slate-700" },
-          { label: "Awaiting Payment", value: stats.pendingPayment,   dot: "bg-blue-400",    text: "text-blue-600"  },
-          { label: "Confirmed",        value: stats.confirmed,        dot: "bg-emerald-500", text: "text-emerald-600"},
-          { label: "Completed",        value: stats.completed,        dot: "bg-slate-300",   text: "text-slate-500" },
-          { label: "Cancelled",        value: stats.cancelled,        dot: "bg-red-400",     text: "text-red-600"   },
-          { label: "With Prescription",value: stats.withPrescription, dot: "bg-violet-500",  text: "text-violet-700"},
+          { label: "Total", value: stats.total, dot: "bg-slate-400", text: "text-slate-700" },
+          { label: "Awaiting Payment", value: stats.paymentPending, dot: "bg-blue-400", text: "text-blue-600" },
+          { label: "Pending Prescription", value: stats.prescriptionPending, dot: "bg-amber-400", text: "text-amber-600" },
+          { label: "Completed", value: stats.completed, dot: "bg-slate-300", text: "text-slate-500" },
+          { label: "Cancelled", value: stats.cancelled, dot: "bg-red-400", text: "text-red-600" },
         ] as const).map(({ label, value, dot, text }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-1.5">
@@ -221,7 +216,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
         ))}
       </div>
 
-      {/* Refinement Controls: Status Filtering */}
+      {/* Filter controls */}
       {showFilters && (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label className="mb-1 block text-xs font-semibold text-slate-600">Filter by Status</label>
@@ -231,15 +226,15 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
           >
             <option value="">All Statuses</option>
-            <option value="pending_payment">Pending Payment</option>
-            <option value="confirmed">Confirmed</option>
+            <option value="payment_pending">Payment Pending</option>
+            <option value="prescription_pending">Prescription Pending</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
       )}
 
-      {/* Main Data View: Interactive Appointment Table */}
+      {/* Main appointment table */}
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-bold text-slate-800">
@@ -249,12 +244,10 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
         </div>
 
         {loading ? (
-          /* Loading State Overlay */
           <div className="flex items-center justify-center py-20">
             <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
           </div>
         ) : appointments.length === 0 ? (
-          /* Empty Result State */
           <div className="flex flex-col items-center justify-center py-20">
             <div className="grid h-16 w-16 place-items-center rounded-2xl bg-slate-100">
               <IconCalendar />
@@ -263,7 +256,6 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
             <p className="mt-1 text-xs text-slate-400">All patient appointments will appear here</p>
           </div>
         ) : (
-          /* Primary Appointment Record Grid */
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -275,7 +267,6 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
                   <th className="px-5 py-3">Fees (LKR)</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Prescription</th>
-                  <th className="px-5 py-3">Created</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -283,9 +274,8 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
                   <tr
                     key={appt.id}
                     onClick={() => setSelected(appt)}
-                    className={`cursor-pointer transition hover:bg-emerald-50/40 ${
-                      appt.status === "pending_payment" ? "bg-blue-50/20" : ""
-                    }`}
+                    className={`cursor-pointer transition hover:bg-emerald-50/40 ${appt.status === "payment_pending" ? "bg-blue-50/20" : appt.status === "prescription_pending" ? "bg-amber-50/20" : ""
+                      }`}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
@@ -345,12 +335,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
                     <td className="px-5 py-3.5">
                       <PrescriptionBadge prescriptionId={appt.prescriptionId} />
                     </td>
-
-                    <td className="px-5 py-3.5 text-xs text-slate-400">
-                      {new Date(appt.createdAt).toLocaleDateString("en-GB", {
-                        day: "2-digit", month: "short", year: "numeric",
-                      })}
-                    </td>
+                    
                   </tr>
                 ))}
               </tbody>

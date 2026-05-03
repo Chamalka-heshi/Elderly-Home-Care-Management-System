@@ -1,14 +1,14 @@
-// Payment channel options for settling facility and practitioner fees
+// Payment method types
 export type PaymentMethod = 'card' | 'bank_transfer';
 
-// Transaction states to track the lifecycle of payments from submission to verification
+// Payment status types
 export type PaymentStatus =
   | 'pending'
   | 'paid'
   | 'pending_approval'
   | 'rejected';
 
-// User structure for payment records to link transactions with specific family members
+// User details in payment records
 export interface PaymentUser {
   id: string;
   user: {
@@ -17,7 +17,7 @@ export interface PaymentUser {
   };
 }
 
-// Snapshot of care plan details to ensure financial records reflect the state at the time of purchase
+// Care plan details in payment records
 export interface PaymentBookingSnapshot {
   name: string;
   price: number;
@@ -25,7 +25,7 @@ export interface PaymentBookingSnapshot {
   durationUnit: string;
 }
 
-// Booking reference for payments to track revenue from long-term care plans
+// Booking details in payment records
 export interface PaymentBooking {
   id: string;
   status: string;
@@ -35,7 +35,7 @@ export interface PaymentBooking {
   };
 }
 
-// Appointment reference for payments to track revenue from clinical sessions and practitioner fees
+// Appointment details in payment records
 export interface PaymentAppointment {
   id: string;
   status: string;
@@ -59,7 +59,7 @@ export interface PaymentAppointment {
   };
 }
 
-// Central payment record to manage the facility's financial interactions with users and practitioners
+// Main payment record structure
 export interface Payment {
   id: string;
   bookingId: string | null;

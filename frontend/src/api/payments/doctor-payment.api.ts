@@ -38,6 +38,6 @@ export interface DoctorPaymentsResponse {
   totalIncome: number;
 }
 
-// Fetch payment records to allow doctors to track their earned income from clinical sessions
+// Get payment records for the logged-in doctor
 export const getDoctorPayments = () =>
   apiFetch<DoctorPaymentsResponse>('/payments/doctor');

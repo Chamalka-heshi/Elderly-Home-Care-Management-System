@@ -7,7 +7,7 @@ const AUTH_ENDPOINTS = [
   '/auth/reset-password',
 ];
 
-// Generate standard authentication headers to authorize requests with the active session token
+// Get authentication headers with the current token
 export const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem('token');
 
@@ -17,7 +17,7 @@ export const getAuthHeaders = (): HeadersInit => {
   };
 };
 
-// Process server errors to provide consistent error messaging and handle session expiry
+// Handle API errors and session expiry
 export const handleApiError = async (
   res: Response,
   endpoint: string,
@@ -42,7 +42,7 @@ export const handleApiError = async (
   throw new Error(msg);
 };
 
-// Execute standard JSON API requests with automatic token injection and error handling
+// Base fetch function for JSON requests
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -62,7 +62,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   return res.json();
 }
 
-// Execute multipart/form-data requests to support file uploads without manual boundary setting
+// Base fetch function for multipart/form-data requests
 export async function apiFetchMultipart<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token');
   const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};

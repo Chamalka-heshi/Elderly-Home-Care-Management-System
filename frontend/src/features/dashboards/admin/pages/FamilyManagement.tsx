@@ -9,16 +9,16 @@ interface Props {
   onToggleStatus: (id: string, isActive: boolean) => void;
 }
 
-// Administrative console for managing registered family members and patient links
+// FamilyManagement
+// Page for managing family member accounts and their access
 const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }) => (
   <TableShell title="Families" subtitle="View and manage registered family accounts.">
-    {/* Content State: Handles loading, empty, and data population results */}
+    {/* Show loading spinner or the family list */}
     {loading ? (
       <div className="flex items-center justify-center py-16">
         <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     ) : (
-      /* Family Database: High-density data grid for account oversight */
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -59,7 +59,6 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
               </tr>
             ))}
             {families.length === 0 && (
-              /* No Results Backdrop */
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
                   No families found.

@@ -9,6 +9,7 @@ interface Props {
   addToast: (kind: "success" | "error", message: string) => void;
 }
 
+// Choose the badge color based on the booking status
 const statusTone = (status: BookingStatus) => {
   switch (status) {
     case "active":
@@ -22,10 +23,13 @@ const statusTone = (status: BookingStatus) => {
   }
 };
 
+// PatientCarePlans
+// Page for admins to see all care plan purchases and their details
 const PatientCarePlans: React.FC<Props> = ({ addToast }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Loads all care plan bookings from the server
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -55,6 +59,7 @@ const PatientCarePlans: React.FC<Props> = ({ addToast }) => {
         </div>
       }
     >
+      {/* Show loading spinner while fetching data */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />

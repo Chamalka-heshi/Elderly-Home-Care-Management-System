@@ -8,25 +8,27 @@ import type { Payment, PaymentStatus } from '../../../../api/payments/payment.ty
 import { IconCheck, IconCurrency, IconX, IconFilter, IconRefresh, IconSpinner } from '../../common/icons';
 import { useAuth } from '../../../../auth/AuthContext';
 
-// Format ISO timestamps into localized date and time for administrative transaction logs
+// Formats date and time for the table
 const fmtDT = (v: string) =>
   new Date(v).toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 
-// Display monetary values in LKR with appropriate formatting for accounting clarity
+// Formats numbers as LKR currency (e.g. LKR 1,000.00)
 const fmtLKR = (n: number) =>
   new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', maximumFractionDigits: 2 }).format(n);
 
-// Configuration for visual status indicators to help admins quickly identify payment states
+// Label and color settings for different payment statuses
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; cls: string; dot: string }> = {
-  paid:             { label: 'Paid',             cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100', dot: 'bg-emerald-500'  },
-  pending_approval: { label: 'Pending Approval', cls: 'bg-amber-50 text-amber-700 ring-amber-100',       dot: 'bg-amber-400 animate-pulse' },
-  rejected:         { label: 'Rejected',         cls: 'bg-red-50 text-red-700 ring-red-100',             dot: 'bg-red-400'     },
-  pending:          { label: 'Pending',          cls: 'bg-slate-100 text-slate-600 ring-slate-200',      dot: 'bg-slate-400'   },
+  paid: { label: 'Paid', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100', dot: 'bg-emerald-500' },
+  pending_approval: { label: 'Pending Approval', cls: 'bg-amber-50 text-amber-700 ring-amber-100', dot: 'bg-amber-400 animate-pulse' },
+  rejected: { label: 'Rejected', cls: 'bg-red-50 text-red-700 ring-red-100', dot: 'bg-red-400' },
+  pending: { label: 'Pending', cls: 'bg-slate-100 text-slate-600 ring-slate-200', dot: 'bg-slate-400' },
 };
 
+// StatusBadge
+// Shows the current status of a payment with a colored dot
 const StatusBadge: React.FC<{ status: PaymentStatus }> = ({ status }) => {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
   return (
@@ -37,7 +39,8 @@ const StatusBadge: React.FC<{ status: PaymentStatus }> = ({ status }) => {
   );
 };
 
-// Distinguish between bank transfers and digital card payments for audit purposes
+// MethodBadge
+// Shows if payment was via bank transfer or card
 const MethodBadge: React.FC<{ method: string }> = ({ method }) =>
   method === 'bank_transfer' ? (
     <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
@@ -49,7 +52,8 @@ const MethodBadge: React.FC<{ method: string }> = ({ method }) =>
     </span>
   );
 
-// Identify whether a payment is for a medical appointment or a care plan subscription
+// TypeBadge
+// Shows if the payment is for an appointment or a care plan
 const TypeBadge: React.FC<{ payment: Payment }> = ({ payment }) =>
   payment.appointmentId ? (
     <span className="inline-flex items-center gap-1 rounded-lg bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
@@ -69,14 +73,15 @@ interface ConfirmModalProps {
   onClose: () => void;
 }
 
-// Safety check modal to prevent accidental approval or rejection of high-value transactions
+// ConfirmModal
+// Popup to ask for confirmation before approving or rejecting a payment
 const ConfirmModal: React.FC<ConfirmModalProps> = ({ action, payerName, amount, onConfirm, onClose }) => (
   <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
     <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
       <div className={`mb-4 grid h-12 w-12 place-items-center rounded-2xl ${action === 'approve' ? 'bg-emerald-100' : 'bg-red-100'}`}>
         {action === 'approve'
           ? <IconCheck className="h-6 w-6 text-emerald-600" />
-          : <IconX     className="h-6 w-6 text-red-600" />}
+          : <IconX className="h-6 w-6 text-red-600" />}
       </div>
       <h3 className="text-sm font-bold text-slate-800">
         {action === 'approve' ? 'Approve Payment' : 'Reject Payment'}
@@ -95,9 +100,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ action, payerName, amount, 
         </button>
         <button
           onClick={onConfirm}
-          className={`rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm ${
-            action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
-          }`}
+          className={`rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm ${action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
+            }`}
         >
           {action === 'approve' ? 'Yes, Approve' : 'Yes, Reject'}
         </button>
@@ -106,7 +110,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ action, payerName, amount, 
   </div>
 );
 
-// Sliding drawer providing deep-dive details for a specific transaction and its associated metadata
+// PaymentDrawer
+// Side panel that shows all details for a single payment
 const PaymentDrawer: React.FC<{ payment: Payment; onClose: () => void }> = ({ payment, onClose }) => (
   <div className="fixed inset-0 z-[90] flex items-center justify-end bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
     <div
@@ -196,23 +201,24 @@ interface Props {
   addToast: (kind: 'success' | 'error', message: string) => void;
 }
 
-// Financial management interface to oversee revenue streams and manually verify bank-transfer evidence
+// PaymentsManagement
+// Main page for admins to view and manage all money transactions
 const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
   const { user } = useAuth();
-  const [payments, setPayments]             = useState<Payment[]>([]);
-  const [loading, setLoading]               = useState(true);
-  const [processingId, setProcessingId]     = useState<string | null>(null);
-  const [filterStatus, setFilterStatus]     = useState<'' | PaymentStatus>('');
-  const [filterMethod, setFilterMethod]     = useState<'' | 'card' | 'bank_transfer'>('');
-  const [showFilters, setShowFilters]       = useState(false);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'' | PaymentStatus>('');
+  const [filterMethod, setFilterMethod] = useState<'' | 'card' | 'bank_transfer'>('');
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [confirmAction, setConfirmAction]   = useState<{
+  const [confirmAction, setConfirmAction] = useState<{
     id: string; action: 'approve' | 'reject'; payerName: string; amount: number;
   } | null>(null);
 
   const canManage = user?.role === 'admin' || user?.role === 'super_admin';
 
-  // Load all system payments to maintain a comprehensive financial ledger for the facility
+  // Loads all payments from the database
   const load = useCallback(async () => {
     if (!canManage) return;
     try {
@@ -228,16 +234,16 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  // Derive high-level financial metrics to give admins an immediate snapshot of facility revenue
+  // Calculates summary stats like total revenue and pending counts
   const stats = useMemo(() => {
-    const all             = payments;
+    const all = payments;
     const pendingApproval = all.filter(p => p.status === 'pending_approval');
-    const paid            = all.filter(p => p.status === 'paid');
-    const rejected        = all.filter(p => p.status === 'rejected');
-    const totalRevenue    = paid.reduce((s, p) => s + Number(p.amount), 0);
-    const pendingValue    = pendingApproval.reduce((s, p) => s + Number(p.amount), 0);
-    const bankTransfers   = all.filter(p => p.paymentMethod === 'bank_transfer');
-    const cards           = all.filter(p => p.paymentMethod === 'card');
+    const paid = all.filter(p => p.status === 'paid');
+    const rejected = all.filter(p => p.status === 'rejected');
+    const totalRevenue = paid.reduce((s, p) => s + Number(p.amount), 0);
+    const pendingValue = pendingApproval.reduce((s, p) => s + Number(p.amount), 0);
+    const bankTransfers = all.filter(p => p.paymentMethod === 'bank_transfer');
+    const cards = all.filter(p => p.paymentMethod === 'card');
     return {
       total: all.length, pendingApproval: pendingApproval.length,
       paid: paid.length, rejected: rejected.length,
@@ -254,7 +260,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
     });
   }, [payments, filterStatus, filterMethod]);
 
-  // Execute the final approval or rejection of a payment after administrative confirmation
+  // Processes the approval or rejection of a payment
   const handleConfirm = async () => {
     if (!confirmAction) return;
     const { id, action } = confirmAction;
@@ -452,22 +458,21 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
               <tbody className="divide-y divide-slate-100">
                 {displayed.map(payment => {
                   const isPendingApproval = payment.status === 'pending_approval';
-                  const isProcessing      = processingId === payment.id;
+                  const isProcessing = processingId === payment.id;
 
-                  const payerName  = payment.user?.user?.fullName ?? '—';
+                  const payerName = payment.user?.user?.fullName ?? '—';
                   const payerEmail = payment.user?.user?.email ?? '';
                   const patientName = payment.appointment?.patient?.fullName
                     ?? payment.booking?.patient?.fullName ?? null;
-                  const doctorName  = payment.appointment?.slot?.doctor?.user?.fullName ?? null;
-                  const planName    = payment.booking?.carePlanSnapshot?.name ?? null;
+                  const doctorName = payment.appointment?.slot?.doctor?.user?.fullName ?? null;
+                  const planName = payment.booking?.carePlanSnapshot?.name ?? null;
 
                   return (
                     <tr
                       key={payment.id}
                       onClick={() => setSelectedPayment(payment)}
-                      className={`cursor-pointer transition hover:bg-emerald-50/40 ${
-                        isPendingApproval ? 'bg-amber-50/30' : ''
-                      }`}
+                      className={`cursor-pointer transition hover:bg-emerald-50/40 ${isPendingApproval ? 'bg-amber-50/30' : ''
+                        }`}
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">

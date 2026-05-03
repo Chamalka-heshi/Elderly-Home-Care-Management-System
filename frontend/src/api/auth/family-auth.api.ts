@@ -1,7 +1,7 @@
 import { apiFetch } from '../core/apiClient';
 import type { AuthResponse } from './auth.api';
 
-// Register new family accounts to enable family members to manage patient care and billing
+// Register a new family account
 export const signupFamily = async (data: any): Promise<AuthResponse> => {
   const res = await apiFetch<AuthResponse>('/auth/family/signup', {
     method: 'POST',

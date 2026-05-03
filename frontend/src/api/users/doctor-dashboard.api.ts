@@ -1,14 +1,15 @@
 import { apiFetch } from '../core/apiClient';
 
 // Response types
+
 export interface DashboardRecentPatient {
   id: string;
   name: string;
   age: number;
   bloodGroup: string | null;
   diagnosis: string | null;
-  /** Appointment-level status — 'Pending' means awaiting confirmation, 'Confirmed' means doctor accepted */
-  status: 'Pending' | 'Confirmed';
+  /** 'Prescription Pending' — payment confirmed, waiting for doctor to prescribe */
+  status: 'Prescription Pending';
   slotDate: string;
   /** @deprecated use slotDate */
   prescriptionDate: string;
@@ -22,6 +23,6 @@ export interface DoctorDashboardStats {
   recentPatients: DashboardRecentPatient[];
 }
 
-// Fetch doctor-specific metrics to provide clinicians with a concise overview of their daily schedule and patient load
+// Get statistics for the doctor dashboard
 export const getDoctorDashboardStats = () =>
   apiFetch<DoctorDashboardStats>('/doctors/dashboard');

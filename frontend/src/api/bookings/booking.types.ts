@@ -1,7 +1,7 @@
-// Status options for care plan bookings to track the payment and activation lifecycle
+// Care plan booking status
 export type BookingStatus = 'pending_payment' | 'active' | 'cancelled';
 
-// Snapshot of care plan details at the time of booking to ensure historical billing accuracy
+// Care plan details at time of booking
 export interface CarePlanSnapshot {
   name: string;
   price: number;
@@ -9,7 +9,7 @@ export interface CarePlanSnapshot {
   durationUnit: 'days' | 'months';
 }
 
-// Booking record to link patients with care plans and manage subscription status
+// Care plan booking record
 export interface Booking {
   id: string;
   userId: string;

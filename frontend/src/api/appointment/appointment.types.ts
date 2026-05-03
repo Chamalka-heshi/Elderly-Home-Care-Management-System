@@ -1,12 +1,11 @@
-// Single source of truth for all appointment-related data structures to ensure consistency across the platform
+// Appointment data types
 export type AppointmentStatus =
-  | 'pending_payment'
-  | 'pending'
-  | 'confirmed'
+  | 'payment_pending'
+  | 'prescription_pending'
   | 'cancelled'
   | 'completed';
 
-// Patient data relevant to appointments to provide clinicians and admins with necessary medical context
+// Patient details in appointment
 export interface AppointmentPatient {
   id: string;
   fullName: string;
@@ -26,7 +25,7 @@ export interface AppointmentPatient {
   paymentPlan?: string;
 }
 
-// Channeling slot details to define the time and practitioner for medical consultations
+// Time slot details
 export interface AppointmentSlot {
   id: string;
   doctorId: string;
@@ -46,7 +45,7 @@ export interface AppointmentSlot {
   };
 }
 
-// Full appointment record to track the relationship between patients, practitioners, and family members
+// Appointment record
 export interface Appointment {
   id: string;
   slotId: string;
@@ -65,15 +64,14 @@ export interface Appointment {
   };
 }
 
-// Formatting helpers
-// Convert 24-hour time to a user-friendly 12-hour format for display in schedules
+// Convert to 12-hour time
 export const fmt12 = (hhmm: string): string => {
   if (!hhmm) return '—';
   const [h, m] = hhmm.split(':').map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-// Format ISO date strings into a readable localized format for consistent presentation
+// Format date string
 export const fmtDate = (dateStr: string): string => {
   if (!dateStr) return '—';
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -84,21 +82,19 @@ export const fmtDate = (dateStr: string): string => {
   });
 };
 
-// Status metadata
-// Define visual styles for appointment statuses to provide immediate visual feedback in the UI
+// Status styles and labels
+// Status colors
 export const statusColor: Record<AppointmentStatus, string> = {
-  pending_payment: 'bg-blue-50 text-blue-700 ring-blue-100',
-  pending: 'bg-amber-50 text-amber-700 ring-amber-100',
-  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-  cancelled: 'bg-red-50 text-red-700 ring-red-100',
-  completed: 'bg-slate-100 text-slate-600 ring-slate-200',
+  payment_pending:      'bg-blue-50 text-blue-700 ring-blue-100',
+  prescription_pending: 'bg-amber-50 text-amber-700 ring-amber-100',
+  cancelled:            'bg-red-50 text-red-700 ring-red-100',
+  completed:            'bg-slate-100 text-slate-600 ring-slate-200',
 };
 
-// Define human-readable labels for appointment statuses to ensure clear communication with users
+// Status labels
 export const statusLabel: Record<AppointmentStatus, string> = {
-  pending_payment: 'Pending Payment',
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled',
-  completed: 'Completed',
+  payment_pending:      'Pending Payment',
+  prescription_pending: 'Pending Prescription',
+  cancelled:            'Cancelled',
+  completed:            'Completed',
 };

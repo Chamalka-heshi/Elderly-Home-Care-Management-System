@@ -5,14 +5,15 @@ import type { ContactMessage } from '../../../../api/contact/contact.types';
 
 import { IconInbox, IconReply, IconTrash, IconBack, IconClock, IconSpinner, IconRefresh } from '../../common/icons';
 
-// Format ISO timestamps into user-friendly localized strings for administrative review
+// Formats the date and time for messages
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 
-// Visual indicator of message response status to guide administrative workflow prioritization
+// StatusBadge
+// Shows if a message has been replied to or is still pending
 const StatusBadge: React.FC<{ status: 'pending' | 'replied' }> = ({ status }) =>
   status === 'replied' ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
@@ -26,7 +27,8 @@ const StatusBadge: React.FC<{ status: 'pending' | 'replied' }> = ({ status }) =>
     </span>
   );
 
-// Summary view of a contact message to allow quick scanning of the administrative inbox
+// MessageRow
+// A single message summary in the inbox list
 const MessageRow: React.FC<{
   msg: ContactMessage;
   onClick: () => void;
@@ -63,7 +65,8 @@ const MessageRow: React.FC<{
   </div>
 );
 
-// Expanded view and interaction panel for responding to specific inquiries from public users
+// MessageDetail
+// Full page view for reading a specific message and writing a reply
 const MessageDetail: React.FC<{
   msg: ContactMessage;
   onBack: () => void;
@@ -77,7 +80,7 @@ const MessageDetail: React.FC<{
 
   useEffect(() => { textRef.current?.focus(); }, []);
 
-  // Process the reply to update the message status and record the administrative response
+  // Saves the reply and marks the message as replied
   const handleReply = async () => {
     if (!reply.trim()) return;
     setSending(true);
@@ -181,16 +184,16 @@ interface Props {
   addToast: (kind: 'success' | 'error', message: string) => void;
 }
 
-// Main inbox container to manage the collection of messages sent via the public contact interface
-const ContactMessages: React.FC<Props> = ({ addToast }) => {
-  const [messages, setMessages] = useState<ContactMessage[]>([]);
+// ContactMessages
+// Main inbox page for admins to see messages from the contact form
+const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [total, setTotal] = useState(0);
   const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ContactMessage | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'replied'>('all');
 
-  // Load all recorded messages to ensure all user inquiries are visible for review
+  // Loads all messages from the database
   const load = useCallback(async () => {
     setLoading(true);
     try {

@@ -21,10 +21,9 @@ export interface DashboardRecentPatient {
   age:               number;
   bloodGroup:        string | null;
   diagnosis:         string | null;
-  status:            'Pending' | 'Confirmed';
+  status:            'Prescription Pending';
   appointmentStatus: string;
   slotDate:          string;
-  /** @deprecated use slotDate – kept for backwards compat */
   prescriptionDate:  string;
 }
 
@@ -197,7 +196,7 @@ export class DoctorsService {
       .innerJoinAndSelect('appt.patient', 'patient')
       .where('slot.doctorId = :doctorId', { doctorId })
       .andWhere('appt.status IN (:...statuses)', {
-        statuses: [AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING],
+        statuses: [AppointmentStatus.PRESCRIPTION_PENDING],
       })
       .orderBy('slot.date', 'DESC')
       .addOrderBy('slot.startTime', 'ASC')
@@ -205,7 +204,6 @@ export class DoctorsService {
       .getMany();
 
     const recentPatients: DashboardRecentPatient[] = recentAppointments.map((appt) => {
-      const isConfirmed = appt.status === AppointmentStatus.CONFIRMED;
       const slotDate = appt.slot?.date ?? new Date().toISOString().split('T')[0];
       return {
         id:                appt.id,
@@ -213,7 +211,7 @@ export class DoctorsService {
         age:               this.computeAge(appt.patient.dateOfBirth),
         bloodGroup:        appt.patient.bloodGroup ?? null,
         diagnosis:         null,
-        status:            isConfirmed ? 'Confirmed' : 'Pending',
+        status:            'Prescription Pending',
         appointmentStatus: appt.status,
         slotDate,
         prescriptionDate:  slotDate,

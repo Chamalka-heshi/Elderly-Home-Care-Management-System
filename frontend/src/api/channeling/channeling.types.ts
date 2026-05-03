@@ -1,9 +1,7 @@
-// Operational states for channeling slots to manage the booking window and practitioner availability
+// Channeling slot status
 export type SlotStatus = 'pending' | 'active' | 'rejected' | 'cancelled' | 'completed';
 
-// Structure for channeling slots to define the clinical window for patient-doctor consultations.
-// The nested doctor object reflects what the API actually returns from the Doctor entity relation —
-// it does NOT include user sub-object since the doctor-user relation is not eagerly loaded here.
+// Channeling slot data structure
 export interface ChannelingSlot {
   id: string;
   doctorId: string;
@@ -27,28 +25,33 @@ export interface ChannelingSlot {
     availableDays: string[] | null;
     availableTimeStart: string | null;
     availableTimeEnd: string | null;
+    /** Populated when the doctor.user relation is eager-loaded (public slot listings, family views) */
+    user?: {
+      fullName: string;
+      isActive: boolean;
+    };
   };
 }
 
-// Helpers
-// Calculate the exact date and time when bookings must close to allow clinical preparation
+// Helpers for channeling slots
+// Calculate booking cutoff time
 export function bookingCutoffDate(date: string, startTime: string, cutoffMinutes: number): Date {
   const [h, m] = startTime.split(':').map(Number);
   const slotStart = new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
   return new Date(slotStart.getTime() - cutoffMinutes * 60_000);
 }
 
-// Determine if a slot is still available for booking based on the current time and cutoff window
+// Check if a slot is open for booking
 export const isBookingOpen = (slot: ChannelingSlot): boolean =>
   new Date() < bookingCutoffDate(slot.date, slot.startTime, slot.bookingCutoffMinutes);
 
-// Convert 24-hour time to a user-friendly 12-hour format for display in channeling schedules
+// Convert to 12-hour time
 export const fmt12 = (hhmm: string): string => {
   const [h, m] = hhmm.split(':').map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-// Format ISO date strings into a readable localized format for consistent schedule presentation
+// Format date string
 export const fmtDate = (dateStr: string): string =>
   new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
     weekday: 'short',

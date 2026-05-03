@@ -17,10 +17,12 @@ import {
 
 const today = () => new Date().toISOString().split("T")[0];
 
+// Finds the doctor's name by their ID
 function resolveDoctorName(slot: ChannelingSlot, doctors: Doctor[]): string {
   return doctors.find((d) => d.id === slot.doctorId)?.fullName ?? "Unknown Doctor";
 }
 
+// Returns a badge with the slot's current status (like Pending or Cancelled)
 function statusBadge(slot: ChannelingSlot) {
   if (slot.status === "cancelled")
     return (
@@ -59,6 +61,7 @@ function statusBadge(slot: ChannelingSlot) {
   );
 }
 
+// Pick a color for the slot card based on its status
 function slotAccentColor(slot: ChannelingSlot): string {
   if (slot.status === "cancelled" || slot.status === "rejected") return "from-red-400 to-rose-500";
   if (slot.status === "completed") return "from-slate-300 to-slate-400";
@@ -83,17 +86,19 @@ interface AddSlotModalProps {
   addToast: (kind: "success" | "error", msg: string) => void;
 }
 
+// AddSlotModal
+// Popup form to create a new channeling slot for a doctor
 const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated, addToast }) => {
   const activeDoctors = doctors.filter((d) => d.isActive);
-  const [doctorId, setDoctorId]       = useState("");
-  const [date, setDate]               = useState("");
-  const [startTime, setStartTime]     = useState("08:00");
-  const [endTime, setEndTime]         = useState("10:00");
+  const [doctorId, setDoctorId] = useState("");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("10:00");
   const [maxPatients, setMaxPatients] = useState(20);
-  const [cutoff, setCutoff]           = useState(15);
-  const [notes, setNotes]             = useState("");
+  const [cutoff, setCutoff] = useState(15);
+  const [notes, setNotes] = useState("");
   const [careHomeFee, setCareHomeFee] = useState<number | "">("");
-  const [saving, setSaving]           = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const selectedDoc = useMemo(() => activeDoctors.find((d) => d.id === doctorId), [activeDoctors, doctorId]);
 
@@ -102,7 +107,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
     let raw: any = selectedDoc.availableDays;
     if (Array.isArray(raw)) return raw;
     if (typeof raw === "string") {
-      try { raw = JSON.parse(raw); } catch {}
+      try { raw = JSON.parse(raw); } catch { }
       if (Array.isArray(raw)) return raw;
     }
     return [];
@@ -122,6 +127,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
     });
   }, [date, startTime, cutoff]);
 
+  // Saves the new slot to the database after checking fields
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!doctorId || !date || !startTime || !endTime) {
@@ -290,18 +296,20 @@ interface EditSlotModalProps {
   addToast: (kind: "success" | "error", msg: string) => void;
 }
 
+// EditSlotModal
+// Popup form to change details of an existing slot
 const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, onUpdated, addToast }) => {
-  const [startTime, setStartTime]     = useState(slot.startTime);
-  const [endTime, setEndTime]         = useState(slot.endTime);
+  const [startTime, setStartTime] = useState(slot.startTime);
+  const [endTime, setEndTime] = useState(slot.endTime);
   const [maxPatients, setMaxPatients] = useState(slot.maxPatients);
-  const [cutoff, setCutoff]           = useState(slot.bookingCutoffMinutes);
-  const [notes, setNotes]             = useState(slot.notes ?? "");
+  const [cutoff, setCutoff] = useState(slot.bookingCutoffMinutes);
+  const [notes, setNotes] = useState(slot.notes ?? "");
   const [careHomeFee, setCareHomeFee] = useState<number | "">(slot.careHomeFee != null ? Number(slot.careHomeFee) : "");
-  const [saving, setSaving]           = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const doctorName = resolveDoctorName(slot, doctors);
   const doctorSpec = slot.doctor?.specialization || "—";
-  const doctorObj  = doctors.find((d) => d.id === slot.doctorId);
+  const doctorObj = doctors.find((d) => d.id === slot.doctorId);
 
   const validEndTimes = useMemo(() => TIMES.filter((t) => t > startTime), [startTime]);
   useEffect(() => {
@@ -315,6 +323,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
     [slot.date, startTime, cutoff]
   );
 
+  // Updates the slot in the database
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (endTime <= startTime) return addToast("error", "End time must be after start time");
@@ -448,31 +457,32 @@ interface SlotCardProps {
   onDelete: (id: string) => void;
 }
 
+// SlotCard
+// A card component that shows info for one channeling slot
 const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, onDelete }) => {
-  const isCancelled      = slot.status === "cancelled";
-  const isRejected       = slot.status === "rejected";
-  const isCompleted      = slot.status === "completed";
-  const isPending        = slot.status === "pending";
+  const isCancelled = slot.status === "cancelled";
+  const isRejected = slot.status === "rejected";
+  const isCompleted = slot.status === "completed";
+  const isPending = slot.status === "pending";
   const isBookingOpenNow = slot.status === "active" && isBookingOpen(slot);
 
   const doctorName = resolveDoctorName(slot, doctors);
   const doctorSpec = slot.doctor?.specialization || "—";
-  const accent     = slotAccentColor(slot);
+  const accent = slotAccentColor(slot);
 
   const consultationFeeNum = slot.consultationFee != null ? Number(slot.consultationFee) : 0;
-  const careHomeFeeNum     = slot.careHomeFee     != null ? Number(slot.careHomeFee)     : 0;
-  const totalFee           = consultationFeeNum + careHomeFeeNum;
-  const hasFees            = slot.consultationFee != null || slot.careHomeFee != null;
+  const careHomeFeeNum = slot.careHomeFee != null ? Number(slot.careHomeFee) : 0;
+  const totalFee = consultationFeeNum + careHomeFeeNum;
+  const hasFees = slot.consultationFee != null || slot.careHomeFee != null;
 
   const dimmed = isCancelled || isRejected || isCompleted;
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200 ${
-        dimmed
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200 ${dimmed
           ? "border-slate-200 opacity-75"
           : "border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5"
-      }`}
+        }`}
     >
       <div className={`h-1 w-full bg-gradient-to-r ${accent} shrink-0`} />
 
@@ -622,27 +632,30 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
 
 // ── Plain array — no SlotStatus type annotation needed ──────────────────────
 const SLOT_STATUS_TABS = [
-  { value: "",             label: "All",          dot: "bg-slate-400" },
+  { value: "", label: "All", dot: "bg-slate-400" },
   { value: "booking_open", label: "Booking Open", dot: "bg-emerald-500" },
-  { value: "pending",      label: "Pending",      dot: "bg-amber-400" },
-  { value: "completed",    label: "Completed",    dot: "bg-slate-400" },
-  { value: "cancelled",    label: "Cancelled",    dot: "bg-red-400" },
-  { value: "rejected",     label: "Rejected",     dot: "bg-red-400" },
+  { value: "pending", label: "Pending", dot: "bg-amber-400" },
+  { value: "completed", label: "Completed", dot: "bg-slate-400" },
+  { value: "cancelled", label: "Cancelled", dot: "bg-red-400" },
+  { value: "rejected", label: "Rejected", dot: "bg-red-400" },
 ];
 
 interface Props { addToast: (kind: "success" | "error", message: string) => void; }
 
+// ChannelingSlotManagement
+// Main page for admins to manage doctor channeling schedules
 const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
-  const [slots, setSlots]               = useState<ChannelingSlot[]>([]);
-  const [doctors, setDoctors]           = useState<Doctor[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [slots, setSlots] = useState<ChannelingSlot[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingSlot, setEditingSlot]   = useState<ChannelingSlot | null>(null);
-  const [activeTab, setActiveTab]       = useState("");
+  const [editingSlot, setEditingSlot] = useState<ChannelingSlot | null>(null);
+  const [activeTab, setActiveTab] = useState("");
 
   const addToastRef = useRef(addToast);
   useEffect(() => { addToastRef.current = addToast; }, [addToast]);
 
+  // Loads all slots and doctors from the server
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -661,11 +674,12 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Filters the list of slots based on the selected tab
   const displayedSlots = useMemo(() => {
     let filtered: ChannelingSlot[];
-    if (activeTab === "")             filtered = slots;
+    if (activeTab === "") filtered = slots;
     else if (activeTab === "booking_open") filtered = slots.filter((s) => s.status === "active" && isBookingOpen(s));
-    else                              filtered = slots.filter((s) => s.status === activeTab);
+    else filtered = slots.filter((s) => s.status === activeTab);
     return [...filtered].sort((a, b) => {
       if (b.date !== a.date) return b.date.localeCompare(a.date);
       return b.startTime.localeCompare(a.startTime);
@@ -697,11 +711,12 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
   const handleSlotCreated = () => { loadData(); setShowAddModal(false); };
   const handleSlotUpdated = () => { loadData(); setEditingSlot(null); };
 
+  // Calculates the summary numbers for the top boxes
   const stats = useMemo(() => {
     const upcomingActive = slots.filter((s) => s.status === "active");
-    const bookingOpen    = upcomingActive.filter(isBookingOpen);
+    const bookingOpen = upcomingActive.filter(isBookingOpen);
     const completedSlots = slots.filter((s) => s.status === "completed").length;
-    const pending        = slots.filter((s) => s.status === "pending").length;
+    const pending = slots.filter((s) => s.status === "pending").length;
     return { total: slots.length, upcomingActive: upcomingActive.length, bookingOpen: bookingOpen.length, completedSlots, pending };
   }, [slots]);
 
@@ -722,11 +737,11 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         {[
-          { label: "Total Slots",      value: stats.total,          color: "slate",   bg: "bg-slate-50" },
-          { label: "Upcoming Active",  value: stats.upcomingActive, color: "blue",    bg: "bg-blue-50" },
-          { label: "Booking Open",     value: stats.bookingOpen,    color: "emerald", bg: "bg-emerald-50" },
-          { label: "Pending Approval", value: stats.pending,        color: "amber",   bg: "bg-amber-50" },
-          { label: "Completed Slots",  value: stats.completedSlots, color: "violet",  bg: "bg-violet-50" },
+          { label: "Total Slots", value: stats.total, color: "slate", bg: "bg-slate-50" },
+          { label: "Upcoming Active", value: stats.upcomingActive, color: "blue", bg: "bg-blue-50" },
+          { label: "Booking Open", value: stats.bookingOpen, color: "emerald", bg: "bg-emerald-50" },
+          { label: "Pending Approval", value: stats.pending, color: "amber", bg: "bg-amber-50" },
+          { label: "Completed Slots", value: stats.completedSlots, color: "violet", bg: "bg-violet-50" },
         ].map(({ label, value, color, bg }) => (
           <div key={label} className={`rounded-2xl border border-slate-200 ${bg} p-4 shadow-sm`}>
             <p className="text-xs font-semibold text-slate-500">{label}</p>
@@ -749,19 +764,18 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
         <div className="flex flex-wrap gap-2 mb-4">
           {SLOT_STATUS_TABS.map((tab) => {
             const count =
-              tab.value === ""             ? slots.length :
-              tab.value === "booking_open" ? slots.filter((s) => s.status === "active" && isBookingOpen(s)).length :
-              slots.filter((s) => s.status === tab.value).length;
+              tab.value === "" ? slots.length :
+                tab.value === "booking_open" ? slots.filter((s) => s.status === "active" && isBookingOpen(s)).length :
+                  slots.filter((s) => s.status === tab.value).length;
             const isActive = activeTab === tab.value;
             return (
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                  isActive
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${isActive
                     ? "bg-slate-800 text-white shadow-sm"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${tab.dot}`} />
                 {tab.label}

@@ -53,7 +53,7 @@ const buildQs = (params?: Record<string, any>): string => {
   return p.toString();
 };
 
-// Fetch all prescriptions with filters to allow clinicians to review past medical interventions
+// Get all prescriptions with filters
 export const getAllPrescriptions = (params?: Record<string, any>) => {
   const qs = buildQs(params);
   const url = `/prescriptions${qs ? `?${qs}` : ''}`;
@@ -66,29 +66,29 @@ export const getAllPrescriptions = (params?: Record<string, any>) => {
   }>(url);
 };
 
-// Get specific prescription details to support pharmacy verification and patient inquiries
+// Get a specific prescription by ID
 export const getPrescription = (id: string) =>
   apiFetch<Prescription>(`/prescriptions/${id}`);
 
-// Submit new prescriptions to finalize clinical sessions and enable medication fulfillment
+// Create a new prescription
 export const createPrescription = (data: CreatePrescriptionPayload) =>
   apiFetch<Prescription>('/prescriptions', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 
-// Halt medication cycles prematurely to manage adverse reactions or changes in treatment plans
+// Discontinue an active prescription
 export const discontinuePrescription = (id: string) =>
   apiFetch<Prescription>(`/prescriptions/${id}/discontinue`, {
     method: 'PATCH',
   });
 
-// Mark prescriptions as fulfilled to maintain an accurate record of completed treatment cycles
+// Mark a prescription as completed
 export const completePrescription = (id: string) =>
   apiFetch<Prescription>(`/prescriptions/${id}/complete`, {
     method: 'PATCH',
   });
 
-//Provides a history of prescriptions issued to the patient to assist clinical professionals in treatment planning
+// Get all prescriptions for a specific patient
 export const getPatientPrescriptions = (patientId: string) =>
   apiFetch<Prescription[]>(`/prescriptions/patient/${patientId}`);
