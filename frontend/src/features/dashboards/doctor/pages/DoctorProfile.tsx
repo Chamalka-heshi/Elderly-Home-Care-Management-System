@@ -34,9 +34,9 @@ import {
   type Toast,
 } from "../../common/ui";
 
-import PasswordTab   from "../../common/PasswordTab";
+import PasswordTab from "../../common/PasswordTab";
 import DangerZoneTab from "../../common/DangerZoneTab";
-import AvatarUpload  from "../../common/AvatarUpload";
+import AvatarUpload from "../../common/AvatarUpload";
 
 type TabKey = "profile" | "password" | "danger";
 
@@ -44,39 +44,37 @@ interface Props {
   onBack: () => void;
 }
 
-// Doctor Professional Profile
-
-// Manages the doctor's personal and professional identity, including clinical credentials, security preferences, and account lifecycle.
+// DoctorProfile
+// This page lets the doctor update their profile and security settings
 const DoctorProfile: React.FC<Props> = ({ onBack }) => {
   const { user, setUser } = useAuth();
 
-  const [tab,    setTab]    = useState<TabKey>("profile");
+  const [tab, setTab] = useState<TabKey>("profile");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError,   setProfileError]   = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  const [fullName,             setFullName]             = useState("");
-  const [contactNumber,        setContactNumber]        = useState("");
-  const [specialization,       setSpecialization]       = useState("");
-  const [licenseNumber,        setLicenseNumber]        = useState("");
-  const [qualification,        setQualification]        = useState("");
-  const [yearsExp,             setYearsExp]             = useState<number>(0);
-  const [hospitalAffiliation, setHospitalAffiliation]   = useState("");
+  const [fullName, setFullName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [qualification, setQualification] = useState("");
+  const [yearsExp, setYearsExp] = useState<number>(0);
+  const [hospitalAffiliation, setHospitalAffiliation] = useState("");
 
-  const [nic,       setNic]       = useState<string | null>(null);
+  const [nic, setNic] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
 
   const [currentPw, setCurrentPw] = useState("");
-  const [newPw,     setNewPw]     = useState("");
+  const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
 
-  const [pwLoading,   setPwLoading]   = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
   const [profLoading, setProfLoading] = useState(false);
 
-  // Profile Synchronization
-
-  // Ensures the professional profile reflects the most current credentials and contact information from the identity provider.
+  // Profile data
+  // Loads the latest profile data from the server
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -107,10 +105,10 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     };
 
     fetchProfile();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
-  // Notifications logic
-
+  // UI Notifications
+  // Helper to show success or error messages on the screen
   const addToast = useCallback(
     (kind: "success" | "error", message: string) => {
       const id = Date.now();
@@ -123,7 +121,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
   // Visual Identity calculation
 
   const initials = useMemo(() => {
-    const name  = user?.fullName ?? "Doctor";
+    const name = user?.fullName ?? "Doctor";
     const parts = name.trim().split(" ").filter(Boolean);
     return (
       (parts[0]?.[0] ?? "D") +
@@ -138,14 +136,13 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     label: string;
     icon: React.FC<{ className?: string }>;
   }[] = [
-    { key: "profile",  label: "Profile",     icon: IconUser  },
-    { key: "password", label: "Password",    icon: IconLock, },
-    { key: "danger",   label: "Danger Zone", icon: IconAlert },
-  ];
+      { key: "profile", label: "Profile", icon: IconUser },
+      { key: "password", label: "Password", icon: IconLock, },
+      { key: "danger", label: "Danger Zone", icon: IconAlert },
+    ];
 
-  // Professional Update Handler
-
-  // Persists changes to clinical credentials (specialization, license) while updating the global authentication context.
+  // Profile updates
+  // Saves the updated doctor profile information
   const handleUpdateProfile = async () => {
     if (!fullName.trim()) {
       addToast("error", "Full name cannot be empty.");
@@ -165,7 +162,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
       if (user) {
         const newUserState: User = {
           ...user,
-          fullName:      updatedUser.fullName      ?? user.fullName,
+          fullName: updatedUser.fullName ?? user.fullName,
           contactNumber: updatedUser.contactNumber ?? user.contactNumber,
         };
         setUser(newUserState);
@@ -180,8 +177,8 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
     }
   };
 
-  // Credential Security Handler
-
+  // Password settings
+  // Checks and updates the user's password
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -202,7 +199,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
       setPwLoading(true);
       const response = await changePasswordApi({
         currentPassword: currentPw,
-        newPassword:     newPw,
+        newPassword: newPw,
       });
       addToast("success", response.message || "Password changed successfully.");
       setCurrentPw("");
@@ -273,6 +270,7 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
           <div className="flex items-center gap-3">
             <Pill tone="emerald">{roleLabel}</Pill>
             <p className="text-sm text-slate-500">
+              {/* Page Header — Shows user name and has a back button */}
               Manage your professional credentials and security preferences.
             </p>
           </div>
@@ -433,18 +431,18 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
             <SectionCard title="Account Summary" subtitle="Read-only overview of your account.">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { label: "User ID",        value: user?.id ? user.id.slice(0, 16) + "…" : "—", mono: true },
-                  { label: "Role",           value: user?.role ?? "doctor" },
-                  { label: "NIC",            value: nic ?? "—", mono: true },
+                  { label: "User ID", value: user?.id ? user.id.slice(0, 16) + "…" : "—", mono: true },
+                  { label: "Role", value: user?.role ?? "doctor" },
+                  { label: "NIC", value: nic ?? "—", mono: true },
                   { label: "Specialization", value: specialization || "—" },
-                  { label: "License No.",    value: licenseNumber || "—", mono: true },
-                  { label: "Experience",     value: yearsExp ? `${yearsExp} years` : "—" },
+                  { label: "License No.", value: licenseNumber || "—", mono: true },
+                  { label: "Experience", value: yearsExp ? `${yearsExp} years` : "—" },
                   {
                     label: "Member Since",
                     value: createdAt
                       ? new Date(createdAt).toLocaleDateString("en-GB", {
-                          day: "2-digit", month: "short", year: "numeric",
-                        })
+                        day: "2-digit", month: "short", year: "numeric",
+                      })
                       : "—",
                   },
                   { label: "Status", value: "Active" },

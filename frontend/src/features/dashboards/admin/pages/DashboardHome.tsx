@@ -116,7 +116,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
                 <tr className="border-b border-slate-100">
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">NIC</th>
-                  <th className="px-4 py-3">Condition / History</th>
+                  <th className="px-4 py-3">Contact</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Admitted</th>
                   <th className="px-4 py-3 text-right">Action</th>
@@ -127,7 +127,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
                   <tr key={p.id} className="transition hover:bg-slate-50/60">
                     <td className="px-4 py-3 font-semibold text-slate-800">{p.fullName}</td>
                     <td className="px-4 py-3 text-slate-600">{p.nic ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600 truncate max-w-[150px]">{p.medicalHistory || p.chronicConditions || "—"}</td>
+                    <td className="px-4 py-3 text-slate-600 truncate max-w-[150px]">{p.contactNumber || p.emergencyContact|| "—"}</td>
                     <td className="px-4 py-3"><Badge tone={statusTone(p.isActive)}>{p.isActive ? "Active" : "Inactive"}</Badge></td>
                     <td className="px-4 py-3 text-slate-600">{new Date(p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">

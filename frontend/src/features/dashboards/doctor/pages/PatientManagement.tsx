@@ -11,9 +11,10 @@ import {
   fmt12,
   fmtDate,
   statusColor,
+  statusLabel,
 } from "../../../../api/appointment/appointment.types";
 
-import Badge      from "../../common/widgets/Badge";
+import Badge from "../../common/widgets/Badge";
 import TableShell from "../../common/widgets/TableShell";
 
 import {
@@ -26,31 +27,30 @@ import {
   IconSpinner,
 } from "../../common/icons";
 
-// Medical Detail Overlay
-
-// Provides a focused view of a patient's personal and medical data within the context of a specific appointment.
+// MedModal
+// Shows patient personal and medical details for an appointment
 interface MedModalProps {
-  patient:     AppointmentPatient;
+  patient: AppointmentPatient;
   appointment: Appointment;
-  onClose:     () => void;
+  onClose: () => void;
 }
 
 const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) => {
   const personal = [
-    { label: "Full Name",         value: patient.fullName },
-    { label: "NIC",               value: patient.nic },
-    { label: "Date of Birth",     value: patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString("en-GB") : undefined },
-    { label: "Gender",            value: patient.gender },
-    { label: "Blood Group",       value: patient.bloodGroup },
-    { label: "Address",           value: patient.address },
-    { label: "Contact",           value: patient.contactNumber },
+    { label: "Full Name", value: patient.fullName },
+    { label: "NIC", value: patient.nic },
+    { label: "Date of Birth", value: patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString("en-GB") : undefined },
+    { label: "Gender", value: patient.gender },
+    { label: "Blood Group", value: patient.bloodGroup },
+    { label: "Address", value: patient.address },
+    { label: "Contact", value: patient.contactNumber },
     { label: "Emergency Contact", value: patient.emergencyContact },
   ];
   const medical = [
-    { label: "Medical History",     value: patient.medicalHistory },
-    { label: "Allergies",           value: patient.allergies },
+    { label: "Medical History", value: patient.medicalHistory },
+    { label: "Allergies", value: patient.allergies },
     { label: "Current Medications", value: patient.currentMedications },
-    { label: "Chronic Conditions",  value: patient.chronicConditions },
+    { label: "Chronic Conditions", value: patient.chronicConditions },
   ];
 
   return (
@@ -65,7 +65,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
                 {appointment.slot ? `${fmtDate(appointment.slot.date)} · ${fmt12(appointment.slot.startTime)}` : ""}
                 {" · "}
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusColor[appointment.status]}`}>
-                  {appointment.status}
+                  {statusLabel[appointment.status]}
                 </span>
               </p>
             </div>
@@ -74,7 +74,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Demographic Data */}
+          {/* Personal details like NIC and birth date */}
           <section>
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Personal Information</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -87,7 +87,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
             </div>
           </section>
 
-          {/* Clinical Background */}
+          {/* Health information like allergies and history */}
           <section>
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-emerald-600">Medical Information</h4>
             <div className="space-y-3">
@@ -107,7 +107,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
             </section>
           )}
 
-          {/* Appointment Source */}
+          {/* Family member who made the booking */}
           <section>
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Booked By</h4>
             <div className="rounded-xl bg-slate-50 px-4 py-3">
@@ -129,20 +129,20 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
 
 type BT = "emerald" | "amber" | "red" | "slate" | "blue";
 const tone = (s: string): BT =>
-  s === "pending" ? "amber" : s === "cancelled" ? "red" : s === "completed" ? "slate" : "blue";
+  s === "prescription_pending" ? "amber" : s === "cancelled" ? "red" : s === "completed" ? "slate" : "blue";
 
-type Filter = "" | "pending" | "completed" | "cancelled";
+type Filter = "" | "prescription_pending" | "completed" | "cancelled";
 
-// Patient Management Registry
-
-// Orchestrates the centralized repository of all patient interactions, allowing doctors to track engagement metrics and filter appointments by clinical status.
+// PatientManagement
+// Main list for doctors to see and filter patient appointments
 const PatientManagement: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState<string | null>(null);
-  const [filter,       setFilter]       = useState<Filter>("");
-  const [viewAppt,     setViewAppt]     = useState<Appointment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>(""); // Helps filter the list by status
+  const [viewAppt, setViewAppt] = useState<Appointment | null>(null); // Controls the details popup
 
+  // Loads all doctor appointments from the server
   const load = useCallback(async () => {
     try { setLoading(true); setError(null); setAppointments(await getDoctorAppointments()); }
     catch (e: any) { setError(e.message ?? "Failed to load"); }
@@ -153,10 +153,10 @@ const PatientManagement: React.FC = () => {
 
   const filtered = useMemo(() => filter ? appointments.filter((a) => a.status === filter) : appointments, [appointments, filter]);
 
-  // Metric Aggregation logic
+  // Counts total, pending, and completed appointments
   const stats = useMemo(() => ({
-    total:     appointments.length,
-    pending:   appointments.filter((a) => a.status === "pending").length,
+    total: appointments.length,
+    prescriptionPending: appointments.filter((a) => a.status === "prescription_pending").length,
     completed: appointments.filter((a) => a.status === "completed").length,
     cancelled: appointments.filter((a) => a.status === "cancelled").length,
   }), [appointments]);
@@ -167,7 +167,7 @@ const PatientManagement: React.FC = () => {
     </div>
   );
 
-  if (error)   return (
+  if (error) return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
       <p className="text-sm font-semibold text-red-700">{error}</p>
       <button onClick={load} className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition">Retry</button>
@@ -176,19 +176,19 @@ const PatientManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Management Header */}
+      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Patient Management</h1>
         <p className="text-sm text-slate-500">All patient appointments across your channeling slots</p>
       </div>
 
-      {/* Engagement Statistics Overview */}
+      {/* Summary of counts */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total",     value: stats.total,     color: "slate", icon: <IconUsers className="h-4 w-4" /> },
-          { label: "Pending",   value: stats.pending,   color: "amber", icon: <IconClock className="h-4 w-4" /> },
-          { label: "Completed", value: stats.completed, color: "blue",  icon: <IconFileText className="h-4 w-4" /> },
-          { label: "Cancelled", value: stats.cancelled, color: "red",   icon: <IconX className="h-4 w-4" /> },
+          { label: "Total", value: stats.total, color: "slate", icon: <IconUsers className="h-4 w-4" /> },
+          { label: "Pending Prescription", value: stats.prescriptionPending, color: "amber", icon: <IconClock className="h-4 w-4" /> },
+          { label: "Completed", value: stats.completed, color: "blue", icon: <IconFileText className="h-4 w-4" /> },
+          { label: "Cancelled", value: stats.cancelled, color: "red", icon: <IconX className="h-4 w-4" /> },
         ].map(({ label, value, color, icon }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className={`flex items-center gap-1.5 text-${color}-500 mb-1`}>{icon}<p className="text-xs font-semibold text-slate-500">{label}</p></div>
@@ -197,18 +197,18 @@ const PatientManagement: React.FC = () => {
         ))}
       </div>
 
-      {/* Result Set Filtering */}
+      {/* Status Filter buttons */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-slate-500">Filter:</span>
-        {(["", "pending", "completed", "cancelled"] as Filter[]).map((f) => (
+        {(["", "prescription_pending", "completed", "cancelled"] as Filter[]).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
             className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${filter === f ? "bg-emerald-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
-            {f === "" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === "" ? "All" : f === "prescription_pending" ? "Pending Prescription" : f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Appointment Master List */}
+      {/* Main list of appointments */}
       <TableShell title="Patient Appointments" subtitle={`${filtered.length} record${filtered.length !== 1 ? "s" : ""} · To prescribe, use the Appointments tab`}>
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           {filtered.length === 0 ? (
@@ -234,7 +234,7 @@ const PatientManagement: React.FC = () => {
                 {filtered.map((appt) => {
                   const hasPrescription = !!appt.prescriptionId;
                   return (
-                    <tr key={appt.id} className={`transition hover:bg-slate-50/60 ${appt.status === "pending" ? "bg-amber-50/30" : ""}`}>
+                    <tr key={appt.id} className={`transition hover:bg-slate-50/60 ${appt.status === "prescription_pending" ? "bg-amber-50/30" : ""}`}>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-slate-800">{appt.patient?.fullName ?? "—"}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
@@ -251,7 +251,7 @@ const PatientManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-slate-600">{appt.slot ? fmtDate(appt.slot.date) : "—"}</td>
                       <td className="px-4 py-3 text-xs text-slate-600">{appt.slot ? `${fmt12(appt.slot.startTime)} – ${fmt12(appt.slot.endTime)}` : "—"}</td>
-                      <td className="px-4 py-3"><Badge tone={tone(appt.status)}>{appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}</Badge></td>
+                      <td className="px-4 py-3"><Badge tone={tone(appt.status)}>{statusLabel[appt.status]}</Badge></td>
                       <td className="px-4 py-3">
                         {hasPrescription ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">

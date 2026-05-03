@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import TableShell from "../../common/widgets/TableShell";
-import Badge      from "../../common/widgets/Badge";
+import Badge from "../../common/widgets/Badge";
 
 import {
   IconUsers,
@@ -18,7 +18,7 @@ import {
   updateSlotConsultationFee,
 } from "../../../../api/channeling/doctor-channeling.api";
 
-import { getProfile }          from "../../../../api/auth/auth.api";
+import { getProfile } from "../../../../api/auth/auth.api";
 import { getDoctorAppointments } from "../../../../api/appointment/doctor-appointment.api";
 
 import {
@@ -29,32 +29,27 @@ import {
 
 import type { Appointment } from "../../../../api/appointment/appointment.types";
 
-const DAYS_OF_WEEK = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-// Channeling Manager
-
-// Orchestrates the doctor's clinical availability and slot management, allowing for the review and acceptance of admin-assigned sessions.
+// ChannelingManager
+// Main component for managing doctor work times and slot approvals
 const ChannelingManager: React.FC = () => {
-  const [slots,               setSlots]               = useState<ChannelingSlot[]>([]);
-  const [appointments,        setAppointments]        = useState<Appointment[]>([]);
-  const [doctorInfo,          setDoctorInfo]          = useState<any>(null);
-  const [loading,             setLoading]             = useState(true);
-  const [isEditing,           setIsEditing]           = useState(false);
-  const [selectedDays,        setSelectedDays]        = useState<string[]>([]);
-  const [startTime,           setStartTime]           = useState("");
-  const [endTime,             setEndTime]             = useState("");
-  const [editingFeeSlotId,    setEditingFeeSlotId]    = useState<string | null>(null);
-  const [feeInput,            setFeeInput]            = useState<string>("");
-  const [acceptConfirmSlot,   setAcceptConfirmSlot]   = useState<ChannelingSlot | null>(null);
-  const [acceptFeeInput,      setAcceptFeeInput]      = useState<string>("");
-  const [acceptFeeError,      setAcceptFeeError]      = useState<string>("");
+  const [slots, setSlots] = useState<ChannelingSlot[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [doctorInfo, setDoctorInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [editingFeeSlotId, setEditingFeeSlotId] = useState<string | null>(null);
+  const [feeInput, setFeeInput] = useState<string>("");
+  const [acceptConfirmSlot, setAcceptConfirmSlot] = useState<ChannelingSlot | null>(null);
+  const [acceptFeeInput, setAcceptFeeInput] = useState<string>("");
+  const [acceptFeeError, setAcceptFeeError] = useState<string>("");
 
-  useEffect(() => { loadData(); }, []);
-
-  // Data Aggregation logic
-
-  // Synchronizes the manager with both channeling slots and appointment records to provide an accurate patient count per session.
-  const loadData = async () => {
+  // Loads all slots, profile, and appointments from the server
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [slotsData, profileData, apptData] = await Promise.all([
@@ -70,11 +65,11 @@ const ChannelingManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Booking Map Construction
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Computes active patient counts for each slot by filtering out cancelled appointments from the local state.
+  // Counts booked patients for each slot
   const patientCountBySlot = useMemo<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     for (const a of appointments) {
@@ -87,18 +82,16 @@ const ChannelingManager: React.FC = () => {
 
   const profileNode = doctorInfo?.profile || doctorInfo;
 
-  // Availability Parsing
-
-  // Normalizes the stored availability days from multiple potential data formats (JSON, CSV, Array) into a clean string array.
+  // Parses the doctor's available days into a clean array
   const parsedAvailableDays = useMemo(() => {
     if (!profileNode?.availableDays) return [];
     let raw: any = profileNode.availableDays;
     if (Array.isArray(raw)) return raw;
     if (typeof raw === "string") {
-      try { raw = JSON.parse(raw); } catch {}
-      try { if (typeof raw === "string") raw = JSON.parse(raw); } catch {}
+      try { raw = JSON.parse(raw); } catch { }
+      try { if (typeof raw === "string") raw = JSON.parse(raw); } catch { }
       if (Array.isArray(raw)) return raw;
-      return String(profileNode.availableDays).replace(/[\[\]"'\\]/g,"").split(",").map((s:string)=>s.trim()).filter(Boolean);
+      return String(profileNode.availableDays).replace(/[\[\]"'\\]/g, "").split(",").map((s: string) => s.trim()).filter(Boolean);
     }
     return [];
   }, [profileNode]);
@@ -112,11 +105,9 @@ const ChannelingManager: React.FC = () => {
   }, [profileNode, parsedAvailableDays]);
 
   const hasSetAvailability = parsedAvailableDays.length > 0 || profileNode?.availableTimeStart;
-  const toggleDay = (day: string) => setSelectedDays(p => p.includes(day) ? p.filter(d=>d!==day) : [...p, day]);
+  const toggleDay = (day: string) => setSelectedDays(p => p.includes(day) ? p.filter(d => d !== day) : [...p, day]);
 
-  // Preference Submission
-
-  // Updates the doctor's professional profile with preferred scheduling windows, alerting the admin of the change.
+  // Saves the doctor's preferred days and times
   const handleSetAvailability = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDays.length) return alert("Please select at least one day.");
@@ -141,9 +132,7 @@ const ChannelingManager: React.FC = () => {
     setAcceptFeeError("");
   };
 
-  // Approval with Revenue Control
-
-  // Ensures that a consultation fee is established before a slot is activated, protecting the doctor's professional revenue stream.
+  // Finalizes the approval of a slot after a fee is set
   const handleAcceptWithFee = async () => {
     const fee = Number(acceptFeeInput);
     if (!acceptFeeInput.trim() || isNaN(fee) || fee < 0) {
@@ -189,9 +178,9 @@ const ChannelingManager: React.FC = () => {
   }, [slots, slotFilter]);
 
   const slotCounts = useMemo(() => ({
-    all:       slots.length,
-    pending:   slots.filter(s => s.status === 'pending').length,
-    active:    slots.filter(s => s.status === 'active').length,
+    all: slots.length,
+    pending: slots.filter(s => s.status === 'pending').length,
+    active: slots.filter(s => s.status === 'active').length,
     completed: slots.filter(s => s.status === 'completed').length,
   }), [slots]);
 
@@ -203,7 +192,7 @@ const ChannelingManager: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Availability Configuration — Displays either the preference configuration form or the active registration details based on the current editing state. */}
+      {/* Section to set or edit work hours */}
       {(!hasSetAvailability || isEditing) ? (
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
           <div className="flex justify-between items-center mb-2">
@@ -266,35 +255,33 @@ const ChannelingManager: React.FC = () => {
         </div>
       )}
 
-      {/* Session Assignment Management */}
+      {/* Section to manage assigned slots */}
 
       <TableShell title="Assigned Slots" subtitle="Approve or reject slots created by the Admin.">
 
-        {/* ── Filter tabs ── */}
+        {/* Filter tabs */}
         <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-slate-100 bg-slate-50 p-1 w-fit">
           {([
-            { key: 'pending',   label: 'Pending',   count: slotCounts.pending   },
-            { key: 'active',    label: 'Active',    count: slotCounts.active    },
+            { key: 'pending', label: 'Pending', count: slotCounts.pending },
+            { key: 'active', label: 'Active', count: slotCounts.active },
             { key: 'completed', label: 'Completed', count: slotCounts.completed },
-            { key: 'all',       label: 'All',       count: slotCounts.all       },
+            { key: 'all', label: 'All', count: slotCounts.all },
           ] as const).map(({ key, label, count }) => (
             <button
               key={key}
               type="button"
               onClick={() => setSlotFilter(key)}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-semibold transition ${
-                slotFilter === key
-                  ? key === 'pending'   ? 'bg-amber-500 text-white shadow-sm'
-                  : key === 'active'    ? 'bg-blue-600 text-white shadow-sm'
-                  : key === 'completed' ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-slate-800 text-white shadow-sm'
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-semibold transition ${slotFilter === key
+                  ? key === 'pending' ? 'bg-amber-500 text-white shadow-sm'
+                    : key === 'active' ? 'bg-blue-600 text-white shadow-sm'
+                      : key === 'completed' ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-800 text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
-              }`}
+                }`}
             >
               {label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                slotFilter === key ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
-              }`}>
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${slotFilter === key ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>
                 {count}
               </span>
             </button>
@@ -362,21 +349,23 @@ const ChannelingManager: React.FC = () => {
                               ? `LKR ${Number(s.consultationFee).toLocaleString()}`
                               : <span className="text-slate-400 text-xs italic">Not set</span>}
                           </span>
-                          <button
-                            onClick={() => handleOpenFeeEdit(s)}
-                            title="Update consultation fee"
-                            className="rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-500 hover:border-blue-300 hover:text-blue-600 transition"
-                          >Edit</button>
+                          {s.status === 'pending' && (
+                            <button
+                              onClick={() => handleOpenFeeEdit(s)}
+                              title="Update consultation fee"
+                              className="rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-500 hover:border-blue-300 hover:text-blue-600 transition"
+                            >Edit</button>
+                          )}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <Badge tone={
-                        s.status === "pending"   ? "amber"   :
-                        s.status === "active"    ? "blue"    :
-                        s.status === "rejected"  ? "red"     :
-                        s.status === "completed" ? "emerald" :
-                        "slate"
+                        s.status === "pending" ? "amber" :
+                          s.status === "active" ? "blue" :
+                            s.status === "rejected" ? "red" :
+                              s.status === "completed" ? "emerald" :
+                                "slate"
                       }>
                         {s.status.toUpperCase()}
                       </Badge>
@@ -401,7 +390,7 @@ const ChannelingManager: React.FC = () => {
         </div>
       </TableShell>
 
-      {/* Revenue Activation Portal */}
+      {/* Popup to set the consultation fee before accepting a slot */}
 
       {acceptConfirmSlot && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -483,9 +472,8 @@ const ChannelingManager: React.FC = () => {
   );
 };
 
-// Channeling Schedule View
-
-// Serves as the primary entry point for managing professional availability and session approvals within the doctor's workspace.
+// ChannelingSchedule
+// Wrapper for the channeling schedule page
 const Appointments: React.FC = () => (
   <div className="space-y-6">
     <div>

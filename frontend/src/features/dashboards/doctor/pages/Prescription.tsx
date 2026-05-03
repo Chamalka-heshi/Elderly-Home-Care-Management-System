@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import Badge from '../../common/widgets/Badge';
 
@@ -8,7 +8,6 @@ import {
   IconRefresh,
   IconPrint,
   IconFileText,
-  IconSearch,
   IconCheck,
 } from '../../common/icons';
 
@@ -21,7 +20,7 @@ import {
 export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
 type FilterTab = 'all' | 'active' | 'completed' | 'discontinued';
 
-// Clinical Formatting Utilities
+// Helper functions to format dates and badge styles
 
 const fmtDate = (d?: string | null): string => {
   if (!d) return '—';
@@ -30,50 +29,49 @@ const fmtDate = (d?: string | null): string => {
 };
 
 const statusConfig: Record<PrescriptionStatus, { tone: 'emerald' | 'blue' | 'red'; label: string }> = {
-  active:       { tone: 'emerald', label: 'Active' },
-  completed:    { tone: 'blue',    label: 'Completed' },
-  discontinued: { tone: 'red',     label: 'Discontinued' },
+  active: { tone: 'emerald', label: 'Active' },
+  completed: { tone: 'blue', label: 'Completed' },
+  discontinued: { tone: 'red', label: 'Discontinued' },
 };
 
-// UI State Management
+// Types for showing popup messages and confirmation boxes
 
 interface Toast {
-  id:      number;
-  kind:    'success' | 'error';
+  id: number;
+  kind: 'success' | 'error';
   message: string;
 }
 
 interface ConfirmState {
-  open:    boolean;
-  title:   string;
+  open: boolean;
+  title: string;
   message: string;
-  label:   string;
-  danger:  boolean;
+  label: string;
+  danger: boolean;
   loading: boolean;
-  action:  () => Promise<void>;
+  action: () => Promise<void>;
 }
 
 const CONFIRM_CLOSED: ConfirmState = {
-  open:    false,
-  title:   '',
+  open: false,
+  title: '',
   message: '',
-  label:   '',
-  danger:  false,
+  label: '',
+  danger: false,
   loading: false,
-  action:  async () => {},
+  action: async () => { },
 };
 
-// Prescription Row Component
-
-// Encapsulates the visual representation and primary actions for a single prescription record within the clinical table.
+// RxRow
+// Displays a single row in the prescription history table
 interface RxRowProps {
-  rx:            Prescription;
-  onPrint:       (rx: Prescription) => void;
+  rx: Prescription;
+  onPrint: (rx: Prescription) => void;
   onDiscontinue: (rx: Prescription) => void;
 }
 
 const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue }) => {
-  const cfg      = statusConfig[(rx.status as PrescriptionStatus) ?? 'active'];
+  const cfg = statusConfig[(rx.status as PrescriptionStatus) ?? 'active'];
   const isActive = rx.status === 'active';
 
   return (
@@ -143,15 +141,12 @@ const RxRow: React.FC<RxRowProps> = ({ rx, onPrint, onDiscontinue }) => {
   );
 };
 
-// Portable Document Interface
-
-// Generates a clinical-standard print view for prescriptions, facilitating physical medication fulfillment.
+// PrintView
+// Shows a printable view of the prescription
 const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, onClose }) => {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Printing Orchestration
-
-  // Injects raw HTML and specialized CSS into a temporary window to ensure consistent print formatting across browsers.
+  // Opens a new window with a printable version of the prescription data
   const handlePrint = () => {
     if (!ref.current) return;
     const w = window.open('', '_blank');
@@ -227,7 +222,7 @@ const PrintView: React.FC<{ rx: Prescription; onClose: () => void }> = ({ rx, on
   );
 };
 
-// Modals & Notifications
+// Helper components for confirmation modals and toast notifications
 
 const ConfirmModal: React.FC<{ state: ConfirmState; onConfirm: () => void; onCancel: () => void }> = ({ state, onConfirm, onCancel }) => {
   if (!state.open) return null;
@@ -264,19 +259,17 @@ const ToastList: React.FC<{ toasts: Toast[]; onDismiss: (id: number) => void }> 
   </div>
 );
 
-// Prescription Management Registry
-
-// Orchestrates the clinical repository of all issued medications, allowing doctors to monitor treatment adherence, discontinue active scripts, and manage physical fulfillment.
+// PrescriptionPage
+// Main page for doctors to see all past prescriptions they have written
 const PrescriptionPage: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [total,         setTotal]         = useState(0);
-  const [loading,       setLoading]       = useState(true);
-  const [fetchError,    setFetchError]    = useState<string | null>(null);
-  const [filter,        setFilter]        = useState<FilterTab>('all');
-  const [search,        setSearch]        = useState('');
-  const [printRx,       setPrintRx]       = useState<Prescription | null>(null);
-  const [toasts,        setToasts]        = useState<Toast[]>([]);
-  const [confirm,       setConfirm]       = useState<ConfirmState>(CONFIRM_CLOSED);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterTab>('all');
+  const [printRx, setPrintRx] = useState<Prescription | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirm, setConfirm] = useState<ConfirmState>(CONFIRM_CLOSED);
 
   const toast = useCallback((kind: Toast['kind'], message: string) => {
     const id = Date.now();
@@ -284,9 +277,7 @@ const PrescriptionPage: React.FC = () => {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4500);
   }, []);
 
-  // Data Aggregation logic
-
-  // Fetches a comprehensive list of prescriptions, ensuring that status-based counts remain synchronized across the UI tabs.
+  // Fetches the full list of prescriptions from the server
   const fetchPrescriptions = useCallback(async () => {
     setLoading(true); setFetchError(null);
     try {
@@ -301,29 +292,23 @@ const PrescriptionPage: React.FC = () => {
 
   useEffect(() => { fetchPrescriptions(); }, [fetchPrescriptions]);
 
-  // Search & Filtering logic
+  // Filters prescriptions based on the selected tab status
 
-  const filtered = prescriptions.filter(rx => {
+  const filtered = useMemo(() => prescriptions.filter(rx => {
     if (filter !== 'all' && rx.status !== filter) return false;
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return rx.patientName.toLowerCase().includes(q)
-        || (rx.diagnosis ?? '').toLowerCase().includes(q)
-        || rx.medicines.some((m: any) => m.medicineName.toLowerCase().includes(q));
-    }
-
     return true;
-  });
+  }), [prescriptions, filter]);
 
+  // All four tab counts derive from the same local array so they stay consistent.
+  // `total` (from the server) is kept only for the page-header "X on record" text.
   const counts = {
-    all:          total,
-    active:       prescriptions.filter(r => r.status === 'active').length,
-    completed:    prescriptions.filter(r => r.status === 'completed').length,
+    all: prescriptions.length,
+    active: prescriptions.filter(r => r.status === 'active').length,
+    completed: prescriptions.filter(r => r.status === 'completed').length,
     discontinued: prescriptions.filter(r => r.status === 'discontinued').length,
   };
 
-  // Clinical Lifecycle Handlers
+  // Functions for stopping prescriptions with a confirmation popup
 
   const openDiscontinue = useCallback((rx: Prescription) => {
     const action = async () => {
@@ -343,9 +328,9 @@ const PrescriptionPage: React.FC = () => {
 
 
   const TABS: { key: FilterTab; label: string }[] = [
-    { key: 'all',          label: `All (${counts.all})` },
-    { key: 'active',       label: `Active (${counts.active})` },
-    { key: 'completed',    label: `Completed (${counts.completed})` },
+    { key: 'all', label: `All (${counts.all})` },
+    { key: 'active', label: `Active (${counts.active})` },
+    { key: 'completed', label: `Completed (${counts.completed})` },
     { key: 'discontinued', label: `Discontinued (${counts.discontinued})` },
   ];
 
@@ -367,24 +352,13 @@ const PrescriptionPage: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
-            {TABS.map(({ key, label }) => (
-              <button key={key} type="button" onClick={() => setFilter(key)}
-                className={`whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-semibold transition ${filter === key ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="relative ml-auto w-full sm:w-64">
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-            <input type="search"
-              className="w-full rounded-2xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/10 transition"
-              placeholder="Search name, diagnosis, medicine…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
+        <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm w-fit">
+          {TABS.map(({ key, label }) => (
+            <button key={key} type="button" onClick={() => setFilter(key)}
+              className={`whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-semibold transition ${filter === key ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+              {label}
+            </button>
+          ))}
         </div>
 
         {fetchError && !loading && (
@@ -428,9 +402,7 @@ const PrescriptionPage: React.FC = () => {
                         <IconFileText className="h-10 w-10 opacity-30" />
                         <p className="text-sm font-semibold">No prescriptions found</p>
                         <p className="text-xs">
-                          {search
-                            ? 'Try a different search term.'
-                            : filter !== 'all'
+                          {filter !== 'all'
                             ? `No ${filter} prescriptions yet.`
                             : 'Prescriptions you create will appear here.'}
                         </p>
@@ -438,7 +410,7 @@ const PrescriptionPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map(rx => (
+                  filtered.map((rx: Prescription) => (
                     <RxRow
                       key={rx.id}
                       rx={rx}

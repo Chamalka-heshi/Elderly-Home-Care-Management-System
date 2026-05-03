@@ -17,15 +17,15 @@ export type MenuLabel =
   | "Payments"
 
 export interface MenuItem {
-  icon:  React.FC<{ className?: string }>;
+  icon: React.FC<{ className?: string }>;
   label: MenuLabel;
 }
 
 interface Props {
-  items:      MenuItem[];
+  items: MenuItem[];
   activeMenu: MenuLabel;
-  isOpen:     boolean;
-  onClose:    () => void;
+  isOpen: boolean;
+  onClose: () => void;
   onNavigate: (label: MenuLabel) => void;
 }
 
@@ -50,12 +50,12 @@ const Sidebar: React.FC<Props> = ({
   }, [items, search]);
 
   const subtitleMap: Record<MenuLabel, string> = {
-    "Dashboard":          "View medical overview",
+    "Dashboard": "View medical overview",
     "Patient Management": "View assigned patients",
-    "Prescription":       "Create and manage prescription",
-    "Channeling Slots":   "View channeling schedule",
-    "Appointments":       "View & prescribe for confirmed patients",
-    "Payments":           "View consultation fee income",
+    "Prescription": "Create and manage prescription",
+    "Channeling Slots": "View channeling schedule",
+    "Appointments": "View & prescribe for confirmed patients",
+    "Payments": "View consultation fee income",
   };
 
   return (
@@ -113,7 +113,7 @@ const Sidebar: React.FC<Props> = ({
           {/* Clinical Menu */}
           <nav className="mt-5 flex-1 space-y-1">
             {filtered.map((item) => {
-              const Icon   = item.icon;
+              const Icon = item.icon;
               const active = activeMenu === item.label;
               return (
                 <button

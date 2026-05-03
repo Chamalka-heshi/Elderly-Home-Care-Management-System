@@ -5,9 +5,9 @@ import {
   type DoctorPaymentRecord,
 } from "../../../../api/payments/doctor-payment.api";
 
-import StatCard                  from "../../common/widgets/StatCard";
+import StatCard from "../../common/widgets/StatCard";
 import Badge, { type BadgeTone } from "../../common/widgets/Badge";
-import TableShell                from "../../common/widgets/TableShell";
+import TableShell from "../../common/widgets/TableShell";
 
 import {
   IconCurrency,
@@ -18,7 +18,7 @@ import {
   IconUser,
 } from "../../common/icons";
 
-// Data Formatting Utilities
+// Helper functions to format dates and money for the UI
 
 const fmt12 = (t: string) => {
   const [h, m] = t.split(":").map(Number);
@@ -27,10 +27,10 @@ const fmt12 = (t: string) => {
 };
 
 const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-GB", {
-    day:   "2-digit",
+  new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
+    day: "2-digit",
     month: "short",
-    year:  "numeric",
+    year: "numeric",
   });
 
 const fmtCurrency = (n: number) =>
@@ -38,30 +38,30 @@ const fmtCurrency = (n: number) =>
 
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-GB", {
-    day:    "2-digit",
-    month:  "short",
-    year:   "numeric",
-    hour:   "2-digit",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
     minute: "2-digit",
   });
 
-// Visual Configuration
+// Color and label settings for the payment method badge
 
 const METHOD_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
-  card:          { label: "💳 Card",          tone: "blue" },
+  card: { label: "💳 Card", tone: "blue" },
   bank_transfer: { label: "🏦 Bank Transfer", tone: "purple" },
 };
 
-// Revenue Tracking Interface
-
-// Displays all confirmed payments specifically for the doctor's consultation services, excluding system-wide care-home fees.
+// DoctorPayments
+// Shows all payments from patients for your consultation services
 const DoctorPayments: React.FC = () => {
-  const [payments,    setPayments]    = useState<DoctorPaymentRecord[]>([]);
+  const [payments, setPayments] = useState<DoctorPaymentRecord[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState<string | null>(null);
-  const [search,      setSearch]      = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
+  // Loads all payment records from the server
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -78,9 +78,7 @@ const DoctorPayments: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
-  // Search Logic
-
-  // Filters the payment history based on patient name, family member details, or appointment dates to facilitate rapid record lookup.
+  // Filters the payments based on the search box text
   const visible = useMemo(() => {
     if (!search.trim()) return payments;
     const q = search.toLowerCase();
@@ -97,7 +95,7 @@ const DoctorPayments: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Revenue Dashboard Header — Summarizes the doctor's professional earnings and providing manual synchronization with the payment registry. */}
+      {/* Page title and refresh button */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
@@ -117,7 +115,7 @@ const DoctorPayments: React.FC = () => {
         </button>
       </div>
 
-      {/* Financial Metrics */}
+      {/* Total Earnings section */}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Accumulated Income Card */}
@@ -141,7 +139,7 @@ const DoctorPayments: React.FC = () => {
         />
       </div>
 
-      {/* System Alerts */}
+      {/* Alert if there is an error loading data */}
       {error && (
         <div className="flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
           <span className="shrink-0 text-lg">⚠️</span>
@@ -149,7 +147,7 @@ const DoctorPayments: React.FC = () => {
         </div>
       )}
 
-      {/* Transaction Ledger */}
+      {/* Table showing the payment history */}
       <TableShell
         title="Payment History"
         subtitle={`${visible.length} record${visible.length !== 1 ? "s" : ""} shown`}
@@ -175,7 +173,7 @@ const DoctorPayments: React.FC = () => {
           </div>
         )}
 
-        {/* Empty State Handler */}
+        {/* Message if no payments match the filters */}
         {!loading && visible.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-slate-100">
@@ -188,7 +186,7 @@ const DoctorPayments: React.FC = () => {
           </div>
         )}
 
-        {/* Payment Registry */}
+        {/* Table rows for each payment */}
         {!loading && visible.length > 0 && (
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -273,7 +271,7 @@ const DoctorPayments: React.FC = () => {
           </table>
         )}
 
-        {/* Earnings Aggregate */}
+        {/* Total calculation at the bottom */}
         {!loading && visible.length > 0 && (
           <div className="mt-6 flex flex-col items-end gap-1 border-t border-slate-100 pt-5">
             <p className="text-xs text-slate-400">

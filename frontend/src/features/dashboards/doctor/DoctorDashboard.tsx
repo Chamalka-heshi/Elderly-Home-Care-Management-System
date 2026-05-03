@@ -15,23 +15,23 @@ import {
   IconCurrency,
 } from "../common/icons";
 
-import DashboardHome   from "./pages/DashboardHome";
-import PatientMgmt     from "./pages/PatientManagement";
-import Prescription    from "./pages/Prescription";
+import DashboardHome from "./pages/DashboardHome";
+import PatientMgmt from "./pages/PatientManagement";
+import Prescription from "./pages/Prescription";
 import ChannelingSlots from "./pages/ChannelingSlots";
-import Appointments    from "./pages/Appointments";
-import DoctorPayments  from "./pages/DoctorPayments";
+import Appointments from "./pages/Appointments";
+import DoctorPayments from "./pages/DoctorPayments";
 
 // Navigation Configuration
 
 // Defines the primary navigation structure for the doctor's clinical workspace, providing quick access to patient records and scheduling tools.
 const MENU_ITEMS: MenuItem[] = [
-  { icon: IconLayoutDashboard, label: "Dashboard"          },
-  { icon: IconUsers,           label: "Patient Management" },
-  { icon: IconActivity,        label: "Appointments"        },
-  { icon: IconCalendar,        label: "Channeling Slots"    },
-  { icon: IconHeart,           label: "Prescription"       },
-  { icon: IconCurrency,        label: "Payments"           },
+  { icon: IconLayoutDashboard, label: "Dashboard" },
+  { icon: IconUsers, label: "Patient Management" },
+  { icon: IconActivity, label: "Appointments" },
+  { icon: IconCalendar, label: "Channeling Slots" },
+  { icon: IconHeart, label: "Prescription" },
+  { icon: IconCurrency, label: "Payments" },
 ];
 
 // Doctor Dashboard Root
@@ -41,7 +41,7 @@ const DoctorDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [activeMenu,    setActiveMenu]    = useState<MenuLabel>("Dashboard");
+  const [activeMenu, setActiveMenu] = useState<MenuLabel>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -65,12 +65,12 @@ const DoctorDashboard: React.FC = () => {
 
           {/* View Rendering Logic — Dynamically mounts the appropriate clinical or administrative view based on the current navigation selection. */}
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-            {activeMenu === "Dashboard"          && <DashboardHome onNavigate={setActiveMenu} />}
+            {activeMenu === "Dashboard" && <DashboardHome onNavigate={setActiveMenu} />}
             {activeMenu === "Patient Management" && <PatientMgmt />}
-            {activeMenu === "Prescription"       && <Prescription />}
-            {activeMenu === "Channeling Slots"   && <ChannelingSlots />}
-            {activeMenu === "Appointments"       && <Appointments />}
-            {activeMenu === "Payments"           && <DoctorPayments />}
+            {activeMenu === "Prescription" && <Prescription />}
+            {activeMenu === "Channeling Slots" && <ChannelingSlots />}
+            {activeMenu === "Appointments" && <Appointments />}
+            {activeMenu === "Payments" && <DoctorPayments />}
           </main>
         </div>
       </div>

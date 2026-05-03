@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import StatCard from '../../common/widgets/StatCard';
-import Badge    from '../../common/widgets/Badge';
+import Badge from '../../common/widgets/Badge';
 
 import type { MenuLabel } from '../components/Sidebar';
 import iconImg from "../../../../assets/landing/icon.png";
@@ -21,15 +21,14 @@ import {
   IconAlertTriangle,
 } from '../../common/icons';
 
-// Clinical Status Indicators
+// Status colors for health indicators
 
-// Maps appointment confirmation status to color tones for immediate visual cues.
-const statusTone = (s: DashboardRecentPatient['status']) =>
-  s === 'Confirmed' ? 'emerald' as const : 'amber' as const;
+// Prescription Pending is the only active appointment status — always amber.
+const statusTone = (_s: DashboardRecentPatient['status']) => 'amber' as const;
 
-// Loading States
+// Loading placeholders
 
-// Displays structural placeholders during data fetching to maintain layout stability and improve perceived performance.
+// Shows empty boxes while data is loading so the page doesn't jump around
 const SkeletonRow = () => (
   <tr>
     {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -48,22 +47,21 @@ const SkeletonCard = () => (
   </div>
 );
 
-// Doctor Dashboard Overview
-
-// Aggregates patient statistics, pending appointments, and recent clinical activities into a unified operational command center.
+// DashboardHome
+// Main dashboard page that shows stats, appointments, and quick actions
 interface Props {
   onNavigate: (label: MenuLabel) => void;
 }
 
 const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
-  const [stats,      setStats]      = useState<DoctorDashboardStats | null>(null);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
+  const [stats, setStats] = useState<DoctorDashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Data Fetching Lifecycle
+  // Fetch data from the server
 
-  // Synchronizes the dashboard view with the backend API, handling parallel stat aggregation and error recovery.
+  // Gets the latest dashboard numbers and patient list from the database
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -89,34 +87,34 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
   // Derived Statistics Configuration
   const STATS = [
     {
-      title:   'My Patients',
-      value:   stats?.myPatientsCount ?? 0,
+      title: 'My Patients',
+      value: stats?.myPatientsCount ?? 0,
       caption: 'Active + incoming',
-      icon:    IconHeart,
+      icon: IconHeart,
     },
     {
-      title:   "Today's Appointments",
-      value:   stats?.todaysAppointmentsCount ?? 0,
+      title: "Today's Appointments",
+      value: stats?.todaysAppointmentsCount ?? 0,
       caption: 'Active slots today',
-      icon:    IconCalendar,
+      icon: IconCalendar,
     },
     {
-      title:   'Active Prescriptions',
-      value:   stats?.activePrescriptionsCount ?? 0,
+      title: 'Active Prescriptions',
+      value: stats?.activePrescriptionsCount ?? 0,
       caption: 'Currently prescribed',
-      icon:    IconPill,
+      icon: IconPill,
     },
     {
-      title:   'Pending Slots',
-      value:   stats?.pendingAppointmentsCount ?? 0,
-      caption: 'Awaiting your acceptance',
-      icon:    IconBell,
+      title: 'Pending Slots',
+      value: stats?.pendingAppointmentsCount ?? 0,
+      caption: 'Slots awaiting activation',
+      icon: IconBell,
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Dashboard Welcome Header — Provides personalized recognition and quick access to core patient management features. */}
+      {/* Welcome Banner — Greets the doctor and shows quick links */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
         <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-lime-400/20 blur-3xl" />
@@ -158,7 +156,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Operational Metrics Overview */}
+      {/* Summary boxes with numbers */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {loading
           ? [1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)
@@ -173,10 +171,10 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
           ))}
       </div>
 
-      {/* Clinical Activity History */}
+      {/* Latest activities and patient list */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          {/* Recent Prescriptions Record — Lists the most recent clinical interactions and prescriptions, facilitating rapid patient follow-up. */}
+          {/* List of the most recent patients seen */}
           <div className="rounded-3xl border border-white/10 bg-white/70 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
               <div>
@@ -236,7 +234,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                             : <span className="text-slate-400">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge tone={statusTone(p.status)}>{p.status}</Badge>
+                          <Badge tone={statusTone(p.status)}>{p.status === "Prescription Pending" ? "Pending Prescription" : p.status}</Badge>
                         </td>
                         <td className="px-4 py-3 text-slate-600">{p.slotDate ?? p.prescriptionDate}</td>
                         <td className="px-4 py-3 text-right">
@@ -256,18 +254,18 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Workflow Shortcuts */}
+        {/* Quick links to other pages */}
 
         <div className="flex flex-col gap-4">
-          {/* Task Prioritization — Provides rapid navigation to clinical tasks, ensuring efficient time management for the attending doctor. */}
+          {/* Fast buttons to reach important tasks */}
           <div className="rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
             <h3 className="mb-4 text-base font-bold text-slate-900">Quick Actions</h3>
             <div className="flex flex-col gap-3">
               {[
-                { label: 'Channeling Slots',   nav: 'Channeling Slots'   as MenuLabel },
-                { label: 'Write Prescription', nav: 'Prescription'       as MenuLabel },
+                { label: 'Channeling Slots', nav: 'Channeling Slots' as MenuLabel },
+                { label: 'Write Prescription', nav: 'Prescription' as MenuLabel },
                 { label: 'Patient Management', nav: 'Patient Management' as MenuLabel },
-                { label: 'My Profile',         nav: 'Doctor Profile'     as MenuLabel },
+                { label: 'My Profile', nav: 'Doctor Profile' as MenuLabel },
               ].map(({ label, nav }) => (
                 <button
                   key={label}
@@ -280,7 +278,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Agenda Summary — Displays a concise overview of the day's commitments, including pending requests that require immediate clinical attention. */}
+          {/* Quick summary of today's work */}
           {!loading && stats && (
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50/80 p-6 shadow-sm backdrop-blur-xl">
               <h3 className="mb-3 text-sm font-bold text-emerald-800">Today at a Glance</h3>

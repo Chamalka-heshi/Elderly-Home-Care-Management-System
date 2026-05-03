@@ -30,15 +30,7 @@ const initUser = (): User | null => {
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUserState] = useState<User | null>(initUser);
 
-  // Synchronizes state changes with local storage for persistence.
-  // Wrapped in useCallback so consumers that list setUser as a dependency
   const setUser = useCallback((u: User | null) => {
-    if (u) {
-      localStorage.setItem("user", JSON.stringify(u));
-    } else {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-    }
     setUserState(u);
   }, []);
 

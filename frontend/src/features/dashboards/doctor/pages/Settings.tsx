@@ -3,11 +3,11 @@ import React, { useState } from "react";
 import { IconCheck } from "../../common/icons";
 
 const Settings: React.FC = () => {
-  const [systemName,    setSystemName]    = useState("Care Home ECMS");
-  const [contactEmail,  setContactEmail]  = useState("doctor@carehome.com");
-  const [specialization,setSpecialization]= useState("General Medicine");
+  const [systemName, setSystemName] = useState("Care Home ECMS");
+  const [contactEmail, setContactEmail] = useState("doctor@carehome.com");
+  const [specialization, setSpecialization] = useState("General Medicine");
   const [licenseNumber, setLicenseNumber] = useState("SL-MED-20210045");
-  const [saved, setSaved]                 = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +18,7 @@ const Settings: React.FC = () => {
   return (
     <div className="space-y-6">
 
-      {/* Doctor profile settings */}
+      {/* Profile and work settings form */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
         <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl" />
 
@@ -85,7 +85,7 @@ const Settings: React.FC = () => {
         </form>
       </div>
 
-      {/* API Configuration — read-only, same as admin */}
+      {/* Technical API information */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
         <div className="pointer-events-none absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-sky-500/12 blur-3xl" />
 
@@ -96,10 +96,10 @@ const Settings: React.FC = () => {
 
         <div className="max-w-xl space-y-3">
           {[
-            { label: "API Base URL",    value: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api" },
-            { label: "Auth Strategy",   value: "Bearer Token (JWT)" },
-            { label: "Current Role",    value: "doctor" },
-            { label: "Panel Version",   value: "1.0.0" },
+            { label: "API Base URL", value: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api" },
+            { label: "Auth Strategy", value: "Bearer Token (JWT)" },
+            { label: "Current Role", value: "doctor" },
+            { label: "Panel Version", value: "1.0.0" },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white/60 px-4 py-3">
               <span className="text-sm font-medium text-slate-600">{label}</span>
