@@ -61,7 +61,7 @@ export class AuthService {
 
     await this.familyService.create({ user });
 
-    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
+    const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Family member registered successfully',
@@ -96,7 +96,7 @@ export class AuthService {
       throw new UnauthorizedException('Incorrect password. Please try again.');
     }
 
-    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
+    const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Login successful',
@@ -227,7 +227,7 @@ export class AuthService {
       }
     }
 
-    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
+    const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       token,
@@ -394,7 +394,7 @@ export class AuthService {
     user.lastLogoutAt       = new Date();
     await this.userRepository.save(user);
 
-    const token = this.generateToken(user.id, user.email, user.role, user.contactNumber);
+    const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       token,
@@ -414,8 +414,7 @@ export class AuthService {
     userId:        string,
     email:         string,
     role:          UserRole,
-    contactNumber: string,
   ): string {
-    return this.jwtService.sign({ sub: userId, email, role, contactNumber });
+    return this.jwtService.sign({ sub: userId, email, role });
   }
 }

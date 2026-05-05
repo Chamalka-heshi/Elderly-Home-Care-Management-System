@@ -48,8 +48,8 @@ export class JwtAuthGuard implements CanActivate {
       sub:           string;
       email:         string;
       role:          string;
-      contactNumber: string;
       iat:           number;
+      exp:           number;
     };
 
     try {
@@ -91,7 +91,6 @@ export class JwtAuthGuard implements CanActivate {
       sub:           payload.sub,
       email:         payload.email,
       role:          user.role,
-      contactNumber: payload.contactNumber ?? '',
     };
 
     return true;
