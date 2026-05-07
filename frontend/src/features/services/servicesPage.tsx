@@ -378,7 +378,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({ activityTitle, onClose, a
                               {fmt12(slot.startTime)} – {fmt12(slot.endTime)}
                             </div>
                             <div className="svc-slotCard__doctor">
-                              Dr. {slot.doctor.user.fullName} · {slot.doctor.specialization}
+                              Dr. {slot.doctor.user?.fullName || 'Unknown'} · {slot.doctor.specialization}
                             </div>
                           </div>
                           <div className="svc-slotCard__right">
