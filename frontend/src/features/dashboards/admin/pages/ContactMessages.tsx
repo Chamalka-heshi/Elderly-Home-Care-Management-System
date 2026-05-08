@@ -4,6 +4,11 @@ import * as contactApi from '../../../../api/contact/admin-contact.api';
 import type { ContactMessage } from '../../../../api/contact/contact.types';
 
 import { IconInbox, IconReply, IconTrash, IconBack, IconClock, IconSpinner, IconRefresh } from '../../common/icons';
+import Pagination from '../../common/Pagination';
+
+// Number of messages displayed per page.
+// This value is sent to the backend as the `limit` query parameter so there
+const PAGE_SIZE = 5;
 
 // Formats the date and time for messages
 const fmtDate = (iso: string) =>
@@ -12,8 +17,8 @@ const fmtDate = (iso: string) =>
     hour: '2-digit', minute: '2-digit',
   });
 
-// StatusBadge
 // Shows if a message has been replied to or is still pending
+
 const StatusBadge: React.FC<{ status: 'pending' | 'replied' }> = ({ status }) =>
   status === 'replied' ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
@@ -27,8 +32,8 @@ const StatusBadge: React.FC<{ status: 'pending' | 'replied' }> = ({ status }) =>
     </span>
   );
 
-// MessageRow
 // A single message summary in the inbox list
+
 const MessageRow: React.FC<{
   msg: ContactMessage;
   onClick: () => void;
@@ -65,8 +70,8 @@ const MessageRow: React.FC<{
   </div>
 );
 
-// MessageDetail
 // Full page view for reading a specific message and writing a reply
+
 const MessageDetail: React.FC<{
   msg: ContactMessage;
   onBack: () => void;
@@ -74,7 +79,7 @@ const MessageDetail: React.FC<{
   onDelete: () => void;
   addToast: (kind: 'success' | 'error', text: string) => void;
 }> = ({ msg, onBack, onReplied, onDelete, addToast }) => {
-  const [reply, setReply] = useState('');
+  const [reply,   setReply]   = useState('');
   const [sending, setSending] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -180,30 +185,36 @@ const MessageDetail: React.FC<{
   );
 };
 
+// Main inbox page for admins to see messages from the contact form
+
 interface Props {
   addToast: (kind: 'success' | 'error', message: string) => void;
 }
 
-// ContactMessages
-// Main inbox page for admins to see messages from the contact form
-const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, setMessages] = useState<ContactMessage[]>([]);
-  const [total, setTotal] = useState(0);
-  const [pending, setPending] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<ContactMessage | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'replied'>('all');
+const ContactMessages: React.FC<Props> = ({ addToast }) => {
+  const [messages,    setMessages]    = useState<ContactMessage[]>([]);
+  const [total,       setTotal]       = useState(0);
+  const [pending,     setPending]     = useState(0);
+  const [totalPages,  setTotalPages]  = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading,     setLoading]     = useState(true);
+  const [selected,    setSelected]    = useState<ContactMessage | null>(null);
+  const [filter,      setFilter]      = useState<'all' | 'pending' | 'replied'>('all');
 
-  // Loads all messages from the database
-  const load = useCallback(async () => {
+  // Loads one page of messages from the server.
+  const load = useCallback(async (page: number, status: typeof filter) => {
     setLoading(true);
     try {
-      const data = await contactApi.getAllMessages();
-      const msgs = data.messages || [];
-
-      setMessages(msgs);
-      setTotal(msgs.length);
-      setPending(msgs.filter((m) => m.status === 'pending').length);
-
+      const data = await contactApi.getAllMessages(
+        page,
+        PAGE_SIZE,
+        status === 'all' ? undefined : status,
+      );
+      setMessages(data.messages ?? []);
+      setTotal(data.total);
+      setPending(data.pending);
+      setTotalPages(data.totalPages);
+      setCurrentPage(data.page);
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to load messages.');
     } finally {
@@ -211,7 +222,14 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
     }
   }, [addToast]);
 
-  useEffect(() => { load(); }, [load]);
+  // Reload whenever the current page or filter changes.
+  useEffect(() => { load(currentPage, filter); }, [currentPage, filter, load]);
+
+  // Switching filter tabs always resets back to page 1.
+  const handleFilterChange = (next: typeof filter) => {
+    setFilter(next);
+    setCurrentPage(1);
+  };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this message permanently?')) return;
@@ -219,8 +237,7 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
       await contactApi.deleteMessage(id);
       addToast('success', 'Message deleted.');
       if (selected?.id === id) setSelected(null);
-      setMessages((prev) => prev.filter((m) => m.id !== id));
-      setTotal((t) => t - 1);
+      load(currentPage, filter);
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to delete.');
     }
@@ -232,9 +249,6 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
     setPending((p) => Math.max(0, p - 1));
   };
 
-  const displayed = messages.filter((m) =>
-    filter === 'all' ? true : m.status === filter,
-  );
 
   if (selected) {
     return (
@@ -248,8 +262,11 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
     );
   }
 
+
   return (
     <div className="space-y-6">
+
+      {/* Header */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl md:p-8">
         <div className="absolute -right-20 -top-16 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -263,20 +280,21 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
             </p>
           </div>
 
+          {/* Toolbar: refresh + filter tabs */}
           <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white/80 p-1">
             <button
-              onClick={load}
+              onClick={() => load(currentPage, filter)}
               disabled={loading}
               title="Refresh messages"
               className="flex items-center justify-center rounded-xl px-3 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600 disabled:opacity-50"
             >
               <IconRefresh className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
             </button>
-            <div className="h-4 w-px bg-slate-200 mx-1" />
+            <div className="mx-1 h-4 w-px bg-slate-200" />
             {(['all', 'pending', 'replied'] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => handleFilterChange(f)}
                 className={[
                   'rounded-xl px-4 py-1.5 text-sm font-semibold capitalize transition',
                   filter === f
@@ -291,11 +309,12 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
         </div>
       </div>
 
+      {/* Message list / empty / loading states */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <IconSpinner className="h-12 w-12 text-emerald-500" />
         </div>
-      ) : displayed.length === 0 ? (
+      ) : messages.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-24 text-slate-400">
           <IconInbox className="h-12 w-12 opacity-30" />
           <p className="text-sm font-medium">
@@ -303,17 +322,31 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {  const [messages, s
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {displayed.map((msg) => (
-            <MessageRow
-              key={msg.id}
-              msg={msg}
-              onClick={() => setSelected(msg)}
-              onDelete={() => handleDelete(msg.id)}
+        <>
+          <div className="space-y-3">
+            {messages.map((msg) => (
+              <MessageRow
+                key={msg.id}
+                msg={msg}
+                onClick={() => setSelected(msg)}
+                onDelete={() => handleDelete(msg.id)}
+              />
+            ))}
+          </div>
+
+          {/* Pagination bar */}
+          <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={PAGE_SIZE}
+              onPageChange={(p) => setCurrentPage(p)}
             />
-          ))}
-        </div>
+          </div>
+        </>
       )}
+
     </div>
   );
 };

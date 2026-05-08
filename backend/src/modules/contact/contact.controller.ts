@@ -6,7 +6,7 @@ import {
   Param,
   Post,
   Put,
-  Req,
+  Query,
   ValidationPipe,
 } from '@nestjs/common';
 
@@ -54,11 +54,17 @@ export class ContactController {
     return this.contactService.updateInfo(dto);
   }
 
-  // Retrieves a complete history of all incoming contact messages for administrative review.
+  // Returns a paginated list of contact messages.
   @Get('messages')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  getAllMessages() {
-    return this.contactService.getAllMessages();
+  getAllMessages(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('status') status?: 'pending' | 'replied',
+  ) {
+    const pageNum  = page  ? parseInt(page,  10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 5;
+    return this.contactService.getAllMessages(pageNum, limitNum, status);
   }
 
   // Returns granular details for a specific inquiry, including its original content and metadata.

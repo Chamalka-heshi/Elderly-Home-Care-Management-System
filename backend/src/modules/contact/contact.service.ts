@@ -17,7 +17,15 @@ import {
 } from './dto/create-contact-message.dto';
 
 const INITIAL_MESSAGE_STATUS = 'pending';
-const REPLIED_MESSAGE_STATUS = 'replied';
+const REPLIED_MESSAGE_STATUS  = 'replied';
+
+export interface PaginatedMessages {
+  messages:   ContactMessage[];
+  total:      number;
+  pending:    number;
+  page:       number;
+  totalPages: number;
+}
 
 @Injectable()
 export class ContactService {
@@ -70,11 +78,37 @@ export class ContactService {
     return { message: 'Your message has been received. We will be in touch within 24 hours.' };
   }
 
-  // Provides a comprehensive list of all inquiries, highlighting pending items to help staff prioritize urgent requests.
-  async getAllMessages(): Promise<{ messages: ContactMessage[]; total: number; pending: number }> {
-    const messages = await this.messageRepo.find({ order: { createdAt: 'DESC' } });
-    const pending  = messages.filter((m) => m.status === INITIAL_MESSAGE_STATUS).length;
-    return { messages, total: messages.length, pending };
+  // Returns a paginated slice of contact messages, optionally filtered by status.
+  async getAllMessages(
+    page:    number,
+    limit:   number,
+    status?: 'pending' | 'replied',
+  ): Promise<PaginatedMessages> {
+    const safePage  = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const skip      = (safePage - 1) * safeLimit;
+
+    const where = status ? { status } : {};
+
+    const [messages, total] = await this.messageRepo.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip,
+      take: safeLimit,
+    });
+
+    // Pending count always reflects the global unfiltered total for the header badge.
+    const pending = await this.messageRepo.count({
+      where: { status: INITIAL_MESSAGE_STATUS },
+    });
+
+    return {
+      messages,
+      total,
+      pending,
+      page:       safePage,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   // Retrieves a single inquiry record by its identifier, throwing an error if the record does not exist.
@@ -86,8 +120,8 @@ export class ContactService {
 
   // Processes an administrative reply, marking the message as resolved and triggering an automated email notification to the sender.
   async replyToMessage(
-    id:      string,
-    dto:     ReplyContactMessageDto,
+    id:            string,
+    dto:           ReplyContactMessageDto,
     admin_user_Id: string,
   ): Promise<{ message: string; data: ContactMessage }> {
     const msg = await this.getMessage(id);

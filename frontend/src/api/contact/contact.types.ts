@@ -23,3 +23,12 @@ export interface ContactMessage {
   createdAt: string;
   repliedAt?: string;
 }
+
+// Paginated response returned by GET /contact/messages
+export interface PaginatedMessagesResponse {
+  messages:   ContactMessage[];
+  total:      number;
+  pending:    number;
+  page:       number;
+  totalPages: number;
+}

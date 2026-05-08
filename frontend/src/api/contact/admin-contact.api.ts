@@ -1,9 +1,16 @@
 import { apiFetch } from '../core/apiClient';
-import type { ContactInfo, ContactMessage } from './contact.types';
+import type { ContactInfo, ContactMessage, PaginatedMessagesResponse } from './contact.types';
 
-// Get all contact messages
-export const getAllMessages = () =>
-  apiFetch<{ messages: ContactMessage[] }>('/contact/messages');
+// Get a paginated list of contact messages.
+export const getAllMessages = (
+  page: number,
+  limit: number,
+  status?: 'pending' | 'replied',
+) => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (status) params.set('status', status);
+  return apiFetch<PaginatedMessagesResponse>(`/contact/messages?${params.toString()}`);
+};
 
 // Get a specific contact message
 export const getMessage = (id: string) =>
