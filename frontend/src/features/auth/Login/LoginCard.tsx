@@ -129,7 +129,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
     setLoading(true);
 
     const payload: SigninRequest = {
-      email: trimmedEmail.toLowerCase(),
+      email: trimmedEmail,
       password,
     };
 
@@ -137,7 +137,7 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
       const res = await signin(payload);
 
       if (rememberMe) {
-        localStorage.setItem(REMEMBERED_EMAIL_STORAGE_KEY, trimmedEmail.toLowerCase());
+        localStorage.setItem(REMEMBERED_EMAIL_STORAGE_KEY, trimmedEmail);
       } else {
         localStorage.removeItem(REMEMBERED_EMAIL_STORAGE_KEY);
       }

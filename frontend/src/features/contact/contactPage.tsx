@@ -15,20 +15,42 @@ interface FormData {
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
 
-// Validation logic for form fields
+// Validation rules for each contact form field
 const validators = {
-  fullName: (v: string) =>
-    !v.trim() ? "Full name is required" : v.trim().length < 2 ? "Name is too short" : "",
+  fullName: (v: string) => {
+    const trimmed = v.trim();
+    if (!trimmed)              return 'Full name is required';
+    if (trimmed.length < 2)   return 'Name must be at least 2 characters';
+    if (trimmed.length > 100) return 'Name must be 100 characters or fewer';
+    if (!/^[\p{L}\p{M}'\-\s]+$/u.test(trimmed))
+                               return 'Name may only contain letters, hyphens, and apostrophes';
+    return '';
+  },
   email: (v: string) => {
-    if (!v.trim()) return "Email is required";
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "" : "Enter a valid email address";
+    const trimmed = v.trim();
+    if (!trimmed) return 'Email address is required';
+    if (trimmed.length > 254) return 'Email address is too long';
+    // RFC-5322-inspired pattern — checks for local@domain.tld structure
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed))
+      return 'Enter a valid email address (e.g. name@example.com)';
+    return '';
   },
   phone: (v: string) => {
-    if (!v.trim()) return "";
-    return /^[+\d][\d\s\-().]{6,19}$/.test(v) ? "" : "Enter a valid phone number";
+    const trimmed = v.trim();
+    if (!trimmed) return ''; // optional field
+    if (trimmed.length > 10) return 'Phone number is not valid';
+    // Accepts international format: optional leading +, digits, spaces, dashes, dots, parens
+    if (!/^\+?[\d]{1}[\d\s\-.()]{5,18}$/.test(trimmed))
+      return 'Enter a valid phone number (e.g. 077 123 4567)';
+    return '';
   },
-  message: (v: string) =>
-    !v.trim() ? "Message is required" : v.trim().length < 10 ? "Message is too short" : "",
+  message: (v: string) => {
+    const trimmed = v.trim();
+    if (!trimmed)             return 'Message is required';
+    if (trimmed.length < 10)  return 'Message must be at least 10 characters';
+    if (trimmed.length > 2000) return 'Message must be 2000 characters or fewer';
+    return '';
+  },
 };
 
 // Main contact page component handling info fetching and form submission

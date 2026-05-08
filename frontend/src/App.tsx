@@ -124,8 +124,16 @@ const App: React.FC = () => (
         <Route path="/login"           element={<LoginPage />} />
         <Route path="/signup"          element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/change-password" element={<ForceChangePassword />} />
 
+        <Route
+          path="/change-password"
+          element={
+          <ProtectedRoute role={["admin","super_admin","doctor","caregiver","family"]}>
+            <ForceChangePassword />
+          </ProtectedRoute>
+         }
+        />
+        
         {/* Protected Dashboard Routes */}
         <Route path="/admin/*"       element={<ProtectedRoute role={["admin", "super_admin"]}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/super_admin/*" element={<ProtectedRoute role="super_admin"><AdminDashboard /></ProtectedRoute>} />

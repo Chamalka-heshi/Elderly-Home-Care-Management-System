@@ -53,8 +53,7 @@ export class JwtAuthGuard implements CanActivate {
     };
 
     try {
-      const secret = this.configService.get<string>('app.jwt.secret');
-      payload      = await this.jwtService.verifyAsync(token, { secret });
+      payload      = await this.jwtService.verifyAsync(token);
     } catch (err: any) {
       throw new UnauthorizedException(
         err?.name === 'TokenExpiredError'
