@@ -13,13 +13,10 @@ import iconImg from "../../../../assets/landing/icon.png";
 export type MenuLabel =
   | "Dashboard"
   | "Elderly Profile"
-  | "Medical Reports"
   | "Prescription"
   | "Care Plans"
-  | "Care Updates"
   | "Appointments"
-  | "Payments"
-  | "Settings";
+  | "Payments";
 
 export interface MenuItem {
   icon: React.FC<{ className?: string }>;
@@ -46,13 +43,10 @@ const Sidebar: React.FC<Props> = ({ items, activeMenu, isOpen, onClose, onNaviga
   const subtitleMap: Record<MenuLabel, string> = {
     "Dashboard":       "View elderly overview",
     "Elderly Profile": "View patient details",
-    "Medical Reports": "View doctor reports",
     "Prescription":    "View prescribed medications",
     "Care Plans":      "Browse available care plans",
-    "Care Updates":    "View caregiver notes",
     "Appointments":    "Book & manage appointments",
     "Payments":        "View and manage payments",
-    "Settings":        "Manage settings",
   };
 
   return (

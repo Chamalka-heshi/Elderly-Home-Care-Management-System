@@ -8,6 +8,7 @@ import { UsersModule }        from '../users/users.module';
 import { PatientsModule }     from '../patients/patients.module';
 import { AppointmentModule }  from '../appointments/appointment.module';
 import { PrescriptionsModule } from '../prescription/prescription.module';
+import { PaymentsModule }     from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PrescriptionsModule } from '../prescription/prescription.module';
     forwardRef(() => PatientsModule),
     AppointmentModule,
     PrescriptionsModule,
+    PaymentsModule,
   ],
   controllers: [FamilyController],
   providers:   [FamilyService],

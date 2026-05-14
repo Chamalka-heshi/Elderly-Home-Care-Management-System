@@ -21,6 +21,7 @@ import { UsersService } from '../users/users.service';
 import { PatientsService } from '../patients/patients.service';
 import { AppointmentService } from '../appointments/appointment.service';
 import { PrescriptionService } from '../prescription/prescription.service';
+import { PaymentsService } from '../payments/payments.service';
 import { CreatePatientDto } from '../patients/dto/create-patient.dto';
 import { UpdateFamilyProfileDto } from './dto/update-family-profile.dto';
 import { CreateAppointmentDto } from '../appointments/dto/appointment.dto';
@@ -42,6 +43,7 @@ export class FamilyController {
     private readonly patientsService: PatientsService,
     private readonly appointmentService: AppointmentService,
     private readonly prescriptionService: PrescriptionService,
+    private readonly paymentsService: PaymentsService,
   ) { }
 
   /**
@@ -57,6 +59,64 @@ export class FamilyController {
       familyMember = await this.familyService.create({ user });
     }
     return familyMember;
+  }
+
+  // =====================================================================
+  //  DASHBOARD route   /family/dashboard
+  // =====================================================================
+
+  /**
+   * GET /family/dashboard
+   * Returns aggregated counts and patient list for the family dashboard home.
+   */
+  @Get('dashboard')
+  @Roles(UserRole.FAMILY)
+  async getDashboardSummary(@GetUser() user: any) {
+    const familyMember = await this.resolveFamilyMember(user.sub);
+
+    // Run all data fetches in parallel for speed
+    const [patients, prescriptionsResult, payments, appointments] = await Promise.all([
+      this.patientsService.findAllByFamily(familyMember.id),
+      this.prescriptionService.findForFamily(user.sub),
+      this.paymentsService.getMyPayments(user.sub),
+      this.appointmentService.getMyAppointments(user.sub),
+    ]);
+
+    const prescriptions = (prescriptionsResult as any)?.data ?? prescriptionsResult ?? [];
+
+    const activePrescriptionsCount = (prescriptions as any[]).filter(
+      (p: any) => p.status === 'active',
+    ).length;
+
+    const pendingPaymentsCount = payments.filter(
+      (p) => p.status === 'pending' || p.status === 'pending_approval',
+    ).length;
+
+    const today = new Date().toISOString().split('T')[0];
+    const upcomingAppointmentsCount = (appointments as any[]).filter(
+      (a: any) =>
+        a.status !== 'cancelled' &&
+        a.status !== 'completed' &&
+        a.slot?.date >= today,
+    ).length;
+
+    const patientList = patients.map((p) => ({
+      id:            p.id,
+      fullName:      p.fullName,
+      isActive:      p.isActive,
+      createdAt:     p.createdAt,
+      gender:        p.gender,
+      dateOfBirth:   p.dateOfBirth,
+      paymentPlan:   p.paymentPlan ?? null,
+    }));
+
+    return {
+      patientsCount:              patients.length,
+      activePrescriptionsCount,
+      pendingPaymentsCount,
+      upcomingAppointmentsCount,
+      patients:                   patientList,
+    };
   }
 
   // =====================================================================

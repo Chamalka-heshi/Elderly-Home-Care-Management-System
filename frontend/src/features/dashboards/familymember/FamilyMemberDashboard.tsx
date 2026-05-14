@@ -15,12 +15,11 @@ import Sidebar, { type MenuLabel, type MenuItem } from "./components/Sidebar";
 import DashboardTopbar from "../common/DashboardTopbar";
 
 // ── Shared widgets from common ────────────────────────────────────────────────
-import FormModal, { type FieldConfig } from "../common/widgets/FormModal";
 
 // ── Shared icons from common ──────────────────────────────────────────────────
 import {
-  IconLayoutDashboard, IconUsers, IconClipboard,
-  IconHeart, IconCalendar, IconSettings,
+  IconLayoutDashboard, IconUsers,
+  IconHeart, IconCalendar,
   IconCheckCircle, IconAlertCircle,
   type IconProps,
 } from "../common/icons";
@@ -31,12 +30,9 @@ import { DashboardAmbientBg } from "../common/ui";
 // ── Pages (family-member-specific) ────────────────────────────────────────────
 import DashboardHome       from "./pages/DashboardHome";
 import ElderlyProfile      from "./pages/ElderlyProfile";
-import MedicalReports      from "./pages/MedicalReports";
 import Prescription        from "./pages/Prescription";
-import CareUpdates         from "./pages/CareUpdates";
 import Appointments        from "./pages/Appointments";
 import Payments            from "./pages/Payments";
-import Settings            from "./pages/Settings";
 import CarePlans           from "./pages/CarePlans";
 
 // ── Menu items ────────────────────────────────────────────────────────────────
@@ -44,20 +40,10 @@ import CarePlans           from "./pages/CarePlans";
 const MENU_ITEMS: MenuItem[] = [
   { icon: IconLayoutDashboard, label: "Dashboard"       },
   { icon: IconUsers,           label: "Elderly Profile" },
-  { icon: IconClipboard,       label: "Medical Reports" },
   { icon: IconHeart,           label: "Prescription"    },
   { icon: IconHeart,           label: "Care Plans"      },
-  { icon: IconCalendar,        label: "Care Updates"    },
   { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Appointments" },
   { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Payments"  },
-  { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings"  },
-];
-
-// ── Contact Support modal fields ──────────────────────────────────────────────
-
-const CONTACT_FIELDS: FieldConfig[] = [
-  { name: "subject", label: "Subject",  required: true, placeholder: "e.g. Care update query" },
-  { name: "message", label: "Message",  required: true, placeholder: "Describe your query…", textarea: true },
 ];
 
 // ── Toast type ────────────────────────────────────────────────────────────────
@@ -75,29 +61,20 @@ const FamilyMemberDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toasts,        setToasts]        = useState<Toast[]>([]);
 
-  const [showContact,  setShowContact]  = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-
   const menuToPath: Record<MenuLabel, string> = {
     Dashboard: '/family',
     'Elderly Profile': '/family/elderly-profile',
-    'Medical Reports': '/family/medical-reports',
     Prescription: '/family/prescription',
     'Care Plans': '/family/care-plans',
-    'Care Updates': '/family/care-updates',
     Appointments: '/family/appointments',
     Payments: '/family/payments',
-    Settings: '/family/settings',
   };
 
   const pathToMenu = useCallback((path: string): MenuLabel => {
     if (path.includes('/care-plans')) return 'Care Plans';
     if (path.includes('/appointments')) return 'Appointments';
-    if (path.includes('/care-updates')) return 'Care Updates';
     if (path.includes('/payments')) return 'Payments';
-    if (path.includes('/settings')) return 'Settings';
     if (path.includes('/prescription')) return 'Prescription';
-    if (path.includes('/medical-reports')) return 'Medical Reports';
     if (path.includes('/elderly-profile')) return 'Elderly Profile';
     return 'Dashboard';
   }, []);
@@ -115,21 +92,6 @@ const FamilyMemberDashboard: React.FC = () => {
     setToasts((t) => [...t, { id, kind, message }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
   }, []);
-
-  const handleContact = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    try {
-      setModalLoading(true);
-      await new Promise((r) => setTimeout(r, 600));
-      addToast("success", `Message "${fd.get("subject")}" sent successfully.`);
-      setShowContact(false);
-    } catch {
-      addToast("error", "Failed to send message.");
-    } finally {
-      setModalLoading(false);
-    }
-  };
 
   useEffect(() => {
     setActiveMenu(pathToMenu(location.pathname));
@@ -173,28 +135,16 @@ const FamilyMemberDashboard: React.FC = () => {
           />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-            {activeMenu === "Dashboard"       && <DashboardHome onNavigate={handleFamilyMenuNavigation} onContact={() => setShowContact(true)} />}
+            {activeMenu === "Dashboard"       && <DashboardHome onNavigate={handleFamilyMenuNavigation} />}
             {activeMenu === "Elderly Profile" && <ElderlyProfile />}
-            {activeMenu === "Medical Reports" && <MedicalReports />}
             {activeMenu === "Prescription"    && <Prescription />}
             {activeMenu === "Care Plans"      && <CarePlans addToast={addToast} />}
-            {activeMenu === "Care Updates"    && <CareUpdates />}
             {activeMenu === "Appointments"    && <Appointments />}
             {activeMenu === "Payments"        && <Payments addToast={addToast} />}
-            {activeMenu === "Settings"        && <Settings />}
           </main>
         </div>
       </div>
 
-      {/* Contact support modal */}
-      <FormModal
-        title="Contact Support"
-        open={showContact}
-        loading={modalLoading}
-        onClose={() => setShowContact(false)}
-        onSubmit={handleContact}
-        fields={CONTACT_FIELDS}
-      />
     </div>
   );
 };
