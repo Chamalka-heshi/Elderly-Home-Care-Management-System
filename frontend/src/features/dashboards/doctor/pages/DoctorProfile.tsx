@@ -84,7 +84,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
         const freshUser = await getProfile();
 
         setUser({ ...freshUser, avatarUrl: (freshUser as any).avatarUrl ?? null });
-        localStorage.setItem("user", JSON.stringify(freshUser));
 
         const profile = (freshUser as any)?.profile ?? {};
 
@@ -166,7 +165,6 @@ const DoctorProfile: React.FC<Props> = ({ onBack }) => {
           contactNumber: updatedUser.contactNumber ?? user.contactNumber,
         };
         setUser(newUserState);
-        localStorage.setItem("user", JSON.stringify(newUserState));
       }
 
       addToast("success", "Professional profile updated successfully.");

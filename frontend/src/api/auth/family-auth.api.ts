@@ -1,5 +1,5 @@
-import { apiFetch } from '../core/apiClient';
-import type { AuthResponse } from './auth.api';
+import { apiFetch, setCsrfToken } from '../core/apiClient';
+import type { AuthResponse }      from './auth.api';
 
 // Register a new family account
 export const signupFamily = async (data: any): Promise<AuthResponse> => {
@@ -8,7 +8,11 @@ export const signupFamily = async (data: any): Promise<AuthResponse> => {
     body: JSON.stringify(data),
   });
 
-  localStorage.setItem('token', res.token);
-  localStorage.setItem('user', JSON.stringify(res.user));
+  // Store CSRF token for subsequent state-changing requests
+  if (res.csrfToken) {
+    setCsrfToken(res.csrfToken);
+  }
+
+  // JWT is delivered via HttpOnly cookie — nothing to store client-side.
   return res;
 };

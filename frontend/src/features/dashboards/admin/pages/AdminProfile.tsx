@@ -71,9 +71,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
 
         const freshUser = await getProfile();
 
-        // Updates the global user state with the fresh data from the server
         setUser({ ...freshUser, avatarUrl: (freshUser as any).avatarUrl ?? null });
-        localStorage.setItem("user", JSON.stringify(freshUser));
 
         setFullName(freshUser.fullName ?? "");
         setContactNumber(freshUser.contactNumber ?? "");
@@ -141,7 +139,6 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
           contactNumber: updatedUser.contactNumber ?? user.contactNumber,
         };
         setUser(newUserState);
-        localStorage.setItem("user", JSON.stringify(newUserState));
       }
 
       addToast("success", "Profile updated successfully.");

@@ -1,41 +1,43 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
 import { AuthContext, type User } from "./AuthContext";
-import { isTokenExpired } from "./tokenUtils";
+import { getProfile } from "../api/auth/auth.api";
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Initial state resolution: restores user session if token is valid
-const initUser = (): User | null => {
-  try {
-    const token = localStorage.getItem("token");
-
-    // Clear session if token is missing or has expired
-    if (!token || isTokenExpired(token)) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      return null;
-    }
-
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user) : null;
-  } catch {
-    return null;
-  }
-};
-
-// Provider component that manages the global authentication state
+// Bootstraps auth state from the server cookie on mount; blocks rendering until resolved.
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUserState] = useState<User | null>(initUser);
+  const [user, setUserState] = useState<User | null>(null);
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [wasAuthenticated, setWasAuthenticated] = useState(false);
 
-  const setUser = useCallback((u: User | null) => {
-    setUserState(u);
+  useEffect(() => {
+    getProfile()
+      .then((profile) => { setUserState(profile); setWasAuthenticated(true); })
+      .catch(() => setUserState(null))
+      .finally(() => setBootstrapping(false));
   }, []);
 
+  // Sets user and flags the session as authenticated when a user is provided.
+  const setUser = useCallback((u: User | null) => {
+    setUserState(u);
+    if (u) setWasAuthenticated(true);
+  }, []);
+
+  if (bootstrapping) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#f8fafc", flexDirection: "column", gap: "16px" }}>
+        <div style={{ width: "40px", height: "40px", border: "3px solid #e2e8f0", borderTop: "3px solid #10b981", borderRadius: "50%", animation: "spin 0.75s linear infinite" }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <p style={{ color: "#64748b", fontSize: "14px", fontWeight: 600, margin: 0 }}>Loading…</p>
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, setUser, wasAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,7 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 
 // Auth services
-import { signin, googleAuth, isAuthenticated, getCurrentRole } from "../../../api/auth/auth.api";
+import { signin, googleAuth } from "../../../api/auth/auth.api";
 import type { SigninRequest } from "../../../api/auth/auth.api";
 import sideImg from "../../../assets/landing/auth-side-art.png";
 import iconImg from "../../../assets/landing/icon.png";
@@ -48,7 +48,7 @@ type Props = {
 
 export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword }: Props) {
   const navigate = useNavigate();
-  const { user, setUser } = useAuth();
+  const { setUser } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,13 +59,6 @@ export default function LoginCard({ onSuccessClose, onGoSignup, onForgotPassword
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<ErrorState>(NO_ERRORS);
 
-  // Redirect if session is already active
-  useEffect(() => {
-    if (isAuthenticated() && user) {
-      const role = getCurrentRole();
-      if (role) navigate(`/${role}`, { replace: true });
-    }
-  }, [user, navigate]);
 
   // Pre-fill remembered email on mount
   useEffect(() => {

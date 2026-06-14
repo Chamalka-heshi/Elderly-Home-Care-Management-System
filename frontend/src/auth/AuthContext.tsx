@@ -1,9 +1,7 @@
 import { createContext, useContext } from "react";
 
-// Supported system roles for access control
 export type UserRole = "super_admin" | "admin" | "doctor" | "caregiver" | "family";
 
-// Core user profile structure
 export interface User {
   id: string;
   fullName: string;
@@ -14,17 +12,18 @@ export interface User {
   avatarUrl?: string | null;
 }
 
-// Internal context state definition
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
+  // True once authenticated; lets ProtectedRoute show the "session expired" banner only when relevant.
+  wasAuthenticated: boolean;
 }
 
-// Global authentication context
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   setUser: () => {},
+  wasAuthenticated: false,
 });
 
-// Custom hook for accessing authentication state
+// Custom hook for consuming auth state anywhere in the tree.
 export const useAuth = () => useContext(AuthContext);

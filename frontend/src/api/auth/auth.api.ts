@@ -1,6 +1,5 @@
-import { apiFetch, apiFetchMultipart, API_BASE_URL } from '../core/apiClient';
-import type { User, UserRole } from '../../auth/AuthContext';
-import { isTokenExpired } from '../../auth/tokenUtils';
+import { apiFetch, apiFetchMultipart, API_BASE_URL, setCsrfToken } from '../core/apiClient';
+import type { User } from '../../auth/AuthContext';
 import { signInWithGoogle, signOutFirebase } from '../../config/firebase';
 
 // Types
@@ -10,10 +9,10 @@ export interface SigninRequest {
 }
 
 export interface AuthResponse {
-  token: string;
   user: User;
   message: string;
   isNewUser?: boolean;
+  csrfToken?: string;
 }
 
 export interface UpdateBaseProfileRequest {
@@ -68,10 +67,6 @@ export interface ResetPasswordRequest {
   confirmPassword: string;
 }
 
-export interface ResetPasswordResponse {
-  token: string;
-  user: User;
-}
 
 // Check if email exists for password reset
 export const checkEmailForReset = async (email: string): Promise<CheckEmailResponse> => {
@@ -102,12 +97,6 @@ export const resetPasswordApi = async (
   });
 };
 
-// Internal helpers
-// Save session data to local storage
-const storeSession = (token: string, user: User) => {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
-};
 
 // Authentication
 // Login with email and password
@@ -117,7 +106,11 @@ export const signin = async (data: SigninRequest): Promise<AuthResponse> => {
     body: JSON.stringify(data),
   });
 
-  storeSession(res.token, res.user);
+  // Store CSRF token if provided
+  if (res.csrfToken) {
+    setCsrfToken(res.csrfToken);
+  }
+
   return res;
 };
 
@@ -131,7 +124,11 @@ export const googleAuth = async (): Promise<AuthResponse> => {
     body: JSON.stringify({ idToken }),
   });
 
-  storeSession(res.token, res.user);
+  // Store CSRF token if provided
+  if (res.csrfToken) {
+    setCsrfToken(res.csrfToken);
+  }
+
   return res;
 };
 
@@ -140,26 +137,22 @@ export const signout = async (
   setUser: (u: User | null) => void,
   navigate: (p: string) => void,
 ) => {
-  const token = localStorage.getItem('token');
-
-  if (token) {
-    try {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    } catch (err) {
-      console.warn('Backend logout request failed:', err);
-    }
+  // Clear secure cookie on server via logout endpoint (cookies are sent automatically)
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include', // Include cookies
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (err) {
+    console.warn('Backend logout request failed:', err);
   }
 
   navigate('/');
   await signOutFirebase();
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  sessionStorage.removeItem('csrf-token');
   setUser(null);
 };
 
@@ -200,8 +193,7 @@ export const deleteAccount = () =>
   apiFetch<{ message: string }>('/auth/delete-account', {
     method: 'DELETE',
   }).then((res) => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('csrf-token');
     return res;
   });
 
@@ -236,27 +228,3 @@ export const removeAvatar = () =>
     method: 'DELETE',
   });
 
-// Session management
-// Get user from local storage
-export const getStoredUser = (): User | null => {
-  try {
-    return JSON.parse(localStorage.getItem('user') || 'null');
-  } catch {
-    return null;
-  }
-};
-
-// Get token from local storage
-export const getStoredToken = () => localStorage.getItem('token');
-
-// Check if user is logged in
-export const isAuthenticated = () => {
-  const token = getStoredToken();
-  return !!token && !isTokenExpired(token);
-};
-
-// Check if user has a specific role
-export const hasRole = (role: UserRole) => getStoredUser()?.role === role;
-
-// Get current user role
-export const getCurrentRole = () => getStoredUser()?.role ?? null;

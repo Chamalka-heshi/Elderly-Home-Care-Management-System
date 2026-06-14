@@ -75,7 +75,6 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
         const freshUser = await getProfile();
 
         setUser({ ...freshUser, avatarUrl: (freshUser as any).avatarUrl ?? null });
-        localStorage.setItem("user", JSON.stringify(freshUser));
 
         const profile = (freshUser as any)?.profile ?? {};
 
@@ -141,7 +140,6 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
           contactNumber: (updatedData as any).contactNumber ?? user.contactNumber,
         };
         setUser(newUserState);
-        localStorage.setItem("user", JSON.stringify(newUserState));
       }
 
       addToast("success", "Profile updated successfully.");

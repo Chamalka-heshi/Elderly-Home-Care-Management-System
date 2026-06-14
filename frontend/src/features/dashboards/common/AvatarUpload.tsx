@@ -71,7 +71,6 @@ const AvatarUpload: React.FC<Props> = ({
       if (user) {
         const updated = { ...user, avatarUrl: newUrl };
         setUser(updated);
-        localStorage.setItem("user", JSON.stringify(updated));
       }
 
       onSuccess?.(newUrl);
@@ -92,7 +91,6 @@ const AvatarUpload: React.FC<Props> = ({
       if (user) {
         const updated = { ...user, avatarUrl: null };
         setUser(updated);
-        localStorage.setItem("user", JSON.stringify(updated));
       }
 
       onRemoved?.();
