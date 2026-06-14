@@ -9,7 +9,10 @@ import {
 } from 'typeorm';
 import { FamilyMember } from '../../family/entities/family-member.entity';
 import { Patient } from '../../patients/entities/patient.entity';
-import { CarePlan, CarePlanDurationUnit } from '../../care-plan/entities/care-plan.entity';
+import {
+  CarePlan,
+  CarePlanDurationUnit,
+} from '../../care-plan/entities/care-plan.entity';
 
 export enum BookingStatus {
   PENDING_PAYMENT = 'pending_payment',

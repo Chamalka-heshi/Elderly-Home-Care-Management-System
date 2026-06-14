@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThanOrEqual, In } from 'typeorm';
 
 import { ChannelingSlot, SlotStatus } from './entities/channeling-slot.entity';
-import { Doctor }                      from '../doctors/entities/doctor.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
 import {
   CreateChannelingSlotDto,
   UpdateChannelingSlotDto,
@@ -40,18 +40,20 @@ export class ChannelingSlotService {
     private readonly doctorRepo: Repository<Doctor>,
   ) {}
 
-//Validates doctor activity, scheduling quotas, and time overlaps before proposing a new consultation window
+  //Validates doctor activity, scheduling quotas, and time overlaps before proposing a new consultation window
   async create(dto: CreateChannelingSlotDto): Promise<ChannelingSlot> {
     const doctor = await this.doctorRepo.findOne({
       where: { id: dto.doctorId },
-      relations: ['user'] 
+      relations: ['user'],
     });
-    
+
     if (!doctor) throw new NotFoundException('Doctor not found');
-    if (doctor.user && doctor.user.isActive === false) throw new BadRequestException('Doctor is not active');
+    if (doctor.user && doctor.user.isActive === false)
+      throw new BadRequestException('Doctor is not active');
 
     const today = new Date().toISOString().split('T')[0];
-    if (dto.date < today) throw new BadRequestException('Slot date must be today or in the future');
+    if (dto.date < today)
+      throw new BadRequestException('Slot date must be today or in the future');
 
     if (toMinutes(dto.startTime) >= toMinutes(dto.endTime))
       throw new BadRequestException('startTime must be before endTime');
@@ -73,13 +75,19 @@ export class ChannelingSlotService {
     });
 
     const uniqueDays = new Set(slotsThisWeek.map((s) => s.date));
-    uniqueDays.add(dto.date); 
+    uniqueDays.add(dto.date);
 
     if (uniqueDays.size > 3)
-      throw new ConflictException('Doctor already has slots on 3 days this week (maximum allowed)');
+      throw new ConflictException(
+        'Doctor already has slots on 3 days this week (maximum allowed)',
+      );
 
     const existing = await this.slotRepo.find({
-      where: { doctorId: dto.doctorId, date: dto.date, status: In([SlotStatus.ACTIVE, SlotStatus.PENDING]) },
+      where: {
+        doctorId: dto.doctorId,
+        date: dto.date,
+        status: In([SlotStatus.ACTIVE, SlotStatus.PENDING]),
+      },
     });
 
     const newStart = toMinutes(dto.startTime);
@@ -89,7 +97,9 @@ export class ChannelingSlotService {
       const exStart = toMinutes(slot.startTime);
       const exEnd = toMinutes(slot.endTime);
       if (newStart < exEnd && newEnd > exStart) {
-        throw new ConflictException(`Time overlaps with existing slot ${slot.startTime}–${slot.endTime}`);
+        throw new ConflictException(
+          `Time overlaps with existing slot ${slot.startTime}–${slot.endTime}`,
+        );
       }
     }
 
@@ -102,49 +112,66 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-//Moves a proposed slot into the active pool to signal clinician availability for patient bookings
+  //Moves a proposed slot into the active pool to signal clinician availability for patient bookings
   async acceptSlot(id: string, userId: string): Promise<ChannelingSlot> {
-    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    const doctor = await this.doctorRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
 
-    const slot = await this.slotRepo.findOne({ where: { id, doctorId: doctor.id } });
+    const slot = await this.slotRepo.findOne({
+      where: { id, doctorId: doctor.id },
+    });
     if (!slot) throw new NotFoundException('Slot not found');
-    if (slot.status !== SlotStatus.PENDING) throw new BadRequestException('Only pending slots can be accepted');
+    if (slot.status !== SlotStatus.PENDING)
+      throw new BadRequestException('Only pending slots can be accepted');
 
     slot.status = SlotStatus.ACTIVE;
     return this.slotRepo.save(slot);
   }
 
-//Declines a proposed slot to indicate the clinician is unavailable for the system-generated window
+  //Declines a proposed slot to indicate the clinician is unavailable for the system-generated window
   async rejectSlot(id: string, userId: string): Promise<ChannelingSlot> {
-    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    const doctor = await this.doctorRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
 
-    const slot = await this.slotRepo.findOne({ where: { id, doctorId: doctor.id } });
+    const slot = await this.slotRepo.findOne({
+      where: { id, doctorId: doctor.id },
+    });
     if (!slot) throw new NotFoundException('Slot not found');
-    if (slot.status !== SlotStatus.PENDING) throw new BadRequestException('Only pending slots can be rejected');
+    if (slot.status !== SlotStatus.PENDING)
+      throw new BadRequestException('Only pending slots can be rejected');
 
     slot.status = SlotStatus.REJECTED;
     return this.slotRepo.save(slot);
   }
 
-//Permits doctors to override their base fee for specific sessions based on clinical complexity
+  //Permits doctors to override their base fee for specific sessions based on clinical complexity
   async updateDoctorSlotFee(
     slotId: string,
     userId: string,
     dto: UpdateDoctorSlotFeeDto,
   ): Promise<ChannelingSlot> {
-    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
+    const doctor = await this.doctorRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!doctor) throw new NotFoundException('Doctor profile not found');
 
-    const slot = await this.slotRepo.findOne({ where: { id: slotId, doctorId: doctor.id } });
-    if (!slot) throw new NotFoundException('Slot not found or does not belong to this doctor');
+    const slot = await this.slotRepo.findOne({
+      where: { id: slotId, doctorId: doctor.id },
+    });
+    if (!slot)
+      throw new NotFoundException(
+        'Slot not found or does not belong to this doctor',
+      );
 
     slot.consultationFee = dto.consultationFee;
     return this.slotRepo.save(slot);
   }
 
-//Marks active slots as completed once their start time is reached to maintain system accuracy
+  //Marks active slots as completed once their start time is reached to maintain system accuracy
   async autoCompletePassedSlots(): Promise<void> {
     await this.slotRepo.query(`
       UPDATE channeling_slots
@@ -160,7 +187,7 @@ export class ChannelingSlotService {
     `);
   }
 
-//Retrieves all platform slots for administrative oversight and operational reporting
+  //Retrieves all platform slots for administrative oversight and operational reporting
   async findAll(): Promise<{ slots: ChannelingSlot[]; total: number }> {
     await this.autoCompletePassedSlots();
 
@@ -174,24 +201,28 @@ export class ChannelingSlotService {
     return { slots, total };
   }
 
-//Returns granular details for a specific slot to support targeted management actions
+  //Returns granular details for a specific slot to support targeted management actions
   async findOne(id: string): Promise<ChannelingSlot> {
     const slot = await this.slotRepo.findOne({
-      where:     { id },
+      where: { id },
       relations: ['doctor'],
     });
     if (!slot) throw new NotFoundException('Channeling slot not found');
     return slot;
   }
 
-//Updates the details of a specific slot, applying structural changes without affecting status unless specified
-  async update(id: string, dto: UpdateChannelingSlotDto): Promise<ChannelingSlot> {
+  //Updates the details of a specific slot, applying structural changes without affecting status unless specified
+  async update(
+    id: string,
+    dto: UpdateChannelingSlotDto,
+  ): Promise<ChannelingSlot> {
     const slot = await this.findOne(id);
-    
+
     if (dto.date !== undefined) slot.date = dto.date;
     if (dto.startTime !== undefined) slot.startTime = dto.startTime;
     if (dto.endTime !== undefined) slot.endTime = dto.endTime;
-    if (dto.bookingCutoffMinutes !== undefined) slot.bookingCutoffMinutes = dto.bookingCutoffMinutes;
+    if (dto.bookingCutoffMinutes !== undefined)
+      slot.bookingCutoffMinutes = dto.bookingCutoffMinutes;
     if (dto.maxPatients !== undefined) slot.maxPatients = dto.maxPatients;
     if (dto.status !== undefined) slot.status = dto.status;
     if (dto.notes !== undefined) slot.notes = dto.notes;
@@ -200,26 +231,30 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-//Invalidates an active slot to prevent new patient bookings during doctor emergencies
+  //Invalidates an active slot to prevent new patient bookings during doctor emergencies
   async cancel(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
-    if (slot.status === SlotStatus.CANCELLED) throw new BadRequestException('Slot is already cancelled');
+    if (slot.status === SlotStatus.CANCELLED)
+      throw new BadRequestException('Slot is already cancelled');
     slot.status = SlotStatus.CANCELLED;
     await this.slotRepo.save(slot);
     return { message: 'Channeling slot cancelled successfully' };
   }
 
-//Permanently deletes erroneous slot records before any patient interactions occur
+  //Permanently deletes erroneous slot records before any patient interactions occur
   async remove(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
     await this.slotRepo.remove(slot);
     return { message: 'Channeling slot deleted successfully' };
   }
 
-//Fetches clinician-specific slots to populate their private management dashboards
+  //Fetches clinician-specific slots to populate their private management dashboards
   async findSlotsByUserId(userId: string): Promise<ChannelingSlot[]> {
-    const doctor = await this.doctorRepo.findOne({ where: { user: { id: userId } } });
-    if (!doctor) throw new NotFoundException('Doctor profile not found for this user');
+    const doctor = await this.doctorRepo.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!doctor)
+      throw new NotFoundException('Doctor profile not found for this user');
 
     await this.autoCompletePassedSlots();
 
@@ -229,12 +264,15 @@ export class ChannelingSlotService {
     });
   }
 
-//Lists all active upcoming consultation windows for public patient discovery
+  //Lists all active upcoming consultation windows for public patient discovery
   async getAvailableSlotsWithDoctors(): Promise<ChannelingSlot[]> {
     await this.autoCompletePassedSlots();
 
     return this.slotRepo.find({
-      where: { status: SlotStatus.ACTIVE, date: MoreThanOrEqual(new Date().toISOString().split('T')[0]) as any },
+      where: {
+        status: SlotStatus.ACTIVE,
+        date: MoreThanOrEqual(new Date().toISOString().split('T')[0]) as any,
+      },
       order: { date: 'ASC', startTime: 'ASC' },
     });
   }

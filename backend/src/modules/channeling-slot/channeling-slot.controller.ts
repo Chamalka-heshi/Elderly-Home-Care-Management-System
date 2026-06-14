@@ -12,9 +12,9 @@ import {
 } from '@nestjs/common';
 
 import { ChannelingSlotService } from './channeling-slot.service';
-import { Roles }                 from '../../common/decorators/roles.decorator';
-import { UserRole }              from '../../common/enums/user-role.enum';
-import { GetUser }               from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { GetUser } from '../../common/decorators/current-user.decorator';
 import {
   CreateChannelingSlotDto,
   UpdateChannelingSlotDto,

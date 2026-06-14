@@ -9,18 +9,16 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  Req,
 } from '@nestjs/common';
 
-import { AppointmentService }        from './appointment.service';
-import { Roles }                     from '../../common/decorators/roles.decorator';
-import { UserRole }                  from '../../common/enums/user-role.enum';
-import { GetUser }                   from '../../common/decorators/current-user.decorator';
-import { 
-  UpdateAppointmentStatusDto, 
-  QueryAppointmentsDto 
+import { AppointmentService } from './appointment.service';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { GetUser } from '../../common/decorators/current-user.decorator';
+import {
+  UpdateAppointmentStatusDto,
+  QueryAppointmentsDto,
 } from './dto/appointment.dto';
-
 
 // Orchestrates appointment workflows for doctors and administrators, separating medical oversight from system management.
 @Controller('appointments')
@@ -44,7 +42,11 @@ export class AppointmentController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAppointmentStatusDto,
   ) {
-    return this.appointmentService.updateAppointmentStatusByDoctor(userId, id, dto);
+    return this.appointmentService.updateAppointmentStatusByDoctor(
+      userId,
+      id,
+      dto,
+    );
   }
 
   // Administrative Oversight

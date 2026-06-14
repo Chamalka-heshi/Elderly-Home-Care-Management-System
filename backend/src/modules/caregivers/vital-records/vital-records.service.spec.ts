@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken }  from '@nestjs/typeorm';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { VitalRecordsService } from './vital-records.service';
-import { VitalRecord }         from '../entities/vital-record.entity';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { VitalRecord } from '../entities/vital-record.entity';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('VitalRecordsService', () => {
   let service: VitalRecordsService;
 
   const mockRepo = {
-    create:  jest.fn(),
-    save:    jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
     findOne: jest.fn(),
-    find:    jest.fn(),
+    find: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -46,7 +46,11 @@ describe('VitalRecordsService', () => {
 
   describe('update', () => {
     it('should update if authorized', async () => {
-      mockRepo.findOne.mockResolvedValue({ id: 'v1', caregiverId: 'c1', heartRate: 80 });
+      mockRepo.findOne.mockResolvedValue({
+        id: 'v1',
+        caregiverId: 'c1',
+        heartRate: 80,
+      });
       mockRepo.save.mockImplementation(async (record) => record);
 
       const result = await service.update('v1', { heartRate: 85 } as any, 'c1');
@@ -55,7 +59,9 @@ describe('VitalRecordsService', () => {
 
     it('should throw ForbiddenException if caregiverId does not match', async () => {
       mockRepo.findOne.mockResolvedValue({ id: 'v1', caregiverId: 'c1' });
-      await expect(service.update('v1', {} as any, 'c2')).rejects.toThrow(ForbiddenException);
+      await expect(service.update('v1', {} as any, 'c2')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 

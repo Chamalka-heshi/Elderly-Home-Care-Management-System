@@ -13,7 +13,7 @@ import { PaymentsController } from './payments.controller';
       Payment,
       Booking,
       FamilyMember,
-      Appointment,       // ← was AppointmentBooking (wrong entity); fixed to Appointment
+      Appointment, // ← was AppointmentBooking (wrong entity); fixed to Appointment
     ]),
   ],
   providers: [PaymentsService],

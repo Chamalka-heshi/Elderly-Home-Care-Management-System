@@ -17,10 +17,10 @@ export enum PaymentMethod {
 }
 
 export enum PaymentStatus {
-  PENDING          = 'pending',
-  PAID             = 'paid',
+  PENDING = 'pending',
+  PAID = 'paid',
   PENDING_APPROVAL = 'pending_approval',
-  REJECTED         = 'rejected',
+  REJECTED = 'rejected',
 }
 
 @Entity('payments')
@@ -32,7 +32,11 @@ export class Payment {
   @Column({ name: 'booking_id', type: 'uuid', nullable: true })
   bookingId: string | null;
 
-  @ManyToOne(() => Booking, { eager: true, onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => Booking, {
+    eager: true,
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'booking_id' })
   booking: Booking | null;
 
@@ -41,7 +45,11 @@ export class Payment {
   @Column({ name: 'appointment_id', type: 'uuid', nullable: true })
   appointmentId: string | null;
 
-  @ManyToOne(() => Appointment, { eager: false, onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => Appointment, {
+    eager: false,
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'appointment_id' })
   appointment: Appointment | null;
 

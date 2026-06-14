@@ -11,10 +11,10 @@ import {
 } from '@nestjs/common';
 
 import { ContactService } from './contact.service';
-import { Roles }          from '../../common/decorators/roles.decorator';
-import { Public }         from '../../common/decorators/public.decorator';
-import { UserRole }       from '../../common/enums/user-role.enum';
-import { GetUser }        from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { GetUser } from '../../common/decorators/current-user.decorator';
 import {
   CreateContactMessageDto,
   ReplyContactMessageDto,
@@ -58,11 +58,11 @@ export class ContactController {
   @Get('messages')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getAllMessages(
-    @Query('page')   page?:   string,
-    @Query('limit')  limit?:  string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('status') status?: 'pending' | 'replied',
   ) {
-    const pageNum  = page  ? parseInt(page,  10) : 1;
+    const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 5;
     return this.contactService.getAllMessages(pageNum, limitNum, status);
   }

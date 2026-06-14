@@ -6,7 +6,7 @@ import { BookingsService } from './bookings.service';
 
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) { }
+  constructor(private readonly bookingsService: BookingsService) {}
 
   @Post('create')
   @Roles(UserRole.FAMILY)
@@ -28,6 +28,4 @@ export class BookingsController {
     const bookings = await this.bookingsService.getAllBookings();
     return { bookings, total: bookings.length };
   }
-
-
 }

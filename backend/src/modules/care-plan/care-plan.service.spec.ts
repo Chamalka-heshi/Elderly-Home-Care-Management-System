@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken }  from '@nestjs/typeorm';
-import { CarePlanService }     from './care-plan.service';
-import { CarePlan }            from './entities/care-plan.entity';
-import { NotFoundException }   from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { CarePlanService } from './care-plan.service';
+import { CarePlan } from './entities/care-plan.entity';
+import { NotFoundException } from '@nestjs/common';
 
 describe('CarePlanService', () => {
   let service: CarePlanService;
 
   const mockRepo = {
-    create:  jest.fn(),
-    save:    jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
     findOne: jest.fn(),
-    find:    jest.fn(),
+    find: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -55,7 +55,9 @@ describe('CarePlanService', () => {
 
     it('should throw NotFoundException if not found', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.updatePlan('cp1', {} as any)).rejects.toThrow(NotFoundException);
+      await expect(service.updatePlan('cp1', {} as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

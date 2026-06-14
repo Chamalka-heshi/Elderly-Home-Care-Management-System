@@ -9,17 +9,15 @@ import {
 } from 'typeorm';
 
 import { ChannelingSlot } from '../../channeling-slot/entities/channeling-slot.entity';
-import { Patient }        from '../../patients/entities/patient.entity';
-import { FamilyMember }   from '../../family/entities/family-member.entity';
+import { Patient } from '../../patients/entities/patient.entity';
+import { FamilyMember } from '../../family/entities/family-member.entity';
 
 export enum AppointmentStatus {
-  PAYMENT_PENDING      = 'payment_pending',
+  PAYMENT_PENDING = 'payment_pending',
   PRESCRIPTION_PENDING = 'prescription_pending',
-  CANCELLED            = 'cancelled',
-  COMPLETED            = 'completed',
+  CANCELLED = 'cancelled',
+  COMPLETED = 'completed',
 }
-
-
 
 // Represents a scheduled medical consultation, linking patients and doctors through a specific channeling slot.
 @Entity('appointments')

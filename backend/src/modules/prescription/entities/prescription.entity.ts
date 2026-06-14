@@ -10,19 +10,18 @@ import {
   JoinColumn,
 } from 'typeorm';
 
-import { Doctor }      from '../../doctors/entities/doctor.entity';
+import { Doctor } from '../../doctors/entities/doctor.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 
 export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
 
 export interface MedicineItem {
-  medicineName:  string;
-  dosage:        string;
-  frequency:     string;
-  durationDays:  number;
+  medicineName: string;
+  dosage: string;
+  frequency: string;
+  durationDays: number;
   instructions?: string;
 }
-
 
 // Represents a formal clinical order for medication or treatment, capturing patient details and administrative metadata.
 @Entity('prescriptions')
@@ -38,7 +37,7 @@ export class Prescription {
 
   @ManyToOne(() => Doctor, (doctor) => doctor.prescriptions, {
     onDelete: 'CASCADE',
-    eager:    false,
+    eager: false,
     nullable: false,
   })
   @JoinColumn({ name: 'doctor_id' })
@@ -48,7 +47,11 @@ export class Prescription {
   @Column({ name: 'appointment_id', nullable: true, type: 'uuid' })
   appointmentId: string | null;
 
-  @OneToOne(() => Appointment, { eager: false, nullable: true, onDelete: 'SET NULL' })
+  @OneToOne(() => Appointment, {
+    eager: false,
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'appointment_id' })
   appointment: Appointment | null;
 
@@ -79,8 +82,8 @@ export class Prescription {
 
   // Tracks the operational state of the treatment course, from active administration to completion or termination.
   @Column({
-    type:    'varchar',
-    length:  20,
+    type: 'varchar',
+    length: 20,
     default: 'active',
     nullable: true,
   })

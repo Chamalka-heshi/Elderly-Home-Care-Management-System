@@ -11,13 +11,12 @@ import {
 import { Doctor } from '../../doctors/entities/doctor.entity';
 
 export enum SlotStatus {
-  PENDING   = 'pending',
-  ACTIVE    = 'active',
-  REJECTED  = 'rejected',
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  REJECTED = 'rejected',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
 }
-
 
 // Represents a specific time window reserved for medical consultations, tracking availability, fees, and doctor acceptance.
 @Entity('channeling_slots')
@@ -57,10 +56,22 @@ export class ChannelingSlot {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
-  @Column({ name: 'care_home_fee', nullable: true, type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'care_home_fee',
+    nullable: true,
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+  })
   careHomeFee: number | null;
 
-  @Column({ name: 'consultation_fee', nullable: true, type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'consultation_fee',
+    nullable: true,
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+  })
   consultationFee: number | null;
 
   @CreateDateColumn({ name: 'created_at' })

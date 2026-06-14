@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -29,17 +33,23 @@ export class BookingsService {
       where: { user: { id: userId } },
       relations: ['user'],
     });
-    if (!familyMember) throw new NotFoundException('Family member profile not found');
+    if (!familyMember)
+      throw new NotFoundException('Family member profile not found');
 
-    const carePlan = await this.carePlanRepo.findOne({ where: { id: dto.carePlanId } });
+    const carePlan = await this.carePlanRepo.findOne({
+      where: { id: dto.carePlanId },
+    });
     if (!carePlan) throw new NotFoundException('Care plan not found');
-    if (!carePlan.isActive) throw new BadRequestException('Care plan is inactive');
+    if (!carePlan.isActive)
+      throw new BadRequestException('Care plan is inactive');
 
     const patient = await this.patientRepo.findOne({
       where: { id: dto.patientId, familyMemberId: familyMember.id },
     });
     if (!patient) {
-      throw new NotFoundException('Patient not found or does not belong to your account');
+      throw new NotFoundException(
+        'Patient not found or does not belong to your account',
+      );
     }
 
     const snapshot: CarePlanSnapshot = {
@@ -65,7 +75,8 @@ export class BookingsService {
       where: { user: { id: userId } },
       relations: ['user'],
     });
-    if (!familyMember) throw new NotFoundException('Family member profile not found');
+    if (!familyMember)
+      throw new NotFoundException('Family member profile not found');
 
     return this.bookingRepo.find({
       where: { userId: familyMember.id },
@@ -78,5 +89,4 @@ export class BookingsService {
       order: { createdAt: 'DESC' },
     });
   }
-
 }

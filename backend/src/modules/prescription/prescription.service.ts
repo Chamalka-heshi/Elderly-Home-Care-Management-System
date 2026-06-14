@@ -6,25 +6,31 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository }       from 'typeorm';
+import { Repository } from 'typeorm';
 
-import { Prescription, type PrescriptionStatus } from './entities/prescription.entity';
-import { Doctor }                                from '../doctors/entities/doctor.entity';
-import { FamilyMember }                          from '../family/entities/family-member.entity';
-import { Patient }                               from '../patients/entities/patient.entity';
-import { Appointment, AppointmentStatus }         from '../appointments/entities/appointment.entity';
-import { CreatePrescriptionDto }                 from './dto/prescription.dto';
-import { MailService }                           from '../mail/mail.service';
+import {
+  Prescription,
+  type PrescriptionStatus,
+} from './entities/prescription.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
+import { FamilyMember } from '../family/entities/family-member.entity';
+import { Patient } from '../patients/entities/patient.entity';
+import {
+  Appointment,
+  AppointmentStatus,
+} from '../appointments/entities/appointment.entity';
+import { CreatePrescriptionDto } from './dto/prescription.dto';
+import { MailService } from '../mail/mail.service';
 
 export interface PrescriptionListResult {
-  data:  Prescription[];
+  data: Prescription[];
   total: number;
-  page:  number;
+  page: number;
   limit: number;
 }
 
 export interface FamilyPrescriptionResult {
-  data:  Prescription[];
+  data: Prescription[];
   total: number;
 }
 
@@ -46,58 +52,69 @@ export class PrescriptionService {
     private readonly mailService: MailService,
   ) {}
 
-//Resolves the clinical professional's identifier from their system user account to ensure data is scoped correctly
+  //Resolves the clinical professional's identifier from their system user account to ensure data is scoped correctly
   private async resolveDoctorId(userId: string): Promise<string> {
-    if (!userId) throw new ForbiddenException('User ID could not be resolved from token.');
+    if (!userId)
+      throw new ForbiddenException('User ID could not be resolved from token.');
     const doctor = await this.doctorRepo.findOne({
-      where:     { user: { id: userId } },
+      where: { user: { id: userId } },
       relations: ['user'],
     });
-    if (!doctor) throw new ForbiddenException('No doctor profile found for this user.');
+    if (!doctor)
+      throw new ForbiddenException('No doctor profile found for this user.');
     return doctor.id;
   }
 
-//Retrieves the display name of the issuing doctor for use in automated communications and records
+  //Retrieves the display name of the issuing doctor for use in automated communications and records
   private async resolveDoctorName(userId: string): Promise<string> {
     const doctor = await this.doctorRepo.findOne({
-      where:     { user: { id: userId } },
+      where: { user: { id: userId } },
       relations: ['user'],
     });
     return doctor?.user?.fullName ?? 'Your Doctor';
   }
 
-//Orchestrates the creation of a medical instruction, verifying appointment validity and triggering family notifications
-  async create(userId: string, dto: CreatePrescriptionDto): Promise<Prescription> {
+  //Orchestrates the creation of a medical instruction, verifying appointment validity and triggering family notifications
+  async create(
+    userId: string,
+    dto: CreatePrescriptionDto,
+  ): Promise<Prescription> {
     const doctorId = await this.resolveDoctorId(userId);
 
     if (dto.appointmentId) {
       const appt = await this.appointmentRepo.findOne({
-        where:     { id: dto.appointmentId },
+        where: { id: dto.appointmentId },
         relations: ['slot'],
       });
 
-      if (!appt) throw new NotFoundException(`Appointment ${dto.appointmentId} not found.`);
-      if (appt.slot?.doctorId !== doctorId) throw new ForbiddenException('This appointment does not belong to your slots.');
+      if (!appt)
+        throw new NotFoundException(
+          `Appointment ${dto.appointmentId} not found.`,
+        );
+      if (appt.slot?.doctorId !== doctorId)
+        throw new ForbiddenException(
+          'This appointment does not belong to your slots.',
+        );
     }
 
     const prescription = this.repo.create({
       doctorId,
       appointmentId: dto.appointmentId ?? null,
-      patientId:     dto.patientId?.trim()  ?? null,
-      patientName:   dto.patientName.trim(),
-      patientAge:    dto.patientAge,
-      diagnosis:     dto.diagnosis?.trim()  ?? null,
-      notes:         dto.notes?.trim()      ?? null,
-      issuedDate:    dto.issuedDate,
-      validUntil:    dto.validUntil?.trim() ?? null,
-      medicines:     dto.medicines,
-      status:        'active',
+      patientId: dto.patientId?.trim() ?? null,
+      patientName: dto.patientName.trim(),
+      patientAge: dto.patientAge,
+      diagnosis: dto.diagnosis?.trim() ?? null,
+      notes: dto.notes?.trim() ?? null,
+      issuedDate: dto.issuedDate,
+      validUntil: dto.validUntil?.trim() ?? null,
+      medicines: dto.medicines,
+      status: 'active',
     });
     const saved = await this.repo.save(prescription);
 
     if (dto.appointmentId) {
       await this.appointmentRepo.update(dto.appointmentId, {
-        status:         AppointmentStatus.COMPLETED,
+        status: AppointmentStatus.COMPLETED,
         prescriptionId: saved.id,
       });
     }
@@ -111,7 +128,7 @@ export class PrescriptionService {
     return saved;
   }
 
-//Auto-expires active prescriptions whose validUntil date has passed to maintain clinical record accuracy
+  //Auto-expires active prescriptions whose validUntil date has passed to maintain clinical record accuracy
   async autoExpireActive(): Promise<number> {
     const today = new Date().toISOString().slice(0, 10);
     const result = await this.repo
@@ -125,13 +142,13 @@ export class PrescriptionService {
     return result.affected ?? 0;
   }
 
-//Provides a paginated history of prescriptions issued by the professional to support continuity of care
+  //Provides a paginated history of prescriptions issued by the professional to support continuity of care
   async findAll(
-    userId:     string,
-    status?:    PrescriptionStatus,
+    userId: string,
+    status?: PrescriptionStatus,
     patientId?: string,
-    page        = 1,
-    limit       = 50,
+    page = 1,
+    limit = 50,
   ): Promise<PrescriptionListResult> {
     const doctorId = await this.resolveDoctorId(userId);
 
@@ -144,34 +161,41 @@ export class PrescriptionService {
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (status)    qb.andWhere('rx.status = :status',       { status });
+    if (status) qb.andWhere('rx.status = :status', { status });
     if (patientId) qb.andWhere('rx.patientId = :patientId', { patientId });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
   }
 
-//Returns all prescriptions for a given patient to assist clinical professionals in treatment planning
-  async findForPatient(patientId: string, userId: string): Promise<Prescription[]> {
+  //Returns all prescriptions for a given patient to assist clinical professionals in treatment planning
+  async findForPatient(
+    patientId: string,
+    userId: string,
+  ): Promise<Prescription[]> {
     await this.resolveDoctorId(userId);
     await this.autoExpireActive();
     return this.repo.find({
-      where:     { patientId },
-      order:     { createdAt: 'DESC' },
+      where: { patientId },
+      order: { createdAt: 'DESC' },
       relations: ['doctor', 'doctor.user'],
     });
   }
 
-//Aggregates clinical instructions for patients managed by a family member for their dashboard view
+  //Aggregates clinical instructions for patients managed by a family member for their dashboard view
   async findForFamily(userId: string): Promise<FamilyPrescriptionResult> {
-    if (!userId) throw new ForbiddenException('User ID could not be resolved from token.');
+    if (!userId)
+      throw new ForbiddenException('User ID could not be resolved from token.');
 
     const fm = await this.familyMemberRepo.findOne({
-      where:     { user: { id: userId } },
+      where: { user: { id: userId } },
       relations: ['patients'],
     });
 
-    if (!fm) throw new ForbiddenException('No family member profile found for this user.');
+    if (!fm)
+      throw new ForbiddenException(
+        'No family member profile found for this user.',
+      );
     if (!fm.patients?.length) return { data: [], total: 0 };
 
     await this.autoExpireActive();
@@ -180,8 +204,8 @@ export class PrescriptionService {
 
     const data = await this.repo
       .createQueryBuilder('rx')
-      .leftJoinAndSelect('rx.doctor',      'doctor')
-      .leftJoinAndSelect('doctor.user',    'doctorUser')
+      .leftJoinAndSelect('rx.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'doctorUser')
       .where('rx.patientId IN (:...patientIds)', { patientIds })
       .orderBy('rx.createdAt', 'DESC')
       .getMany();
@@ -189,7 +213,7 @@ export class PrescriptionService {
     return { data, total: data.length };
   }
 
-//Returns a specific prescription record after verifying clinical ownership to ensure data security
+  //Returns a specific prescription record after verifying clinical ownership to ensure data security
   async findOne(id: string, userId: string): Promise<Prescription> {
     const doctorId = await this.resolveDoctorId(userId);
     const rx = await this.repo.findOne({ where: { id, doctorId } });
@@ -197,15 +221,19 @@ export class PrescriptionService {
     return rx;
   }
 
-//Allows family members to access treatment instructions for their elderly relatives while enforcing ownership
+  //Allows family members to access treatment instructions for their elderly relatives while enforcing ownership
   async findOneForFamily(id: string, userId: string): Promise<Prescription> {
-    if (!userId) throw new ForbiddenException('User ID could not be resolved from token.');
+    if (!userId)
+      throw new ForbiddenException('User ID could not be resolved from token.');
 
     const fm = await this.familyMemberRepo.findOne({
-      where:     { user: { id: userId } },
+      where: { user: { id: userId } },
       relations: ['patients'],
     });
-    if (!fm) throw new ForbiddenException('No family member profile found for this user.');
+    if (!fm)
+      throw new ForbiddenException(
+        'No family member profile found for this user.',
+      );
 
     await this.autoExpireActive();
 
@@ -213,7 +241,7 @@ export class PrescriptionService {
 
     const rx = await this.repo
       .createQueryBuilder('rx')
-      .leftJoinAndSelect('rx.doctor',   'doctor')
+      .leftJoinAndSelect('rx.doctor', 'doctor')
       .leftJoinAndSelect('doctor.user', 'doctorUser')
       .where('rx.id = :id', { id })
       .andWhere('rx.patientId IN (:...patientIds)', { patientIds })
@@ -223,7 +251,7 @@ export class PrescriptionService {
     return rx;
   }
 
-//Updates the treatment status to discontinued to record a clinical decision to stop medication
+  //Updates the treatment status to discontinued to record a clinical decision to stop medication
   async discontinue(id: string, userId: string): Promise<Prescription> {
     const rx = await this.findOne(id, userId);
     if (rx.status === 'discontinued') {
@@ -233,7 +261,7 @@ export class PrescriptionService {
     return this.repo.save(rx);
   }
 
-//Marks a prescription as completed once the full medication cycle has been observed
+  //Marks a prescription as completed once the full medication cycle has been observed
   async complete(id: string, userId: string): Promise<Prescription> {
     const rx = await this.findOne(id, userId);
     if (rx.status === 'completed') {
@@ -243,7 +271,7 @@ export class PrescriptionService {
     return this.repo.save(rx);
   }
 
-//Orchestrates the delivery of clinical instruction summaries to verified family contacts via email
+  //Orchestrates the delivery of clinical instruction summaries to verified family contacts via email
   private async sendPrescriptionEmail(
     prescription: Prescription,
     doctorUserId: string,
@@ -251,7 +279,7 @@ export class PrescriptionService {
     if (!prescription.patientId) return;
 
     const patient = await this.patientRepo.findOne({
-      where:     { id: prescription.patientId },
+      where: { id: prescription.patientId },
       relations: ['familyMember', 'familyMember.user'],
     });
 
@@ -269,18 +297,18 @@ export class PrescriptionService {
       where: { patientId: prescription.patientId, status: 'active' },
       order: { createdAt: 'DESC' },
     });
-    
+
     await this.mailService.sendPrescriptionNotification({
-      to:               email,
+      to: email,
       familyMemberName,
-      patientName:      prescription.patientName,
+      patientName: prescription.patientName,
       doctorName,
-      prescriptions:    activePrescriptions.map(rx => ({
+      prescriptions: activePrescriptions.map((rx) => ({
         issuedDate: rx.issuedDate,
         validUntil: rx.validUntil ?? undefined,
-        diagnosis:  rx.diagnosis ?? undefined,
-        notes:      rx.notes ?? undefined,
-        medicines:  rx.medicines,
+        diagnosis: rx.diagnosis ?? undefined,
+        notes: rx.notes ?? undefined,
+        medicines: rx.medicines,
       })),
     });
 

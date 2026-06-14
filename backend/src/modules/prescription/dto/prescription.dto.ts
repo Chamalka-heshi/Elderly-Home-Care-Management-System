@@ -132,8 +132,8 @@ export class PrescriptionQueryDto {
 
 // Defines the unified response structure for paginated clinical data across the professional and family portals.
 export interface PrescriptionListResponse<T> {
-  data:  T[];
+  data: T[];
   total: number;
-  page:  number;
+  page: number;
   limit: number;
 }

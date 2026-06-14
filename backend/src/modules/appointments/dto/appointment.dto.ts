@@ -1,12 +1,6 @@
-import {
-  IsUUID,
-  IsOptional,
-  IsString,
-  IsEnum,
-} from 'class-validator';
+import { IsUUID, IsOptional, IsString, IsEnum } from 'class-validator';
 
 import { AppointmentStatus } from '../entities/appointment.entity';
-
 
 // Captures the essential relationship between a time slot and a patient to initiate the booking process.
 export class CreateAppointmentDto {

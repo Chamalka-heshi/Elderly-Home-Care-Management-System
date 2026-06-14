@@ -1,14 +1,13 @@
-import { Module }        from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Appointment }           from './entities/appointment.entity';
-import { AppointmentService }    from './appointment.service';
+import { Appointment } from './entities/appointment.entity';
+import { AppointmentService } from './appointment.service';
 import { AppointmentController } from './appointment.controller';
-import { ChannelingSlot }        from '../channeling-slot/entities/channeling-slot.entity';
-import { Patient }               from '../patients/entities/patient.entity';
-import { FamilyMember }          from '../family/entities/family-member.entity';
-import { Doctor }                from '../doctors/entities/doctor.entity';
-
+import { ChannelingSlot } from '../channeling-slot/entities/channeling-slot.entity';
+import { Patient } from '../patients/entities/patient.entity';
+import { FamilyMember } from '../family/entities/family-member.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
 
 // Centralizes all scheduling logic, resource validation, and medical session tracking for the platform.
 @Module({
@@ -22,7 +21,7 @@ import { Doctor }                from '../doctors/entities/doctor.entity';
     ]),
   ],
   controllers: [AppointmentController],
-  providers:   [AppointmentService],
-  exports:     [AppointmentService],
+  providers: [AppointmentService],
+  exports: [AppointmentService],
 })
 export class AppointmentModule {}

@@ -15,7 +15,6 @@ import { SlotStatus } from '../entities/channeling-slot.entity';
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-
 // Validates the parameters for proposing a new consultation window, ensuring doctor availability and system-enforced scheduling constraints.
 export class CreateChannelingSlotDto {
   @IsUUID()

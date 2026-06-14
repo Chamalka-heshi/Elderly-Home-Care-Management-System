@@ -8,7 +8,6 @@ import {
 
 export type MessageStatus = 'pending' | 'replied';
 
-
 // Captures individual user inquiries submitted through the contact portal, tracking their lifecycle from submission to resolution.
 @Entity('contact_messages')
 export class ContactMessage {

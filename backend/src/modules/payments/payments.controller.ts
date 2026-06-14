@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { GetUser } from '../../common/decorators/current-user.decorator';
@@ -11,7 +19,10 @@ export class PaymentsController {
 
   @Post('create')
   @Roles(UserRole.FAMILY)
-  async createPayment(@GetUser('sub') userId: string, @Body() dto: CreatePaymentDto) {
+  async createPayment(
+    @GetUser('sub') userId: string,
+    @Body() dto: CreatePaymentDto,
+  ) {
     const payment = await this.paymentsService.createPayment(userId, dto);
     return { message: 'Payment created successfully', payment };
   }
