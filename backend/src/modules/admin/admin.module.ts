@@ -1,38 +1,32 @@
-import { Module }        from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AdminController }  from './admin.controller';
-import { AdminService }     from './admin.service';
-import { Admin }            from './entities/admin.entity';
-import { UsersModule }      from '../users/users.module';
-import { DoctorsModule }    from '../doctors/doctors.module';
+import { AdminController } from './admin.controller';
+import { AdminService } from './admin.service';
+import { Admin } from './entities/admin.entity';
+import { UsersModule } from '../users/users.module';
+import { DoctorsModule } from '../doctors/doctors.module';
 import { CaregiversModule } from '../caregivers/caregivers.module';
-import { MailModule }       from '../mail/mail.module';
-import { Patient }          from '../patients/entities/patient.entity';
-import { FamilyMember }     from '../family/entities/family-member.entity';
-import { Doctor }           from '../doctors/entities/doctor.entity';
-import { Caregiver }        from '../caregivers/entities/caregiver.entity';
+import { MailModule } from '../mail/mail.module';
+import { Patient } from '../patients/entities/patient.entity';
+import { FamilyMember } from '../family/entities/family-member.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
+import { Caregiver } from '../caregivers/entities/caregiver.entity';
 
 // Admin Module
 
 // Groups admin-related logic and registers entities that the AdminService needs for dashboard statistics.
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Admin, 
-      Patient, 
-      FamilyMember, 
-      Doctor, 
-      Caregiver
-    ]),
+    TypeOrmModule.forFeature([Admin, Patient, FamilyMember, Doctor, Caregiver]),
     UsersModule,
     DoctorsModule,
     CaregiversModule,
     MailModule,
   ],
   controllers: [AdminController],
-  providers:   [AdminService],
+  providers: [AdminService],
   // Exported to enable other modules to access administrative data and account management logic.
-  exports:     [AdminService],
+  exports: [AdminService],
 })
 export class AdminModule {}

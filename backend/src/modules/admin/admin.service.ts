@@ -4,17 +4,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 
-import { Admin }                 from './entities/admin.entity';
-import { CreateAdminDto }        from './dto/create-admin.dto';
+import { Admin } from './entities/admin.entity';
+import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
-import { UsersService }          from '../users/users.service';
-import { UserRole }              from '../../common/enums/user-role.enum';
-import { Patient }               from '../patients/entities/patient.entity';
-import { FamilyMember }          from '../family/entities/family-member.entity';
-import { Doctor }                from '../doctors/entities/doctor.entity';
-import { Caregiver }             from '../caregivers/entities/caregiver.entity';
+import { UsersService } from '../users/users.service';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { Patient } from '../patients/entities/patient.entity';
+import { FamilyMember } from '../family/entities/family-member.entity';
+import { Doctor } from '../doctors/entities/doctor.entity';
+import { Caregiver } from '../caregivers/entities/caregiver.entity';
 
 @Injectable()
 export class AdminService {
@@ -90,16 +90,16 @@ export class AdminService {
       where: { id: adminRef.id },
       relations: ['user'],
       select: {
-        id:  true,
+        id: true,
         nic: true,
         user: {
-          id:            true,
-          fullName:      true,
-          email:         true,
-          role:          true,
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
           contactNumber: true,
-          isActive:      true,
-          createdAt:     true,
+          isActive: true,
+          createdAt: true,
         },
       },
     });
@@ -166,13 +166,13 @@ export class AdminService {
 
     return {
       families: families.map((family) => ({
-        id:            family.id,
-        fullName:      family.user.fullName,
-        email:         family.user.email,
+        id: family.id,
+        fullName: family.user.fullName,
+        email: family.user.email,
         contactNumber: family.user.contactNumber,
-        isActive:      family.user.isActive,
+        isActive: family.user.isActive,
         patientsCount: family.patients?.length || 0,
-        joinedDate:    family.user.createdAt,
+        joinedDate: family.user.createdAt,
       })),
       total: families.length,
     };
@@ -196,7 +196,7 @@ export class AdminService {
     }
 
     return {
-      id:       family.id,
+      id: family.id,
       fullName: family.user.fullName,
       isActive,
     };
@@ -245,7 +245,10 @@ export class AdminService {
   // Admin Profile
 
   // Delegates user-field updates to UsersService to avoid loading the full relation unnecessarily.
-  async updateProfileByUserId(userId: string, updateData: UpdateAdminProfileDto) {
+  async updateProfileByUserId(
+    userId: string,
+    updateData: UpdateAdminProfileDto,
+  ) {
     const admin = await this.adminRepository.findOne({
       where: { user: { id: userId } },
     });
@@ -256,8 +259,10 @@ export class AdminService {
 
     if (updateData.fullName || updateData.contactNumber) {
       await this.usersService.update(userId, {
-        ...(updateData.fullName      && { fullName: updateData.fullName }),
-        ...(updateData.contactNumber && { contactNumber: updateData.contactNumber }),
+        ...(updateData.fullName && { fullName: updateData.fullName }),
+        ...(updateData.contactNumber && {
+          contactNumber: updateData.contactNumber,
+        }),
       });
     }
 
@@ -272,12 +277,12 @@ export class AdminService {
     });
 
     return {
-      id:            updatedUser.id,
-      fullName:      updatedUser.fullName,
-      email:         updatedUser.email,
-      role:          updatedUser.role,
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      role: updatedUser.role,
       contactNumber: updatedUser.contactNumber,
-      nic:           updatedAdmin?.nic ?? null,
+      nic: updatedAdmin?.nic ?? null,
     };
   }
 
@@ -286,24 +291,24 @@ export class AdminService {
   // Centralised mapper so getAllPatients and getPatientById always produce identical response shapes.
   private mapPatient(patient: Patient) {
     return {
-      id:                 patient.id,
-      fullName:           patient.fullName,
-      nic:                patient.nic,
-      dateOfBirth:        patient.dateOfBirth,
-      createdAt:          patient.createdAt,
-      medicalHistory:     patient.medicalHistory,
-      chronicConditions:  patient.chronicConditions,
-      allergies:          patient.allergies,
+      id: patient.id,
+      fullName: patient.fullName,
+      nic: patient.nic,
+      dateOfBirth: patient.dateOfBirth,
+      createdAt: patient.createdAt,
+      medicalHistory: patient.medicalHistory,
+      chronicConditions: patient.chronicConditions,
+      allergies: patient.allergies,
       currentMedications: patient.currentMedications,
-      bloodGroup:         patient.bloodGroup,
-      gender:             patient.gender,
-      address:            patient.address,
-      contactNumber:      patient.contactNumber,
-      emergencyContact:   patient.emergencyContact,
-      isActive:           patient.isActive,
-      familyMemberId:     patient.familyMemberId,
-      familyName:         patient.familyMember?.user?.fullName,
-      familyEmail:        patient.familyMember?.user?.email,
+      bloodGroup: patient.bloodGroup,
+      gender: patient.gender,
+      address: patient.address,
+      contactNumber: patient.contactNumber,
+      emergencyContact: patient.emergencyContact,
+      isActive: patient.isActive,
+      familyMemberId: patient.familyMemberId,
+      familyName: patient.familyMember?.user?.fullName,
+      familyEmail: patient.familyMember?.user?.email,
     };
   }
 }

@@ -12,17 +12,17 @@ import {
 } from '@nestjs/common';
 import * as generator from 'generate-password';
 
-import { AdminService }          from './admin.service';
-import { DoctorsService }        from '../doctors/doctors.service';
-import { CaregiversService }     from '../caregivers/caregivers.service';
-import { UsersService }          from '../users/users.service';
-import { MailService }           from '../mail/mail.service';
-import { CreateAdminDto }        from './dto/create-admin.dto';
-import { CreateDoctorDto }       from '../doctors/dto/create-doctor.dto';
-import { CreateCaregiverDto }    from '../caregivers/dto/create-caregiver.dto';
+import { AdminService } from './admin.service';
+import { DoctorsService } from '../doctors/doctors.service';
+import { CaregiversService } from '../caregivers/caregivers.service';
+import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
+import { CreateAdminDto } from './dto/create-admin.dto';
+import { CreateDoctorDto } from '../doctors/dto/create-doctor.dto';
+import { CreateCaregiverDto } from '../caregivers/dto/create-caregiver.dto';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
-import { Roles }                 from '../../common/decorators/roles.decorator';
-import { UserRole }              from '../../common/enums/user-role.enum';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 const TEMP_PASSWORD_LENGTH = 12;
 
@@ -31,22 +31,22 @@ const TEMP_PASSWORD_LENGTH = 12;
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminController {
   constructor(
-    private readonly adminService:      AdminService,
-    private readonly doctorsService:    DoctorsService,
+    private readonly adminService: AdminService,
+    private readonly doctorsService: DoctorsService,
     private readonly caregiversService: CaregiversService,
-    private readonly usersService:      UsersService,
-    private readonly mailService:       MailService,
+    private readonly usersService: UsersService,
+    private readonly mailService: MailService,
   ) {}
 
   // Ensures at least one character from each category for security compliance.
   private generateTempPassword(): string {
     return generator.generate({
-      length:    TEMP_PASSWORD_LENGTH,
-      numbers:   true,
+      length: TEMP_PASSWORD_LENGTH,
+      numbers: true,
       uppercase: true,
       lowercase: true,
-      symbols:   true,
-      strict:    true,
+      symbols: true,
+      strict: true,
     });
   }
 
@@ -66,7 +66,10 @@ export class AdminController {
   async createAdmin(@Body() dto: CreateAdminDto) {
     const tempPassword = this.generateTempPassword();
 
-    const admin = await this.adminService.create({ ...dto, password: tempPassword });
+    const admin = await this.adminService.create({
+      ...dto,
+      password: tempPassword,
+    });
     await this.usersService.setMustChangePassword(admin.user.id, true);
 
     await this.mailService.sendAccountCredentials(
@@ -79,13 +82,13 @@ export class AdminController {
     return {
       message: `Admin created. Login credentials have been sent to ${dto.email}`,
       admin: {
-        id:            admin.id,
-        fullName:      admin.user.fullName,
-        email:         admin.user.email,
+        id: admin.id,
+        fullName: admin.user.fullName,
+        email: admin.user.email,
         contactNumber: admin.user.contactNumber,
-        nic:           admin.nic,
-        isActive:      admin.user.isActive,
-        createdAt:     admin.user.createdAt,
+        nic: admin.nic,
+        isActive: admin.user.isActive,
+        createdAt: admin.user.createdAt,
       },
     };
   }
@@ -106,13 +109,13 @@ export class AdminController {
 
     return {
       admins: admins.map((admin) => ({
-        id:            admin.id,
-        fullName:      admin.user.fullName,
-        email:         admin.user.email,
+        id: admin.id,
+        fullName: admin.user.fullName,
+        email: admin.user.email,
         contactNumber: admin.user.contactNumber,
-        nic:           admin.nic,
-        isActive:      admin.user.isActive,
-        createdAt:     admin.user.createdAt,
+        nic: admin.nic,
+        isActive: admin.user.isActive,
+        createdAt: admin.user.createdAt,
       })),
       total: admins.length,
     };
@@ -125,7 +128,10 @@ export class AdminController {
   async createDoctor(@Body() dto: CreateDoctorDto) {
     const tempPassword = this.generateTempPassword();
 
-    const doctor = await this.doctorsService.create({ ...dto, password: tempPassword });
+    const doctor = await this.doctorsService.create({
+      ...dto,
+      password: tempPassword,
+    });
     await this.usersService.setMustChangePassword(doctor.user.id, true);
 
     await this.mailService.sendAccountCredentials(
@@ -138,16 +144,16 @@ export class AdminController {
     return {
       message: `Doctor created. Login credentials have been sent to ${dto.email}`,
       doctor: {
-        id:                  doctor.id,
-        fullName:            doctor.user.fullName,
-        email:               doctor.user.email,
-        contactNumber:       doctor.user.contactNumber,
-        nic:                 doctor.nic,
-        specialization:      doctor.specialization,
-        licenseNumber:       doctor.licenseNumber,
-        experienceYears:     doctor.experienceYears,
+        id: doctor.id,
+        fullName: doctor.user.fullName,
+        email: doctor.user.email,
+        contactNumber: doctor.user.contactNumber,
+        nic: doctor.nic,
+        specialization: doctor.specialization,
+        licenseNumber: doctor.licenseNumber,
+        experienceYears: doctor.experienceYears,
         hospitalAffiliation: doctor.hospitalAffiliation,
-        isActive:            doctor.user.isActive,
+        isActive: doctor.user.isActive,
       },
     };
   }
@@ -159,19 +165,19 @@ export class AdminController {
 
     return {
       doctors: doctors.map((doctor) => ({
-        id:                  doctor.id,
-        fullName:            doctor.user.fullName,
-        email:               doctor.user.email,
-        contactNumber:       doctor.user.contactNumber,
-        specialization:      doctor.specialization,
-        licenseNumber:       doctor.licenseNumber,
-        yearsOfExperience:   doctor.experienceYears,
+        id: doctor.id,
+        fullName: doctor.user.fullName,
+        email: doctor.user.email,
+        contactNumber: doctor.user.contactNumber,
+        specialization: doctor.specialization,
+        licenseNumber: doctor.licenseNumber,
+        yearsOfExperience: doctor.experienceYears,
         hospitalAffiliation: doctor.hospitalAffiliation || 'N/A',
-        availableDays:       doctor.availableDays ?? [],
-        availableTimeStart:  doctor.availableTimeStart ?? null,
-        availableTimeEnd:    doctor.availableTimeEnd ?? null,
-        isActive:            doctor.user.isActive,
-        createdAt:           doctor.user.createdAt,
+        availableDays: doctor.availableDays ?? [],
+        availableTimeStart: doctor.availableTimeStart ?? null,
+        availableTimeEnd: doctor.availableTimeEnd ?? null,
+        isActive: doctor.user.isActive,
+        createdAt: doctor.user.createdAt,
       })),
       total: doctors.length,
     };
@@ -215,14 +221,14 @@ export class AdminController {
     return {
       message: `Caregiver created. Login credentials have been sent to ${dto.email}`,
       caregiver: {
-        id:              caregiver.id,
-        fullName:        caregiver.user.fullName,
-        email:           caregiver.user.email,
-        contactNumber:   caregiver.user.contactNumber,
-        nic:             caregiver.nic,
+        id: caregiver.id,
+        fullName: caregiver.user.fullName,
+        email: caregiver.user.email,
+        contactNumber: caregiver.user.contactNumber,
+        nic: caregiver.nic,
         specializations: caregiver.specializations,
         experienceYears: caregiver.experienceYears,
-        isActive:        caregiver.user.isActive,
+        isActive: caregiver.user.isActive,
       },
     };
   }
@@ -234,15 +240,15 @@ export class AdminController {
 
     return {
       caregivers: caregivers.map((caregiver) => ({
-        id:                caregiver.id,
-        fullName:          caregiver.user.fullName,
-        email:             caregiver.user.email,
-        contactNumber:     caregiver.user.contactNumber,
-        specializations:   caregiver.specializations || [],
-        availableShifts:   caregiver.availableShifts || [],
+        id: caregiver.id,
+        fullName: caregiver.user.fullName,
+        email: caregiver.user.email,
+        contactNumber: caregiver.user.contactNumber,
+        specializations: caregiver.specializations || [],
+        availableShifts: caregiver.availableShifts || [],
         yearsOfExperience: caregiver.experienceYears || 0,
-        isActive:          caregiver.user.isActive,
-        createdAt:         caregiver.user.createdAt,
+        isActive: caregiver.user.isActive,
+        createdAt: caregiver.user.createdAt,
       })),
       total: caregivers.length,
     };
@@ -308,10 +314,7 @@ export class AdminController {
   // Allows the logged-in admin to update their own name and contact number.
   @Patch('profile')
   @HttpCode(HttpStatus.OK)
-  async updateProfile(
-    @Request() req: any,
-    @Body() dto: UpdateAdminProfileDto,
-  ) {
+  async updateProfile(@Request() req: any, @Body() dto: UpdateAdminProfileDto) {
     const userId = req.user.sub;
     return this.adminService.updateProfileByUserId(userId, dto);
   }

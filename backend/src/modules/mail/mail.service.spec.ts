@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService }       from '@nestjs/config';
-import { MailService }         from './mail.service';
-import * as nodemailer         from 'nodemailer';
+import { ConfigService } from '@nestjs/config';
+import { MailService } from './mail.service';
+import * as nodemailer from 'nodemailer';
 
 jest.mock('nodemailer');
 
@@ -9,21 +9,21 @@ describe('MailService', () => {
   let service: MailService;
 
   const mockTransporter = {
-    verify:   jest.fn().mockResolvedValue(true),
+    verify: jest.fn().mockResolvedValue(true),
     sendMail: jest.fn().mockResolvedValue({ messageId: 'test-id' }),
   };
 
   const mockConfigService = {
     get: jest.fn().mockImplementation((key: string) => {
       const config: Record<string, any> = {
-        SMTP_HOST:    'smtp.test.com',
-        SMTP_PORT:    587,
-        SMTP_SECURE:  'false',
-        SMTP_USER:    'test@test.com',
-        SMTP_PASS:    'password',
-        SYSTEM_NAME:  'Test System',
-        APP_URL:      'http://localhost:3000',
-        MAIL_FROM:    'no-reply@test.com',
+        SMTP_HOST: 'smtp.test.com',
+        SMTP_PORT: 587,
+        SMTP_SECURE: 'false',
+        SMTP_USER: 'test@test.com',
+        SMTP_PASS: 'password',
+        SYSTEM_NAME: 'Test System',
+        APP_URL: 'http://localhost:3000',
+        MAIL_FROM: 'no-reply@test.com',
       };
       return config[key] ?? null;
     }),
@@ -54,7 +54,9 @@ describe('MailService', () => {
     });
 
     it('should not throw when transporter verification fails', async () => {
-      mockTransporter.verify.mockRejectedValueOnce(new Error('Connection failed'));
+      mockTransporter.verify.mockRejectedValueOnce(
+        new Error('Connection failed'),
+      );
       await expect(service.onModuleInit()).resolves.toBeUndefined();
     });
   });
@@ -62,7 +64,11 @@ describe('MailService', () => {
   // ─── sendMail ─────────────────────────────────────────────────────────────
   describe('sendMail', () => {
     it('should delegate to transporter.sendMail', async () => {
-      const opts = { to: 'user@test.com', subject: 'Test', html: '<p>Test</p>' };
+      const opts = {
+        to: 'user@test.com',
+        subject: 'Test',
+        html: '<p>Test</p>',
+      };
       await service.sendMail(opts);
       expect(mockTransporter.sendMail).toHaveBeenCalledWith(opts);
     });
@@ -71,7 +77,12 @@ describe('MailService', () => {
   // ─── sendAccountCredentials ───────────────────────────────────────────────
   describe('sendAccountCredentials', () => {
     it('should send credentials email with recipient address and role', async () => {
-      await service.sendAccountCredentials('user@test.com', 'John Doe', 'Doctor', 'tempPw123');
+      await service.sendAccountCredentials(
+        'user@test.com',
+        'John Doe',
+        'Doctor',
+        'tempPw123',
+      );
       expect(mockTransporter.sendMail).toHaveBeenCalled();
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.to).toContain('user@test.com');
@@ -80,7 +91,12 @@ describe('MailService', () => {
     });
 
     it('should include the recipient full name in the email body', async () => {
-      await service.sendAccountCredentials('user@test.com', 'Jane Smith', 'Admin', 'pw456');
+      await service.sendAccountCredentials(
+        'user@test.com',
+        'Jane Smith',
+        'Admin',
+        'pw456',
+      );
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.html).toContain('Jane Smith');
     });
@@ -89,7 +105,11 @@ describe('MailService', () => {
   // ─── sendPasswordResetEmail ───────────────────────────────────────────────
   describe('sendPasswordResetEmail', () => {
     it('should send reset email with temporary password', async () => {
-      await service.sendPasswordResetEmail('user@test.com', 'John', 'resetPw123');
+      await service.sendPasswordResetEmail(
+        'user@test.com',
+        'John',
+        'resetPw123',
+      );
       expect(mockTransporter.sendMail).toHaveBeenCalled();
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.to).toContain('user@test.com');
@@ -108,8 +128,12 @@ describe('MailService', () => {
   describe('sendReplyEmail', () => {
     it('should send reply email with correct structure', async () => {
       await service.sendReplyEmail(
-        'John Doe', 'user@test.com', 'Here is my reply',
-        'Original message', '+123456789', 'admin@test.com'
+        'John Doe',
+        'user@test.com',
+        'Here is my reply',
+        'Original message',
+        '+123456789',
+        'admin@test.com',
       );
       expect(mockTransporter.sendMail).toHaveBeenCalled();
       const mail = mockTransporter.sendMail.mock.calls[0][0];
@@ -119,7 +143,14 @@ describe('MailService', () => {
     });
 
     it('should include original message content in reply', async () => {
-      await service.sendReplyEmail('Jane', 'j@test.com', 'Reply text', 'Original content', '123', 'admin@test.com');
+      await service.sendReplyEmail(
+        'Jane',
+        'j@test.com',
+        'Reply text',
+        'Original content',
+        '123',
+        'admin@test.com',
+      );
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.html).toContain('Original content');
     });
@@ -128,14 +159,23 @@ describe('MailService', () => {
   // ─── sendPrescriptionNotification ────────────────────────────────────────
   describe('sendPrescriptionNotification', () => {
     const opts = {
-      to:               'family@test.com',
+      to: 'family@test.com',
       familyMemberName: 'Jane Doe',
-      patientName:      'John Patient',
-      doctorName:       'Dr. Smith',
-      prescriptions: [{
-        issuedDate: '2024-01-01',
-        medicines:  [{ medicineName: 'Panadol', dosage: '2', frequency: 'bd', durationDays: 3 }],
-      }],
+      patientName: 'John Patient',
+      doctorName: 'Dr. Smith',
+      prescriptions: [
+        {
+          issuedDate: '2024-01-01',
+          medicines: [
+            {
+              medicineName: 'Panadol',
+              dosage: '2',
+              frequency: 'bd',
+              durationDays: 3,
+            },
+          ],
+        },
+      ],
     };
 
     it('should send prescription notification with medicine details', async () => {
@@ -162,13 +202,25 @@ describe('MailService', () => {
     it('should handle multiple medicines in the notification', async () => {
       const multiMed = {
         ...opts,
-        prescriptions: [{
-          issuedDate: '2024-01-01',
-          medicines: [
-            { medicineName: 'Panadol', dosage: '2', frequency: 'bd', durationDays: 3 },
-            { medicineName: 'Amoxicillin', dosage: '1', frequency: 'tds', durationDays: 7 },
-          ],
-        }],
+        prescriptions: [
+          {
+            issuedDate: '2024-01-01',
+            medicines: [
+              {
+                medicineName: 'Panadol',
+                dosage: '2',
+                frequency: 'bd',
+                durationDays: 3,
+              },
+              {
+                medicineName: 'Amoxicillin',
+                dosage: '1',
+                frequency: 'tds',
+                durationDays: 7,
+              },
+            ],
+          },
+        ],
       };
       await service.sendPrescriptionNotification(multiMed);
       const mail = mockTransporter.sendMail.mock.calls[0][0];

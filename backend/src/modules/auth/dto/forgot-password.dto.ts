@@ -1,10 +1,4 @@
-import { 
-  IsEmail, 
-  IsNotEmpty, 
-  IsString, 
-  MinLength 
-} from 'class-validator';
-
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 // Mandates both email and contact number to provide a secondary layer of identity verification before resetting credentials.
 export class ForgotPasswordDto {

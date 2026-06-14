@@ -9,7 +9,6 @@ import {
   Matches,
 } from 'class-validator';
 
-
 // Validates the administrative payload for registering new clinical staff, enforcing strict identity and credential formats.
 export class CreateDoctorDto {
   @IsNotEmpty()
@@ -28,7 +27,8 @@ export class CreateDoctorDto {
   @IsNotEmpty()
   @IsString()
   @Matches(/^[0-9]{9}[vVxX]$|^[0-9]{12}$/, {
-    message: 'NIC must be valid Sri Lankan format (9 digits + V/X or 12 digits)',
+    message:
+      'NIC must be valid Sri Lankan format (9 digits + V/X or 12 digits)',
   })
   nic: string;
 

@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository }       from 'typeorm';
-import * as bcrypt          from 'bcrypt';
+import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 
-import { User }     from './entities/user.entity';
+import { User } from './entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { SECURITY_CONSTANTS } from '../../common/constants/security.constants';
 
 @Injectable()
 export class UsersService {
@@ -13,16 +14,18 @@ export class UsersService {
     private userRepository: Repository<User>,
   ) {}
 
-
   // Creates a new master user record with hashed credentials, serving as the foundation for role-specific profiles.
   async create(
-    email:          string,
-    password:       string,
-    role:           UserRole,
-    fullName:       string,
+    email: string,
+    password: string,
+    role: UserRole,
+    fullName: string,
     contactNumber?: string,
   ): Promise<User> {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(
+      password,
+      SECURITY_CONSTANTS.BCRYPT_SALT_ROUNDS,
+    );
 
     const user = this.userRepository.create({
       email,
@@ -62,7 +65,7 @@ export class UsersService {
   // Verification & Security
   // Compares a plaintext password attempt against a stored cryptographic hash to authorize access.
   async validatePassword(
-    plainPassword:  string,
+    plainPassword: string,
     hashedPassword: string,
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
@@ -73,8 +76,11 @@ export class UsersService {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password        = hashedPassword;
+    const hashedPassword = await bcrypt.hash(
+      newPassword,
+      SECURITY_CONSTANTS.BCRYPT_SALT_ROUNDS,
+    );
+    user.password = hashedPassword;
     await this.userRepository.save(user);
   }
 
@@ -108,19 +114,52 @@ export class UsersService {
 
   // Permanently removes a user record and its credentials from the system.
   async deleteUser(userId: string): Promise<void> {
-    const user = await this.findById(userId); 
+    const user = await this.findById(userId);
     if (!user) throw new NotFoundException('User not found');
-    
+
     await this.userRepository.delete(userId);
   }
 
   // Updates basic contact and identity information within the master user record.
-  async update(userId: string, data: Partial<{ fullName: string; contactNumber: string }>) {
+  async update(
+    userId: string,
+    data: Partial<{ fullName: string; contactNumber: string }>,
+  ) {
     await this.userRepository.update(userId, data);
   }
 
   // Updates the public-facing avatar URL for the user's profile across all platform interfaces.
   async updateAvatar(userId: string, avatarUrl: string | null): Promise<void> {
     await this.userRepository.update(userId, { avatarUrl });
+  }
+
+  // Account Security & Brute-Force Protection
+  // Increments the failed login attempt counter and locks account after 5 attempts for 15 minutes
+  async incrementFailedLoginAttempts(userId: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const newAttempts = user.failedLoginAttempts + 1;
+    const lockoutThreshold = SECURITY_CONSTANTS.LOCKOUT_THRESHOLD;
+    const lockoutDurationMinutes = SECURITY_CONSTANTS.LOCKOUT_DURATION_MINUTES;
+
+    const update: any = { failedLoginAttempts: newAttempts };
+
+    // Lock account if threshold exceeded
+    if (newAttempts >= lockoutThreshold) {
+      const lockedUntil = new Date();
+      lockedUntil.setMinutes(lockedUntil.getMinutes() + lockoutDurationMinutes);
+      update.lockedUntil = lockedUntil;
+    }
+
+    await this.userRepository.update(userId, update);
+  }
+
+  // Resets failed login attempts and unlocks the account on successful login
+  async resetFailedLoginAttempts(userId: string): Promise<void> {
+    await this.userRepository.update(userId, {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    });
   }
 }

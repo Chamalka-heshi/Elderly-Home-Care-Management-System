@@ -3,17 +3,15 @@ import {
   Get,
   Patch,
   Body,
-  Request,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 
-import { DoctorsService }         from './doctors.service';
-import { Roles }                  from '../../common/decorators/roles.decorator';
-import { UserRole }               from '../../common/enums/user-role.enum';
+import { DoctorsService } from './doctors.service';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
 import { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto';
-import { GetUser }                from '../../common/decorators/current-user.decorator';
-
+import { GetUser } from '../../common/decorators/current-user.decorator';
 
 // Manages the private workspace and profile of clinical professionals, providing tools for session tracking and availability.
 @Controller('doctors')
@@ -44,10 +42,11 @@ export class DoctorsController {
   @Roles(UserRole.DOCTOR)
   setAvailability(
     @GetUser('sub') userId: string,
-    @Body() body: {
-      availableDays:      string[];
+    @Body()
+    body: {
+      availableDays: string[];
       availableTimeStart: string;
-      availableTimeEnd:   string;
+      availableTimeEnd: string;
     },
   ) {
     return this.doctorsService.setAvailability(

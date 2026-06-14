@@ -1,7 +1,6 @@
 /* eslint-disable prettier/prettier */
 import {
   Controller,
-  Get,
   Patch,
   Body,
   Request,

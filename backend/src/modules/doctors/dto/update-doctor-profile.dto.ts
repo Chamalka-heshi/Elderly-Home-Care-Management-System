@@ -1,11 +1,4 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsNumber, 
-  Min, 
-  Matches 
-} from 'class-validator';
-
+import { IsString, IsOptional, IsNumber, Min, Matches } from 'class-validator';
 
 // Allows clinical professionals to maintain their own professional details and contact information while enforcing system safety rules.
 export class UpdateDoctorProfileDto {

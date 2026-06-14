@@ -1,10 +1,6 @@
-import { 
-  Injectable, 
-  OnModuleInit, 
-  Logger 
-} from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as admin         from 'firebase-admin';
+import * as admin from 'firebase-admin';
 
 // Firebase Admin Service
 
@@ -20,16 +16,16 @@ export class FirebaseAdminService implements OnModuleInit {
     // Initialise only once — guard against hot-reload double init.
     if (admin.apps.length > 0) return;
 
-    const projectId  = this.configService.get<string>('FIREBASE_PROJECT_ID');
+    const projectId = this.configService.get<string>('FIREBASE_PROJECT_ID');
     const clientEmail = this.configService.get<string>('FIREBASE_CLIENT_EMAIL');
-    const privateKey  = this.configService
+    const privateKey = this.configService
       .get<string>('FIREBASE_PRIVATE_KEY')
       ?.replace(/\\n/g, '\n');
 
     if (!projectId || !clientEmail || !privateKey) {
       this.logger.error(
         'Firebase Admin SDK credentials are missing. ' +
-        'Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in .env',
+          'Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in .env',
       );
       return;
     }

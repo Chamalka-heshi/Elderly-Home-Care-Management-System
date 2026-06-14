@@ -6,7 +6,6 @@ import {
   Matches,
 } from 'class-validator';
 
-
 // Validates the registration payload to ensure mandatory identity, contact, and secure credential formats are met.
 export class FamilySignupDto {
   @IsNotEmpty()

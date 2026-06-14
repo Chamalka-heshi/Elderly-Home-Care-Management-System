@@ -8,7 +8,6 @@ import {
 
 import { User } from '../../users/entities/user.entity';
 
-
 // Represents an administrative user record, linking core identity data to admin-specific attributes.
 @Entity('admins')
 export class Admin {

@@ -1,19 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken }  from '@nestjs/typeorm';
-import { FamilyService }       from './family.service';
-import { FamilyMember }        from './entities/family-member.entity';
-import { UsersService }        from '../users/users.service';
-import { NotFoundException }   from '@nestjs/common';
-import { User }                from '../users/entities/user.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { FamilyService } from './family.service';
+import { FamilyMember } from './entities/family-member.entity';
+import { UsersService } from '../users/users.service';
+import { NotFoundException } from '@nestjs/common';
+import { User } from '../users/entities/user.entity';
 
 describe('FamilyService', () => {
   let service: FamilyService;
 
   const mockFamilyRepo = {
-    create:  jest.fn(),
-    save:    jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
     findOne: jest.fn(),
-    find:    jest.fn(),
+    find: jest.fn(),
   };
 
   const mockUsersService = {
@@ -60,9 +60,11 @@ describe('FamilyService', () => {
 
       const result = await service.findByUserId('user1');
       expect(result).toEqual(member);
-      expect(mockFamilyRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({
-        where: { user: { id: 'user1' } }
-      }));
+      expect(mockFamilyRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { user: { id: 'user1' } },
+        }),
+      );
     });
   });
 
@@ -98,14 +100,17 @@ describe('FamilyService', () => {
       mockUsersService.update.mockResolvedValue(true);
 
       await service.updateProfileByUserId('user1', { fullName: 'New Name' });
-      
-      expect(mockUsersService.update).toHaveBeenCalledWith('user1', { fullName: 'New Name' });
+
+      expect(mockUsersService.update).toHaveBeenCalledWith('user1', {
+        fullName: 'New Name',
+      });
     });
 
     it('should throw NotFoundException if family member not found', async () => {
       mockFamilyRepo.findOne.mockResolvedValue(null);
-      await expect(service.updateProfileByUserId('user1', { fullName: 'New Name' }))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateProfileByUserId('user1', { fullName: 'New Name' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

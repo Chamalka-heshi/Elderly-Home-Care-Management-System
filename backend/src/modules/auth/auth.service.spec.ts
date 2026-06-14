@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService }         from './auth.service';
-import { UsersService }        from '../users/users.service';
-import { FamilyService }       from '../family/family.service';
-import { DoctorsService }      from '../doctors/doctors.service';
-import { CaregiversService }   from '../caregivers/caregivers.service';
-import { PatientsService }     from '../patients/patients.service';
-import { AdminService }        from '../admin/admin.service';
-import { MailService }         from '../mail/mail.service';
+import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
+import { FamilyService } from '../family/family.service';
+import { DoctorsService } from '../doctors/doctors.service';
+import { CaregiversService } from '../caregivers/caregivers.service';
+import { PatientsService } from '../patients/patients.service';
+import { AdminService } from '../admin/admin.service';
+import { MailService } from '../mail/mail.service';
 import { FirebaseAdminService } from './firebase/firebase-admin.service';
-import { JwtService }          from '@nestjs/jwt';
-import { getRepositoryToken }  from '@nestjs/typeorm';
-import { User }                from '../users/entities/user.entity';
+import { JwtService } from '@nestjs/jwt';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { User } from '../users/entities/user.entity';
 import {
   UnauthorizedException,
   BadRequestException,
@@ -22,43 +22,49 @@ describe('AuthService', () => {
   let service: AuthService;
 
   const mockUsersService = {
-    findByEmail:           jest.fn(),
-    findById:              jest.fn(),
-    findByIdWithPassword:  jest.fn(),
-    create:                jest.fn(),
-    validatePassword:      jest.fn(),
-    updatePassword:        jest.fn(),
+    findByEmail: jest.fn(),
+    findById: jest.fn(),
+    findByIdWithPassword: jest.fn(),
+    create: jest.fn(),
+    validatePassword: jest.fn(),
+    updatePassword: jest.fn(),
     setMustChangePassword: jest.fn(),
-    deactivateUser:        jest.fn(),
-    setLastLogoutAt:       jest.fn(),
-    updateAvatar:          jest.fn(),
-    update:                jest.fn(),
+    deactivateUser: jest.fn(),
+    setLastLogoutAt: jest.fn(),
+    updateAvatar: jest.fn(),
+    update: jest.fn(),
+    incrementFailedLoginAttempts: jest.fn(),
+    resetFailedLoginAttempts: jest.fn(),
   };
 
-  const mockFamilyService     = { create: jest.fn(), findByUserId: jest.fn() };
-  const mockDoctorsService    = { findByUserId: jest.fn() };
+  const mockFamilyService = { create: jest.fn(), findByUserId: jest.fn() };
+  const mockDoctorsService = { findByUserId: jest.fn() };
   const mockCaregiversService = { findByUserId: jest.fn() };
-  const mockPatientsService   = { findByUserId: jest.fn() };
-  const mockAdminService      = { findByUserId: jest.fn() };
-  const mockMailService       = { sendPasswordResetEmail: jest.fn() };
-  const mockFirebaseAdmin     = { verifyIdToken: jest.fn() };
-  const mockJwtService        = { sign: jest.fn() };
-  const mockUserRepo          = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
+  const mockPatientsService = { findByUserId: jest.fn() };
+  const mockAdminService = { findByUserId: jest.fn() };
+  const mockMailService = { sendPasswordResetEmail: jest.fn() };
+  const mockFirebaseAdmin = { verifyIdToken: jest.fn() };
+  const mockJwtService = { sign: jest.fn() };
+  const mockUserRepo = {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: UsersService,              useValue: mockUsersService },
-        { provide: FamilyService,             useValue: mockFamilyService },
-        { provide: DoctorsService,            useValue: mockDoctorsService },
-        { provide: CaregiversService,         useValue: mockCaregiversService },
-        { provide: PatientsService,           useValue: mockPatientsService },
-        { provide: AdminService,              useValue: mockAdminService },
-        { provide: MailService,               useValue: mockMailService },
-        { provide: FirebaseAdminService,      useValue: mockFirebaseAdmin },
-        { provide: JwtService,                useValue: mockJwtService },
-        { provide: getRepositoryToken(User),  useValue: mockUserRepo },
+        { provide: UsersService, useValue: mockUsersService },
+        { provide: FamilyService, useValue: mockFamilyService },
+        { provide: DoctorsService, useValue: mockDoctorsService },
+        { provide: CaregiversService, useValue: mockCaregiversService },
+        { provide: PatientsService, useValue: mockPatientsService },
+        { provide: AdminService, useValue: mockAdminService },
+        { provide: MailService, useValue: mockMailService },
+        { provide: FirebaseAdminService, useValue: mockFirebaseAdmin },
+        { provide: JwtService, useValue: mockJwtService },
+        { provide: getRepositoryToken(User), useValue: mockUserRepo },
       ],
     }).compile();
     service = module.get<AuthService>(AuthService);
@@ -73,7 +79,14 @@ describe('AuthService', () => {
     const dto = { email: 'test@test.com', password: 'pw' };
 
     it('should return JWT and user on valid credentials', async () => {
-      const user = { id: 'u1', email: 'test@test.com', isActive: true, role: UserRole.FAMILY, mustChangePassword: false, contactNumber: '123' };
+      const user = {
+        id: 'u1',
+        email: 'test@test.com',
+        isActive: true,
+        role: UserRole.FAMILY,
+        mustChangePassword: false,
+        contactNumber: '123',
+      };
       mockUsersService.findByEmail.mockResolvedValue(user);
       mockUsersService.validatePassword.mockResolvedValue(true);
       mockJwtService.sign.mockReturnValue('jwt_token');
@@ -101,18 +114,33 @@ describe('AuthService', () => {
 
     it('should pass email as-is to findByEmail without normalization', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
-      await service.login({ email: '  UPPER@TEST.COM  ', password: 'pw' }).catch(() => {});
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith('  UPPER@TEST.COM  ');
+      await service
+        .login({ email: '  UPPER@TEST.COM  ', password: 'pw' })
+        .catch(() => {});
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+        '  UPPER@TEST.COM  ',
+      );
     });
   });
 
   // ─── familySignup ─────────────────────────────────────────────────────────
   describe('familySignup', () => {
-    const dto = { email: 'new@test.com', password: 'pw', fullName: 'New User', contactNumber: '123' };
+    const dto = {
+      email: 'new@test.com',
+      password: 'pw',
+      fullName: 'New User',
+      contactNumber: '123',
+    };
 
     it('should register family member and return token', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
-      const user = { id: 'u1', email: dto.email, role: UserRole.FAMILY, fullName: dto.fullName, contactNumber: dto.contactNumber };
+      const user = {
+        id: 'u1',
+        email: dto.email,
+        role: UserRole.FAMILY,
+        fullName: dto.fullName,
+        contactNumber: dto.contactNumber,
+      };
       mockUsersService.create.mockResolvedValue(user);
       mockFamilyService.create.mockResolvedValue(true);
       mockJwtService.sign.mockReturnValue('jwt_token');
@@ -124,7 +152,9 @@ describe('AuthService', () => {
 
     it('should throw BadRequestException if email already taken', async () => {
       mockUsersService.findByEmail.mockResolvedValue({ id: 'existing' });
-      await expect(service.familySignup(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.familySignup(dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should create a family profile after user creation', async () => {
@@ -142,8 +172,14 @@ describe('AuthService', () => {
   // ─── getProfile ───────────────────────────────────────────────────────────
   describe('getProfile', () => {
     it('should return FAMILY profile without nested user', async () => {
-      mockUsersService.findById.mockResolvedValue({ id: 'u1', role: UserRole.FAMILY });
-      mockFamilyService.findByUserId.mockResolvedValue({ id: 'f1', user: { id: 'u1' } });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        role: UserRole.FAMILY,
+      });
+      mockFamilyService.findByUserId.mockResolvedValue({
+        id: 'f1',
+        user: { id: 'u1' },
+      });
 
       const result = await service.getProfile('u1');
       expect(result.profile.id).toBe('f1');
@@ -151,16 +187,28 @@ describe('AuthService', () => {
     });
 
     it('should return DOCTOR profile', async () => {
-      mockUsersService.findById.mockResolvedValue({ id: 'u1', role: UserRole.DOCTOR });
-      mockDoctorsService.findByUserId.mockResolvedValue({ id: 'd1', user: { id: 'u1' } });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        role: UserRole.DOCTOR,
+      });
+      mockDoctorsService.findByUserId.mockResolvedValue({
+        id: 'd1',
+        user: { id: 'u1' },
+      });
 
       const result = await service.getProfile('u1');
       expect(result.profile.id).toBe('d1');
     });
 
     it('should return ADMIN profile', async () => {
-      mockUsersService.findById.mockResolvedValue({ id: 'u1', role: UserRole.ADMIN });
-      mockAdminService.findByUserId.mockResolvedValue({ id: 'a1', user: { id: 'u1' } });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        role: UserRole.ADMIN,
+      });
+      mockAdminService.findByUserId.mockResolvedValue({
+        id: 'a1',
+        user: { id: 'u1' },
+      });
 
       const result = await service.getProfile('u1');
       expect(result.profile.id).toBe('a1');
@@ -177,7 +225,10 @@ describe('AuthService', () => {
     it('should call setLastLogoutAt', async () => {
       mockUsersService.setLastLogoutAt.mockResolvedValue(undefined);
       await service.logout('u1');
-      expect(mockUsersService.setLastLogoutAt).toHaveBeenCalledWith('u1', expect.any(Date));
+      expect(mockUsersService.setLastLogoutAt).toHaveBeenCalledWith(
+        'u1',
+        expect.any(Date),
+      );
     });
   });
 
@@ -193,30 +244,43 @@ describe('AuthService', () => {
 
   // ─── uploadAvatar ─────────────────────────────────────────────────────────
   describe('uploadAvatar', () => {
-    const validFile = { mimetype: 'image/jpeg', size: 1024, buffer: Buffer.from('img') };
+    const validFile = {
+      mimetype: 'image/jpeg',
+      size: 1024,
+      buffer: Buffer.from('img'),
+    };
 
     it('should return a data URL and persist it', async () => {
       mockUsersService.updateAvatar.mockResolvedValue(undefined);
       const result = await service.uploadAvatar('u1', validFile);
       expect(result.avatarUrl).toMatch(/^data:image\/jpeg;base64,/);
-      expect(mockUsersService.updateAvatar).toHaveBeenCalledWith('u1', result.avatarUrl);
+      expect(mockUsersService.updateAvatar).toHaveBeenCalledWith(
+        'u1',
+        result.avatarUrl,
+      );
     });
 
     it('should throw BadRequestException for unsupported MIME type', async () => {
       await expect(
-        service.uploadAvatar('u1', { ...validFile, mimetype: 'application/pdf' })
+        service.uploadAvatar('u1', {
+          ...validFile,
+          mimetype: 'application/pdf',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when file exceeds 5 MB', async () => {
       await expect(
-        service.uploadAvatar('u1', { ...validFile, size: 6 * 1024 * 1024 })
+        service.uploadAvatar('u1', { ...validFile, size: 6 * 1024 * 1024 }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should accept PNG images', async () => {
       mockUsersService.updateAvatar.mockResolvedValue(undefined);
-      const result = await service.uploadAvatar('u1', { ...validFile, mimetype: 'image/png' });
+      const result = await service.uploadAvatar('u1', {
+        ...validFile,
+        mimetype: 'image/png',
+      });
       expect(result.avatarUrl).toMatch(/^data:image\/png;base64,/);
     });
   });
@@ -233,80 +297,129 @@ describe('AuthService', () => {
   // ─── changePassword ───────────────────────────────────────────────────────
   describe('changePassword', () => {
     it('should update password when current password is correct', async () => {
-      mockUsersService.findByIdWithPassword.mockResolvedValue({ id: 'u1', password: 'hashed' });
+      mockUsersService.findByIdWithPassword.mockResolvedValue({
+        id: 'u1',
+        password: 'hashed',
+      });
       mockUsersService.validatePassword.mockResolvedValue(true);
       mockUsersService.updatePassword.mockResolvedValue(undefined);
       mockUsersService.setMustChangePassword.mockResolvedValue(undefined);
 
       await service.changePassword('u1', 'currentPw', 'newPw');
-      expect(mockUsersService.updatePassword).toHaveBeenCalledWith('u1', 'newPw');
-      expect(mockUsersService.setMustChangePassword).toHaveBeenCalledWith('u1', false);
+      expect(mockUsersService.updatePassword).toHaveBeenCalledWith(
+        'u1',
+        'newPw',
+      );
+      expect(mockUsersService.setMustChangePassword).toHaveBeenCalledWith(
+        'u1',
+        false,
+      );
     });
 
     it('should throw NotFoundException when user not found', async () => {
       mockUsersService.findByIdWithPassword.mockResolvedValue(null);
-      await expect(service.changePassword('u1', 'old', 'new')).rejects.toThrow(NotFoundException);
+      await expect(service.changePassword('u1', 'old', 'new')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw UnauthorizedException for wrong current password', async () => {
-      mockUsersService.findByIdWithPassword.mockResolvedValue({ id: 'u1', password: 'hashed' });
+      mockUsersService.findByIdWithPassword.mockResolvedValue({
+        id: 'u1',
+        password: 'hashed',
+      });
       mockUsersService.validatePassword.mockResolvedValue(false);
-      await expect(service.changePassword('u1', 'wrong', 'new')).rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.changePassword('u1', 'wrong', 'new'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   // ─── firstLoginChangePassword ─────────────────────────────────────────────
   describe('firstLoginChangePassword', () => {
     it('should change password on first login', async () => {
-      mockUsersService.findById.mockResolvedValue({ id: 'u1', mustChangePassword: true });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        mustChangePassword: true,
+      });
       mockUsersService.updatePassword.mockResolvedValue(undefined);
       mockUsersService.setMustChangePassword.mockResolvedValue(undefined);
 
       await service.firstLoginChangePassword('u1', 'newPw');
-      expect(mockUsersService.updatePassword).toHaveBeenCalledWith('u1', 'newPw');
-      expect(mockUsersService.setMustChangePassword).toHaveBeenCalledWith('u1', false);
+      expect(mockUsersService.updatePassword).toHaveBeenCalledWith(
+        'u1',
+        'newPw',
+      );
+      expect(mockUsersService.setMustChangePassword).toHaveBeenCalledWith(
+        'u1',
+        false,
+      );
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
       mockUsersService.findById.mockResolvedValue(null);
-      await expect(service.firstLoginChangePassword('u1', 'pw')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.firstLoginChangePassword('u1', 'pw'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw UnauthorizedException when mustChangePassword is false', async () => {
-      mockUsersService.findById.mockResolvedValue({ id: 'u1', mustChangePassword: false });
-      await expect(service.firstLoginChangePassword('u1', 'pw')).rejects.toThrow(UnauthorizedException);
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        mustChangePassword: false,
+      });
+      await expect(
+        service.firstLoginChangePassword('u1', 'pw'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   // ─── checkEmailForReset ───────────────────────────────────────────────────
   describe('checkEmailForReset', () => {
     it('should return masked contact number', async () => {
-      mockUsersService.findByEmail.mockResolvedValue({ isActive: true, contactNumber: '+94712345678' });
+      mockUsersService.findByEmail.mockResolvedValue({
+        isActive: true,
+        contactNumber: '+94712345678',
+      });
       const result = await service.checkEmailForReset('test@test.com');
       expect(result.maskedContact).toMatch(/^\*+678$/);
     });
 
     it('should throw NotFoundException when user not found', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
-      await expect(service.checkEmailForReset('no@test.com')).rejects.toThrow(NotFoundException);
+      await expect(service.checkEmailForReset('no@test.com')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when user is inactive', async () => {
       mockUsersService.findByEmail.mockResolvedValue({ isActive: false });
-      await expect(service.checkEmailForReset('test@test.com')).rejects.toThrow(NotFoundException);
+      await expect(service.checkEmailForReset('test@test.com')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when no contact number on account', async () => {
-      mockUsersService.findByEmail.mockResolvedValue({ isActive: true, contactNumber: '' });
-      await expect(service.checkEmailForReset('test@test.com')).rejects.toThrow(BadRequestException);
+      mockUsersService.findByEmail.mockResolvedValue({
+        isActive: true,
+        contactNumber: '',
+      });
+      await expect(service.checkEmailForReset('test@test.com')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   // ─── forgotPassword ───────────────────────────────────────────────────────
   describe('forgotPassword', () => {
     const user = {
-      id: 'u1', email: 'test@test.com', fullName: 'Test',
-      isActive: true, contactNumber: '+94712345678', password: '', mustChangePassword: false,
+      id: 'u1',
+      email: 'test@test.com',
+      fullName: 'Test',
+      isActive: true,
+      contactNumber: '+94712345678',
+      password: '',
+      mustChangePassword: false,
     };
 
     it('should send reset email when credentials match', async () => {
@@ -314,7 +427,10 @@ describe('AuthService', () => {
       mockUserRepo.save.mockResolvedValue(user);
       mockMailService.sendPasswordResetEmail.mockResolvedValue(undefined);
 
-      const result = await service.forgotPassword('test@test.com', '+94712345678');
+      const result = await service.forgotPassword(
+        'test@test.com',
+        '+94712345678',
+      );
       expect(result.message).toContain('temporary password');
       expect(mockMailService.sendPasswordResetEmail).toHaveBeenCalled();
       expect(mockUserRepo.save).toHaveBeenCalled();
@@ -322,12 +438,16 @@ describe('AuthService', () => {
 
     it('should throw NotFoundException when user not found', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
-      await expect(service.forgotPassword('no@test.com', '123')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.forgotPassword('no@test.com', '123'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw UnauthorizedException when contact does not match', async () => {
       mockUsersService.findByEmail.mockResolvedValue(user);
-      await expect(service.forgotPassword('test@test.com', 'WRONG')).rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.forgotPassword('test@test.com', 'WRONG'),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should set mustChangePassword to true in saved user', async () => {
@@ -345,21 +465,21 @@ describe('AuthService', () => {
   describe('resetPassword', () => {
     it('should throw BadRequestException when passwords do not match', async () => {
       await expect(
-        service.resetPassword('test@test.com', 'temp', 'newPw', 'different')
+        service.resetPassword('test@test.com', 'temp', 'newPw', 'different'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when user not found', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
       await expect(
-        service.resetPassword('no@test.com', 'temp', 'pw', 'pw')
+        service.resetPassword('no@test.com', 'temp', 'pw', 'pw'),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when user is inactive', async () => {
       mockUsersService.findByEmail.mockResolvedValue({ isActive: false });
       await expect(
-        service.resetPassword('test@test.com', 'temp', 'pw', 'pw')
+        service.resetPassword('test@test.com', 'temp', 'pw', 'pw'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -367,24 +487,55 @@ describe('AuthService', () => {
   // ─── firebaseAuth ─────────────────────────────────────────────────────────
   describe('firebaseAuth', () => {
     it('should throw UnauthorizedException for invalid Firebase token', async () => {
-      mockFirebaseAdmin.verifyIdToken.mockRejectedValue(new Error('invalid token'));
-      await expect(service.firebaseAuth('bad_token')).rejects.toThrow(UnauthorizedException);
+      mockFirebaseAdmin.verifyIdToken.mockRejectedValue(
+        new Error('invalid token'),
+      );
+      await expect(service.firebaseAuth('bad_token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw BadRequestException when Firebase token has no email', async () => {
-      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({ uid: 'fb1', name: 'Name', picture: null });
-      await expect(service.firebaseAuth('token')).rejects.toThrow(BadRequestException);
+      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({
+        uid: 'fb1',
+        name: 'Name',
+        picture: null,
+      });
+      await expect(service.firebaseAuth('token')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw UnauthorizedException when existing user is inactive', async () => {
-      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({ uid: 'fb1', email: 'test@test.com', name: 'Name' });
-      mockUserRepo.findOne.mockResolvedValue({ email: 'test@test.com', isActive: false });
-      await expect(service.firebaseAuth('token')).rejects.toThrow(UnauthorizedException);
+      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({
+        uid: 'fb1',
+        email: 'test@test.com',
+        name: 'Name',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        email: 'test@test.com',
+        isActive: false,
+      });
+      await expect(service.firebaseAuth('token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should return a token for existing active user and isNewUser=false', async () => {
-      const existingUser = { id: 'u1', email: 'test@test.com', fullName: 'Name', isActive: true, role: UserRole.FAMILY, contactNumber: '', mustChangePassword: false };
-      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({ uid: 'fb1', email: 'test@test.com', name: 'Name' });
+      const existingUser = {
+        id: 'u1',
+        email: 'test@test.com',
+        fullName: 'Name',
+        isActive: true,
+        role: UserRole.FAMILY,
+        contactNumber: '',
+        mustChangePassword: false,
+      };
+      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({
+        uid: 'fb1',
+        email: 'test@test.com',
+        name: 'Name',
+      });
       mockUserRepo.findOne.mockResolvedValue(existingUser);
       mockFamilyService.findByUserId.mockResolvedValue({ id: 'f1' });
       mockJwtService.sign.mockReturnValue('jwt_token');

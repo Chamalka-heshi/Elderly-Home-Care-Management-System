@@ -1,9 +1,4 @@
-import { 
-  IsString, 
-  IsOptional, 
-  Matches 
-} from 'class-validator';
-
+import { IsString, IsOptional, Matches } from 'class-validator';
 
 // Defines optional fields that an admin can modify on their own profile while enforcing data format constraints.
 export class UpdateAdminProfileDto {

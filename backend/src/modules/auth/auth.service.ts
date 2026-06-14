@@ -5,40 +5,40 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JwtService }       from '@nestjs/jwt';
-import { Repository }       from 'typeorm';
-import * as crypto          from 'crypto';
-import * as bcrypt          from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
-import { User }                  from '../users/entities/user.entity';
-import { UsersService }          from '../users/users.service';
-import { FamilyService }         from '../family/family.service';
-import { DoctorsService }        from '../doctors/doctors.service';
-import { CaregiversService }     from '../caregivers/caregivers.service';
-import { AdminService }          from '../admin/admin.service';
-import { PatientsService }       from '../patients/patients.service';
-import { FamilySignupDto }       from './dto/signup.dto';
-import { LoginDto }              from './dto/login.dto';
-import { UserRole }              from '../../common/enums/user-role.enum';
-import { FirebaseAdminService }  from './firebase/firebase-admin.service';
-import { MailService }           from '../mail/mail.service';
-
-const BCRYPT_SALT_ROUNDS = 10;
+import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
+import { FamilyService } from '../family/family.service';
+import { DoctorsService } from '../doctors/doctors.service';
+import { CaregiversService } from '../caregivers/caregivers.service';
+import { AdminService } from '../admin/admin.service';
+import { PatientsService } from '../patients/patients.service';
+import { FamilySignupDto } from './dto/signup.dto';
+import { LoginDto } from './dto/login.dto';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { FirebaseAdminService } from './firebase/firebase-admin.service';
+import { MailService } from '../mail/mail.service';
+import { CsrfGuard } from '../../common/guards/csrf.guard';
+import { SECURITY_CONSTANTS } from '../../common/constants/security.constants';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService:      UsersService,
-    private readonly familyService:     FamilyService,
-    private readonly doctorsService:    DoctorsService,
+    private readonly usersService: UsersService,
+    private readonly familyService: FamilyService,
+    private readonly doctorsService: DoctorsService,
     private readonly caregiversService: CaregiversService,
-    private readonly patientsService:   PatientsService,
-    private readonly jwtService:        JwtService,
-    private readonly firebaseAdmin:     FirebaseAdminService,
-    private readonly adminService:      AdminService,
-    private readonly mailService:       MailService,
+    private readonly patientsService: PatientsService,
+    private readonly jwtService: JwtService,
+    private readonly firebaseAdmin: FirebaseAdminService,
+    private readonly adminService: AdminService,
+    private readonly mailService: MailService,
     @InjectRepository(User)
-    private readonly userRepository:    Repository<User>,
+    private readonly userRepository: Repository<User>,
   ) {}
 
   // Registration
@@ -66,11 +66,11 @@ export class AuthService {
     return {
       message: 'Family member registered successfully',
       user: {
-        id:                 user.id,
-        fullName:           user.fullName,
-        email:              user.email,
-        role:               user.role,
-        contactNumber:      user.contactNumber,
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        contactNumber: user.contactNumber,
         mustChangePassword: false,
       },
       token,
@@ -84,28 +84,52 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException('No account found with this email address.');
+      throw new UnauthorizedException(
+        'No account found with this email address.',
+      );
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('Your account has been deactivated. Please contact support.');
+      throw new UnauthorizedException(
+        'Your account has been deactivated. Please contact support.',
+      );
     }
 
-    const isPasswordValid = await this.usersService.validatePassword(password, user.password);
+    // Check if account is locked due to too many failed attempts
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException(
+        'Account locked due to too many failed login attempts. Try again in 15 minutes.',
+      );
+    }
+
+    // Reset lock if lockout period has expired
+    if (user.lockedUntil && user.lockedUntil <= new Date()) {
+      await this.usersService.resetFailedLoginAttempts(user.id);
+    }
+
+    const isPasswordValid = await this.usersService.validatePassword(
+      password,
+      user.password,
+    );
     if (!isPasswordValid) {
+      // Increment failed login attempts
+      await this.usersService.incrementFailedLoginAttempts(user.id);
       throw new UnauthorizedException('Incorrect password. Please try again.');
     }
+
+    // Reset failed login attempts on successful login
+    await this.usersService.resetFailedLoginAttempts(user.id);
 
     const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Login successful',
       user: {
-        id:                 user.id,
-        fullName:           user.fullName,
-        email:              user.email,
-        role:               user.role,
-        contactNumber:      user.contactNumber,
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        contactNumber: user.contactNumber,
         mustChangePassword: user.mustChangePassword,
       },
       token,
@@ -123,8 +147,9 @@ export class AuthService {
     // Strips the nested `user` relation before returning role-specific profile data
     const stripUser = (entity: any) => {
       if (!entity) return null;
-      const { user: _, ...rest } = entity;
-      return rest;
+      const copy = { ...entity };
+      delete copy.user;
+      return copy;
     };
 
     let profileData = null;
@@ -134,10 +159,14 @@ export class AuthService {
         profileData = stripUser(await this.familyService.findByUserId(user.id));
         break;
       case UserRole.DOCTOR:
-        profileData = stripUser(await this.doctorsService.findByUserId(user.id));
+        profileData = stripUser(
+          await this.doctorsService.findByUserId(user.id),
+        );
         break;
       case UserRole.CAREGIVER:
-        profileData = stripUser(await this.caregiversService.findByUserId(user.id));
+        profileData = stripUser(
+          await this.caregiversService.findByUserId(user.id),
+        );
         break;
       case UserRole.ADMIN:
       case UserRole.SUPER_ADMIN:
@@ -146,15 +175,15 @@ export class AuthService {
     }
 
     return {
-      id:                 user.id,
-      fullName:           user.fullName,
-      email:              user.email,
-      role:               user.role,
-      contactNumber:      user.contactNumber,
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      contactNumber: user.contactNumber,
       mustChangePassword: user.mustChangePassword,
-      createdAt:          user.createdAt,
-      avatarUrl:          user.avatarUrl ?? null,
-      profile:            profileData,
+      createdAt: user.createdAt,
+      avatarUrl: user.avatarUrl ?? null,
+      profile: profileData,
     };
   }
 
@@ -169,10 +198,13 @@ export class AuthService {
     return { message: 'Account deleted successfully' };
   }
 
-
   // Synchronizes external Firebase identities with the local user database, creating new profiles if necessary.
-  async firebaseAuth(idToken: string): Promise<{ token: string; user: any; isNewUser: boolean }> {
-    let decodedToken: Awaited<ReturnType<FirebaseAdminService['verifyIdToken']>>;
+  async firebaseAuth(
+    idToken: string,
+  ): Promise<{ token: string; user: any; isNewUser: boolean }> {
+    let decodedToken: Awaited<
+      ReturnType<FirebaseAdminService['verifyIdToken']>
+    >;
 
     try {
       decodedToken = await this.firebaseAdmin.verifyIdToken(idToken);
@@ -187,7 +219,7 @@ export class AuthService {
     if (!email) {
       throw new BadRequestException(
         'Your Google account does not have a public email address. ' +
-        'Please use a different sign-in method.',
+          'Please use a different sign-in method.',
       );
     }
 
@@ -201,19 +233,18 @@ export class AuthService {
     if (!user) {
       user = this.userRepository.create({
         email,
-        fullName:           name ?? email.split('@')[0],
-        password:           `FIREBASE_OAUTH::${crypto.randomBytes(32).toString('hex')}`,
-        role:               UserRole.FAMILY,
-        contactNumber:      '',
-        firebaseUid:        uid,
-        avatarUrl:          picture ?? null,
+        fullName: name ?? email.split('@')[0],
+        password: `FIREBASE_OAUTH::${crypto.randomBytes(32).toString('hex')}`,
+        role: UserRole.FAMILY,
+        contactNumber: '',
+        firebaseUid: uid,
+        avatarUrl: picture ?? null,
         mustChangePassword: false,
       });
 
       user = await this.userRepository.save(user);
       await this.familyService.create({ user });
       isNewUser = true;
-
     } else if (!user.firebaseUid) {
       user.firebaseUid = uid;
       if (!user.avatarUrl && picture) user.avatarUrl = picture;
@@ -232,11 +263,11 @@ export class AuthService {
     return {
       token,
       user: {
-        id:                 user.id,
-        fullName:           user.fullName,
-        email:              user.email,
-        role:               user.role,
-        contactNumber:      user.contactNumber,
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        contactNumber: user.contactNumber,
         mustChangePassword: user.mustChangePassword,
       },
       isNewUser,
@@ -248,17 +279,24 @@ export class AuthService {
     userId: string,
     file: { mimetype: string; size: number; buffer: Buffer },
   ): Promise<{ avatarUrl: string }> {
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ];
     const maxFileSizeBytes = 5 * 1024 * 1024;
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Only JPEG, PNG, WEBP, or GIF images are allowed');
+      throw new BadRequestException(
+        'Only JPEG, PNG, WEBP, or GIF images are allowed',
+      );
     }
     if (file.size > maxFileSizeBytes) {
       throw new BadRequestException('Avatar image must be smaller than 5 MB');
     }
 
-    const base64  = file.buffer.toString('base64');
+    const base64 = file.buffer.toString('base64');
     const dataUrl = `data:${file.mimetype};base64,${base64}`;
 
     await this.usersService.updateAvatar(userId, dataUrl);
@@ -273,13 +311,20 @@ export class AuthService {
   // Password Security
 
   // Replaces the existing password with a new hash after verifying the user's current credentials.
-  async changePassword(userId: string, currentPw: string, newPw: string): Promise<void> {
+  async changePassword(
+    userId: string,
+    currentPw: string,
+    newPw: string,
+  ): Promise<void> {
     const user = await this.usersService.findByIdWithPassword(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const isMatch = await this.usersService.validatePassword(currentPw, user.password);
+    const isMatch = await this.usersService.validatePassword(
+      currentPw,
+      user.password,
+    );
     if (!isMatch) {
       throw new UnauthorizedException('Current password is incorrect');
     }
@@ -296,7 +341,9 @@ export class AuthService {
     }
 
     if (!user.mustChangePassword) {
-      throw new UnauthorizedException('This endpoint is only available on first login.');
+      throw new UnauthorizedException(
+        'This endpoint is only available on first login.',
+      );
     }
 
     await this.usersService.updatePassword(userId, newPw);
@@ -306,7 +353,9 @@ export class AuthService {
   // Password Recovery
   // Validates a reset request and provides a masked phone number hint to the user for confirmation.
   async checkEmailForReset(email: string): Promise<{ maskedContact: string }> {
-    const user = await this.usersService.findByEmail(email.trim().toLowerCase());
+    const user = await this.usersService.findByEmail(
+      email.trim().toLowerCase(),
+    );
 
     // Generic message — avoids revealing whether the email is registered
     if (!user || !user.isActive) {
@@ -321,14 +370,17 @@ export class AuthService {
 
     // Mask all but the last 3 digits: "+947123456789" → "**********789"
     const contact = user.contactNumber.trim();
-    const masked  = '*'.repeat(contact.length - 3) + contact.slice(-3);
+    const masked = '*'.repeat(contact.length - 3) + contact.slice(-3);
 
     return { maskedContact: masked };
   }
 
   // Issues a temporary random password to the user's registered email after verifying their identity via contact number.
-  async forgotPassword(email: string, contactNumber: string): Promise<{ message: string }> {
-    const normEmail   = email.trim().toLowerCase();
+  async forgotPassword(
+    email: string,
+    contactNumber: string,
+  ): Promise<{ message: string }> {
+    const normEmail = email.trim().toLowerCase();
     const normContact = contactNumber.trim();
 
     const user = await this.usersService.findByEmail(normEmail);
@@ -337,7 +389,9 @@ export class AuthService {
     }
 
     if (!user.contactNumber || user.contactNumber.trim().length < 3) {
-      throw new BadRequestException('Contact number not on record. Please contact support.');
+      throw new BadRequestException(
+        'Contact number not on record. Please contact support.',
+      );
     }
 
     // Masking is display-only — verify the full number for security
@@ -348,13 +402,20 @@ export class AuthService {
     }
 
     const tempPassword = crypto.randomBytes(6).toString('hex');
-    const hashed       = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+    const hashed = await bcrypt.hash(
+      tempPassword,
+      SECURITY_CONSTANTS.BCRYPT_SALT_ROUNDS,
+    );
 
-    user.password           = hashed;
+    user.password = hashed;
     user.mustChangePassword = true;
     await this.userRepository.save(user);
 
-    await this.mailService.sendPasswordResetEmail(user.email, user.fullName, tempPassword);
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.fullName,
+      tempPassword,
+    );
 
     return {
       message:
@@ -365,17 +426,19 @@ export class AuthService {
 
   // Authenticates with a temporary credential and sets a new permanent password, resetting the security session.
   async resetPassword(
-    email:           string,
-    tempPassword:    string,
-    newPassword:     string,
+    email: string,
+    tempPassword: string,
+    newPassword: string,
     confirmPassword: string,
   ): Promise<{ token: string; user: any }> {
     if (newPassword !== confirmPassword) {
-      throw new BadRequestException('New password and confirmation do not match.');
+      throw new BadRequestException(
+        'New password and confirmation do not match.',
+      );
     }
 
     const normEmail = email.trim().toLowerCase();
-    const user      = await this.usersService.findByEmail(normEmail);
+    const user = await this.usersService.findByEmail(normEmail);
 
     if (!user || !user.isActive) {
       throw new NotFoundException('No account found with this email address.');
@@ -383,15 +446,20 @@ export class AuthService {
 
     const isValid = await bcrypt.compare(tempPassword, user.password);
     if (!isValid) {
-      throw new UnauthorizedException('The temporary password you entered is incorrect.');
+      throw new UnauthorizedException(
+        'The temporary password you entered is incorrect.',
+      );
     }
 
-    const hashedNew = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    const hashedNew = await bcrypt.hash(
+      newPassword,
+      SECURITY_CONSTANTS.BCRYPT_SALT_ROUNDS,
+    );
 
-    user.password           = hashedNew;
+    user.password = hashedNew;
     user.mustChangePassword = false;
     // Invalidate all outstanding sessions so only the new password grants access
-    user.lastLogoutAt       = new Date();
+    user.lastLogoutAt = new Date();
     await this.userRepository.save(user);
 
     const token = this.generateToken(user.id, user.email, user.role);
@@ -399,22 +467,23 @@ export class AuthService {
     return {
       token,
       user: {
-        id:                 user.id,
-        fullName:           user.fullName,
-        email:              user.email,
-        role:               user.role,
-        contactNumber:      user.contactNumber,
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        contactNumber: user.contactNumber,
         mustChangePassword: false,
       },
     };
   }
 
   // Encodes user identity and role into a secure JWT for platform-wide authorization.
-  private generateToken(
-    userId:        string,
-    email:         string,
-    role:          UserRole,
-  ): string {
+  private generateToken(userId: string, email: string, role: UserRole): string {
     return this.jwtService.sign({ sub: userId, email, role });
+  }
+
+  // Generate a CSRF token for form submissions and state-changing operations
+  generateCsrfToken(): string {
+    return CsrfGuard.generateToken();
   }
 }

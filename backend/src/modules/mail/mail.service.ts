@@ -1,44 +1,40 @@
-import { 
-  Injectable, 
-  Logger, 
-  OnModuleInit 
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer    from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 
 import { MedicineItem } from '../prescription/entities/prescription.entity';
 
 interface CredentialsEmailOpts {
-  fullName:          string;
-  email:             string;
-  role:              string;
+  fullName: string;
+  email: string;
+  role: string;
   temporaryPassword: string;
 }
 
 interface PasswordResetEmailOpts {
-  fullName:     string;
-  email:        string;
+  fullName: string;
+  email: string;
   tempPassword: string;
 }
 
 interface ReplyEmailOpts {
   recipientName: string;
-  reply:         string;
-  originalMsg:   string;
-  phonePrimary:  string;
-  systemEmail:   string;
+  reply: string;
+  originalMsg: string;
+  phonePrimary: string;
+  systemEmail: string;
 }
 
 interface PrescriptionEmailOpts {
   familyMemberName: string;
-  patientName:      string;
-  doctorName:       string;
+  patientName: string;
+  doctorName: string;
   prescriptions: {
-    issuedDate:       string;
-    validUntil?:      string;
-    diagnosis?:       string;
-    notes?:           string;
-    medicines:        MedicineItem[];
+    issuedDate: string;
+    validUntil?: string;
+    diagnosis?: string;
+    notes?: string;
+    medicines: MedicineItem[];
   }[];
 }
 
@@ -49,8 +45,8 @@ export class MailService implements OnModuleInit {
 
   constructor(private readonly configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
-      host:   this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com',
-      port:   this.configService.get<number>('SMTP_PORT') || 587,
+      host: this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com',
+      port: this.configService.get<number>('SMTP_PORT') || 587,
       secure: this.configService.get<string>('SMTP_SECURE') === 'true',
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
@@ -98,86 +94,107 @@ export class MailService implements OnModuleInit {
 
   // Delivers login access to new users to enable immediate system onboarding
   async sendAccountCredentials(
-    email:             string,
-    fullName:          string,
-    role:              string,
+    email: string,
+    fullName: string,
+    role: string,
     temporaryPassword: string,
   ): Promise<void> {
-    const html = this.buildCredentialsHtml({ fullName, email, role, temporaryPassword });
+    const html = this.buildCredentialsHtml({
+      fullName,
+      email,
+      role,
+      temporaryPassword,
+    });
 
     try {
       await this.transporter.sendMail({
-        from:    this.defaultFromAddress,
-        to:      `"${fullName}" <${email}>`,
+        from: this.defaultFromAddress,
+        to: `"${fullName}" <${email}>`,
         subject: `Welcome to ${this.systemName} — Your ${role} Account is Ready`,
         html,
       });
       this.logger.log(`Credentials email sent → ${email} (${role})`);
     } catch (err) {
-      this.logger.error(`Failed to send credentials email → ${email}: ${this.errMsg(err)}`);
+      this.logger.error(
+        `Failed to send credentials email → ${email}: ${this.errMsg(err)}`,
+      );
     }
   }
 
   // Safely transmits temporary recovery passwords to locked-out users
   async sendPasswordResetEmail(
-    email:        string,
-    fullName:     string,
+    email: string,
+    fullName: string,
     tempPassword: string,
   ): Promise<void> {
     const html = this.buildPasswordResetHtml({ fullName, email, tempPassword });
 
     try {
       await this.transporter.sendMail({
-        from:    this.defaultFromAddress,
-        to:      `"${fullName}" <${email}>`,
+        from: this.defaultFromAddress,
+        to: `"${fullName}" <${email}>`,
         subject: `${this.systemName} — Your Temporary Password`,
         html,
       });
       this.logger.log(`Password-reset email sent → ${email}`);
     } catch (err) {
-      this.logger.error(`Failed to send password-reset email → ${email}: ${this.errMsg(err)}`);
+      this.logger.error(
+        `Failed to send password-reset email → ${email}: ${this.errMsg(err)}`,
+      );
       throw err;
     }
   }
 
   // Automates formal administrative responses to user inquiries
   async sendReplyEmail(
-    recipientName:  string,
+    recipientName: string,
     recipientEmail: string,
-    reply:          string,
-    originalMsg:    string,
-    phonePrimary:   string,
-    systemEmail:    string,
+    reply: string,
+    originalMsg: string,
+    phonePrimary: string,
+    systemEmail: string,
   ): Promise<void> {
-    const html = this.buildReplyHtml({ recipientName, reply, originalMsg, phonePrimary, systemEmail });
+    const html = this.buildReplyHtml({
+      recipientName,
+      reply,
+      originalMsg,
+      phonePrimary,
+      systemEmail,
+    });
 
     try {
       await this.transporter.sendMail({
-        from:    `"${this.systemName}" <${systemEmail}>`,
-        to:      `"${recipientName}" <${recipientEmail}>`,
+        from: `"${this.systemName}" <${systemEmail}>`,
+        to: `"${recipientName}" <${recipientEmail}>`,
         subject: `Re: Your Enquiry — ${this.systemName}`,
         html,
       });
       this.logger.log(`Reply email sent → ${recipientEmail}`);
     } catch (err) {
-      this.logger.error(`Failed to send reply email → ${recipientEmail}: ${this.errMsg(err)}`);
+      this.logger.error(
+        `Failed to send reply email → ${recipientEmail}: ${this.errMsg(err)}`,
+      );
     }
   }
 
   // Informs family members of clinical updates to ensure medication compliance
-  async sendPrescriptionNotification(opts: PrescriptionEmailOpts & { to: string }): Promise<void> {
+  async sendPrescriptionNotification(
+    opts: PrescriptionEmailOpts & { to: string },
+  ): Promise<void> {
     const html = this.buildPrescriptionHtml(opts);
 
     try {
       await this.transporter.sendMail({
-        from:    this.defaultFromAddress,
-        to:      `"${opts.familyMemberName}" <${opts.to}>`,
+        from: this.defaultFromAddress,
+        to: `"${opts.familyMemberName}" <${opts.to}>`,
         subject: `New Prescription for ${opts.patientName} — ${this.systemName}`,
         html,
       });
       this.logger.log(`Prescription notification sent → ${opts.to}`);
     } catch (err) {
-      this.logger.error(`Failed to send prescription notification → ${opts.to}: ${this.errMsg(err)}`);
+      this.logger.error(
+        `Failed to send prescription notification → ${opts.to}: ${this.errMsg(err)}`,
+      );
     }
   }
 
@@ -309,41 +326,49 @@ export class MailService implements OnModuleInit {
 
   // Formats a detailed clinical instruction layout for clear presentation to family members
   private buildPrescriptionHtml(opts: PrescriptionEmailOpts): string {
-    const {
-      familyMemberName, patientName, doctorName,
-      prescriptions,
-    } = opts;
+    const { familyMemberName, patientName, doctorName, prescriptions } = opts;
     const year = new Date().getFullYear();
 
-    const prescriptionBlocks = prescriptions.map((p, index) => {
-      const medicineRows = p.medicines.map((m) => `
+    const prescriptionBlocks = prescriptions
+      .map((p, index) => {
+        const medicineRows = p.medicines
+          .map(
+            (m) => `
         <tr>
           <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;font-weight:600;">${m.medicineName}</td>
           <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.dosage}</td>
           <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.frequency}</td>
           <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
           <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#64748b;">${m.instructions ?? '—'}</td>
-        </tr>`).join('');
+        </tr>`,
+          )
+          .join('');
 
-      const diagnosisBlock = p.diagnosis ? `
+        const diagnosisBlock = p.diagnosis
+          ? `
         <tr>
           <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Diagnosis</td>
           <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.diagnosis}</td>
-        </tr>` : '';
+        </tr>`
+          : '';
 
-      const notesBlock = p.notes ? `
+        const notesBlock = p.notes
+          ? `
         <tr>
           <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;vertical-align:top;">Notes</td>
           <td style="padding:10px 0;font-size:15px;color:#0f172a;line-height:1.6;">${p.notes.replace(/\n/g, '<br>')}</td>
-        </tr>` : '';
+        </tr>`
+          : '';
 
-      const validUntilBlock = p.validUntil ? `
+        const validUntilBlock = p.validUntil
+          ? `
         <tr>
           <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Valid Until</td>
           <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.validUntil}</td>
-        </tr>` : '';
+        </tr>`
+          : '';
 
-      return `
+        return `
         <tr>
           <td style="padding:24px 40px 0;">
             <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">📝 Prescription ${prescriptions.length > 1 ? `#${index + 1}` : ''}</p>
@@ -373,7 +398,8 @@ export class MailService implements OnModuleInit {
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -438,10 +464,11 @@ export class MailService implements OnModuleInit {
 
   // Generates a professional reply template that quotes the user's original inquiry for context
   private buildReplyHtml(opts: ReplyEmailOpts): string {
-    const { recipientName, reply, originalMsg, phonePrimary, systemEmail } = opts;
+    const { recipientName, reply, originalMsg, phonePrimary, systemEmail } =
+      opts;
     const safeReply = reply.replace(/\n/g, '<br>');
-    const safeMsg   = originalMsg.replace(/\n/g, '<br>');
-    const year      = new Date().getFullYear();
+    const safeMsg = originalMsg.replace(/\n/g, '<br>');
+    const year = new Date().getFullYear();
 
     return `<!DOCTYPE html>
 <html lang="en">
