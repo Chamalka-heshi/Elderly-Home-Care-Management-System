@@ -6,8 +6,8 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 export const GetUser = createParamDecorator(
   (field: string | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    const user    = request.user;
-    
+    const user = request.user;
+
     // Returns the specific requested property or the entire identity object to facilitate role-based logic in controllers.
     return field ? user?.[field] : user;
   },

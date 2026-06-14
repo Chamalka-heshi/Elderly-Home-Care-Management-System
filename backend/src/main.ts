@@ -1,36 +1,50 @@
-import { NestFactory }    from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService }  from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 
-import { AppModule }           from './app.module';
+import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-
 
 // Initializes the core application instance and configures global middleware for security, validation, and error handling.
 async function bootstrap() {
-  const app           = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  // Security Headers Middleware
+  // Applies HTTP security headers to protect against common web vulnerabilities (XSS, CSRF, Clickjacking, etc)
+  app.use(helmet());
+
+  // Cookie Parser Middleware
+  // Parses HTTP request cookies and populates req.cookies for cookie-based authentication
+  app.use(cookieParser());
+
   // Cross-Origin Resource Sharing
-  const rawOrigin      = configService.get<string>('app.cors.origin') ?? '';
-  const allowedOrigins = rawOrigin.split(',').map((o) => o.trim()).filter(Boolean);
-  const corsOrigin     = allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
+  const rawOrigin = configService.get<string>('app.cors.origin') ?? '';
+  const allowedOrigins = rawOrigin
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const corsOrigin =
+    allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
 
   // Configures CORS to permit secure communication between the frontend client and the clinical backend API.
+  // Credentials enabled for secure cookie transmission
   app.enableCors({
-    origin:         corsOrigin,
-    credentials:    true,
-    methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: corsOrigin,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   });
 
   // Global Validation
   // Enforces strict input validation across all endpoints, stripping unknown properties to prevent injection attacks.
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist:            true,
+      whitelist: true,
       forbidNonWhitelisted: true,
-      transform:            true,
+      transform: true,
     }),
   );
 
@@ -43,7 +57,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3000;
-  const env  = configService.get<string>('app.nodeEnv');
+  const env = configService.get<string>('app.nodeEnv');
 
   await app.listen(port);
   console.log(`Backend running on http://localhost:${port}/api [${env}]`);

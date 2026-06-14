@@ -6,9 +6,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { UserRole }  from '../enums/user-role.enum';
+import { UserRole } from '../enums/user-role.enum';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-
 
 // Enforces granular access control by comparing the authenticated user's assigned role against the required permissions defined on the endpoint.
 @Injectable()
@@ -17,10 +16,10 @@ export class RolesGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     // Retrieves the authorized roles associated with the target handler or controller.
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredRoles) return true;
 
