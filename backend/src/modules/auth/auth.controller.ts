@@ -47,6 +47,16 @@ export class AuthController {
     );
   }
 
+  private cookieOptions(httpOnly: boolean) {
+    return {
+      httpOnly,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: this.cookieMaxAge,
+      path: '/',
+    };
+  }
+
   // Session Management
   // Registers a new family member account and creates their initial profile in the system.
   @Public()
@@ -57,28 +67,15 @@ export class AuthController {
     const result = await this.authService.familySignup(dto);
 
     // Set secure, HttpOnly cookie with JWT token
-    res.cookie('auth_token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('auth_token', result.token, this.cookieOptions(true));
 
-    // Generate and return CSRF token (stored in sessionStorage on client)
+    // Generate CSRF token and set as readable cookie (double-submit pattern)
     const csrfToken = this.authService.generateCsrfToken();
-    res.cookie('csrf_token', csrfToken, {
-      httpOnly: false, // Allow JS to read for headers
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('csrf_token', csrfToken, this.cookieOptions(false));
 
     res.json({
       message: result.message,
       user: result.user,
-      csrfToken,
     });
   }
 
@@ -91,28 +88,15 @@ export class AuthController {
     const result = await this.authService.login(dto);
 
     // Set secure, HttpOnly cookie with JWT token
-    res.cookie('auth_token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('auth_token', result.token, this.cookieOptions(true));
 
-    // Generate and return CSRF token (stored in sessionStorage on client)
+    // Generate CSRF token and set as readable cookie (double-submit pattern)
     const csrfToken = this.authService.generateCsrfToken();
-    res.cookie('csrf_token', csrfToken, {
-      httpOnly: false, // Allow JS to read for headers
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('csrf_token', csrfToken, this.cookieOptions(false));
 
     res.json({
       message: result.message,
       user: result.user,
-      csrfToken,
     });
   }
 
@@ -125,23 +109,11 @@ export class AuthController {
     const result = await this.authService.firebaseAuth(dto.idToken);
 
     // Set secure, HttpOnly cookie with JWT token
-    res.cookie('auth_token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('auth_token', result.token, this.cookieOptions(true));
 
-    // Generate and return CSRF token (stored in sessionStorage on client)
+    // Generate CSRF token and set as readable cookie (double-submit pattern)
     const csrfToken = this.authService.generateCsrfToken();
-    res.cookie('csrf_token', csrfToken, {
-      httpOnly: false, // Allow JS to read for headers
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('csrf_token', csrfToken, this.cookieOptions(false));
 
     return res.json({
       user: result.user,
@@ -149,7 +121,6 @@ export class AuthController {
         ? 'Account created successfully'
         : 'Signed in successfully',
       isNewUser: result.isNewUser,
-      csrfToken,
     });
   }
 
@@ -188,27 +159,14 @@ export class AuthController {
     );
 
     // Set secure, HttpOnly cookie with JWT token
-    res.cookie('auth_token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('auth_token', result.token, this.cookieOptions(true));
 
-    // Generate and return CSRF token (stored in sessionStorage on client)
+    // Generate CSRF token and set as readable cookie (double-submit pattern)
     const csrfToken = this.authService.generateCsrfToken();
-    res.cookie('csrf_token', csrfToken, {
-      httpOnly: false, // Allow JS to read for headers
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: this.cookieMaxAge,
-      path: '/',
-    });
+    res.cookie('csrf_token', csrfToken, this.cookieOptions(false));
 
     return res.json({
       user: result.user,
-      csrfToken,
     });
   }
 
@@ -219,9 +177,19 @@ export class AuthController {
   async logout(@GetUser('sub') userId: string, @Response() res: any) {
     await this.authService.logout(userId);
 
-    // Clear secure cookies
-    res.clearCookie('auth_token', { path: '/' });
-    res.clearCookie('csrf_token', { path: '/' });
+    // Clear secure cookies (match attributes used when setting them)
+    res.clearCookie('auth_token', {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    res.clearCookie('csrf_token', {
+      path: '/',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
 
     return res.json({ message: 'Logged out successfully' });
   }

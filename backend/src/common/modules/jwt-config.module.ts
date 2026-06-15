@@ -21,7 +21,7 @@ import { UsersModule } from '../../modules/users/users.module';
 
         return {
           secret,
-          signOptions: { expiresIn },
+          signOptions: { expiresIn, algorithm: 'HS256' },
         };
       },
     }),

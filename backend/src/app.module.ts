@@ -6,8 +6,11 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 import { appConfig } from './config/app.config';
 import { JwtConfigModule } from './common/modules/jwt-config.module';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { GlobalSecurityGuard } from './common/guards/global-security.guard';
+import { CsrfGuard } from './common/guards/csrf.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AuthThrottlerGuard } from './common/guards/auth-throttler.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -90,8 +93,11 @@ import { PaymentsModule } from './modules/payments/payments.module';
   // Global Security Guards
   // Enforces mandatory authentication and role-based access control across all application endpoints by default.
   providers: [
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
+    JwtAuthGuard,
+    CsrfGuard,
+    RolesGuard,
+    AuthThrottlerGuard,
+    { provide: APP_GUARD, useClass: GlobalSecurityGuard },
   ],
 })
 export class AppModule {}

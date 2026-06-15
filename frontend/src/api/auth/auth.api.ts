@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchMultipart, API_BASE_URL, setCsrfToken } from '../core/apiClient';
+import { apiFetch, apiFetchMultipart, API_BASE_URL, setCsrfToken, getAuthHeaders } from '../core/apiClient';
 import type { User } from '../../auth/AuthContext';
 import { signInWithGoogle, signOutFirebase } from '../../config/firebase';
 
@@ -50,7 +50,6 @@ export interface FirstLoginChangePasswordRequest {
   confirmPassword: string;
 }
 
-// Forgot password flow
 export interface CheckEmailResponse {
   maskedContact: string;
 }
@@ -67,54 +66,47 @@ export interface ResetPasswordRequest {
   confirmPassword: string;
 }
 
-
-// Check if email exists for password reset
-export const checkEmailForReset = async (email: string): Promise<CheckEmailResponse> => {
-  const params = new URLSearchParams({ email });
-
-  return apiFetch<CheckEmailResponse>(`/auth/forgot-password/check-email?${params}`, {
-    method: 'GET',
-  });
+// Reads the csrf_token cookie set by the backend and saves it to sessionStorage.
+const storeCsrfTokenFromCookie = (): void => {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  if (match) setCsrfToken(decodeURIComponent(match[1]));
 };
 
-// Send forgot password request
-export const forgotPasswordApi = async (
-  data: ForgotPasswordRequest,
-): Promise<{ message: string }> => {
+// Checks whether an email address exists before initiating a password reset.
+export const checkEmailForReset = async (email: string): Promise<CheckEmailResponse> => {
+  const params = new URLSearchParams({ email });
+  return apiFetch<CheckEmailResponse>(`/auth/forgot-password/check-email?${params}`, { method: 'GET' });
+};
+
+// Sends a forgot-password request with the user's email and contact number.
+export const forgotPasswordApi = async (data: ForgotPasswordRequest): Promise<{ message: string }> => {
   return apiFetch<{ message: string }>('/auth/forgot-password', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 
-// Reset password with temporary credential
-export const resetPasswordApi = async (
-  data: ResetPasswordRequest,
-): Promise<{ message: string }> => {
-  return apiFetch<{ message: string }>('/auth/reset-password', {
+// Resets the user's password using a temporary credential and stores the new CSRF token.
+export const resetPasswordApi = async (data: ResetPasswordRequest): Promise<{ message: string }> => {
+  const res = await apiFetch<{ message: string }>('/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  storeCsrfTokenFromCookie();
+  return res;
 };
 
-
-// Authentication
-// Login with email and password
+// Authenticates a user with email and password and stores the CSRF token from the response cookie.
 export const signin = async (data: SigninRequest): Promise<AuthResponse> => {
   const res = await apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(data),
   });
-
-  // Store CSRF token if provided
-  if (res.csrfToken) {
-    setCsrfToken(res.csrfToken);
-  }
-
+  storeCsrfTokenFromCookie();
   return res;
 };
 
-// Login with Google
+// Authenticates a user via Google Firebase and stores the CSRF token from the response cookie.
 export const googleAuth = async (): Promise<AuthResponse> => {
   const credential = await signInWithGoogle();
   const idToken = await credential.user.getIdToken();
@@ -123,28 +115,20 @@ export const googleAuth = async (): Promise<AuthResponse> => {
     method: 'POST',
     body: JSON.stringify({ idToken }),
   });
-
-  // Store CSRF token if provided
-  if (res.csrfToken) {
-    setCsrfToken(res.csrfToken);
-  }
-
+  storeCsrfTokenFromCookie();
   return res;
 };
 
-// Logout and clear session data
+// Logs the user out on the server, clears Firebase auth, and resets local session state.
 export const signout = async (
   setUser: (u: User | null) => void,
   navigate: (p: string) => void,
 ) => {
-  // Clear secure cookie on server via logout endpoint (cookies are sent automatically)
   try {
     await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
-      credentials: 'include', // Include cookies
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(),
     });
   } catch (err) {
     console.warn('Backend logout request failed:', err);
@@ -156,75 +140,47 @@ export const signout = async (
   setUser(null);
 };
 
-// Profile management
-// Get current user profile
+// Returns the authenticated user's profile.
 export const getProfile = () => apiFetch<User>('/auth/profile');
 
-// Update admin profile
+// Updates the admin's profile fields.
 export const updateAdminProfile = (data: UpdateAdminProfileRequest) =>
-  apiFetch<User>('/admin/profile', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  apiFetch<User>('/admin/profile', { method: 'PATCH', body: JSON.stringify(data) });
 
-// Update family member profile
+// Updates the family member's profile fields.
 export const updateFamilyProfile = (data: UpdateFamilyProfileRequest) =>
-  apiFetch<User>('/family/profile', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  apiFetch<User>('/family/profile', { method: 'PATCH', body: JSON.stringify(data) });
 
-// Update doctor profile
+// Updates the doctor's profile fields.
 export const updateDoctorProfile = (data: UpdateDoctorProfileRequest) =>
-  apiFetch<User>('/doctors/profile', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  apiFetch<User>('/doctors/profile', { method: 'PATCH', body: JSON.stringify(data) });
 
-// Update caregiver profile
+// Updates the caregiver's profile fields.
 export const updateCaregiverProfile = (data: UpdateCaregiverProfileRequest) =>
-  apiFetch<User>('/caregivers/profile', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  apiFetch<User>('/caregivers/profile', { method: 'PATCH', body: JSON.stringify(data) });
 
-// Delete user account
+// Permanently deletes the authenticated user's account and clears the local CSRF token.
 export const deleteAccount = () =>
-  apiFetch<{ message: string }>('/auth/delete-account', {
-    method: 'DELETE',
-  }).then((res) => {
+  apiFetch<{ message: string }>('/auth/delete-account', { method: 'DELETE' }).then((res) => {
     sessionStorage.removeItem('csrf-token');
     return res;
   });
 
-// Change account password
+// Changes the authenticated user's password.
 export const changePasswordApi = (data: ChangePasswordRequest) =>
-  apiFetch<{ message: string }>('/auth/change-password', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  apiFetch<{ message: string }>('/auth/change-password', { method: 'PATCH', body: JSON.stringify(data) });
 
-// Change password on first login
+// Changes the password on the user's first login.
 export const firstLoginChangePasswordApi = (data: FirstLoginChangePasswordRequest) =>
-  apiFetch<{ message: string }>('/auth/first-login-change-password', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  apiFetch<{ message: string }>('/auth/first-login-change-password', { method: 'PATCH', body: JSON.stringify(data) });
 
-// Upload profile picture
+// Uploads a new profile picture and returns the resulting avatar URL.
 export const uploadAvatar = (file: File): Promise<{ avatarUrl: string }> => {
   const form = new FormData();
   form.append('avatar', file);
-
-  return apiFetchMultipart<{ avatarUrl: string }>('/auth/upload-avatar', {
-    method: 'PATCH',
-    body: form,
-  });
+  return apiFetchMultipart<{ avatarUrl: string }>('/auth/upload-avatar', { method: 'PATCH', body: form });
 };
 
-// Remove profile picture
+// Removes the authenticated user's current profile picture.
 export const removeAvatar = () =>
-  apiFetch<{ message: string }>('/auth/remove-avatar', {
-    method: 'DELETE',
-  });
-
+  apiFetch<{ message: string }>('/auth/remove-avatar', { method: 'DELETE' });
