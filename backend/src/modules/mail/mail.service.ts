@@ -38,6 +38,15 @@ interface PrescriptionEmailOpts {
   }[];
 }
 
+interface LoginNotificationOpts {
+  fullName: string;
+  email: string;
+  role: string;
+  loginTime: string;
+  phone: string;
+  contactEmail: string;
+}
+
 @Injectable()
 export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
@@ -194,6 +203,30 @@ export class MailService implements OnModuleInit {
     } catch (err) {
       this.logger.error(
         `Failed to send prescription notification → ${opts.to}: ${this.errMsg(err)}`,
+      );
+    }
+  }
+
+  // Dispatches an immediate security alert to privileged users upon a new session being established
+  async sendLoginNotificationEmail(
+    email: string,
+    fullName: string,
+    opts: Omit<LoginNotificationOpts, 'fullName' | 'email'>,
+  ): Promise<void> {
+    const html = this.buildLoginNotificationHtml({ fullName, email, ...opts });
+
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFromAddress,
+        to: `"${fullName}" <${email}>`,
+        subject: `🔐 New Login Detected — ${this.systemName}`,
+        html,
+      });
+      this.logger.log(`Login notification sent → ${email} (${opts.role})`);
+    } catch (err) {
+      // Non-fatal — log and continue; don't break the login flow
+      this.logger.warn(
+        `Failed to send login notification → ${email}: ${this.errMsg(err)}`,
       );
     }
   }
@@ -458,6 +491,105 @@ export class MailService implements OnModuleInit {
       </table>
     </td></tr>
   </table>
+</body>
+</html>`;
+  }
+
+  // Renders a premium security-alert email with login metadata for privileged-role accounts
+  private buildLoginNotificationHtml(opts: LoginNotificationOpts): string {
+    const { fullName, role, loginTime, phone, contactEmail } = opts;
+    const year = new Date().getFullYear();
+    const fallbackEmail =
+      this.configService.get<string>('MAIL_FROM') ||
+      this.configService.get<string>('SMTP_USER') ||
+      '';
+    const displayEmail = contactEmail || fallbackEmail;
+    const displayPhone = phone || '';
+
+    const roleLabel =
+      role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>New Login Detected – ${this.systemName}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body        { font-family:'Inter','Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; margin:0; padding:0; }
+    .wrapper    { max-width:580px; margin:40px auto; background:#1e293b; border-radius:20px; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,.5); border:1px solid #334155; }
+    .header     { background:linear-gradient(135deg,#1d4ed8 0%,#4f46e5 50%,#7c3aed 100%); padding:40px; text-align:center; position:relative; }
+    .header::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+    .shield     { width:64px; height:64px; background:rgba(255,255,255,.12); border-radius:50%; display:block; text-align:center; line-height:64px; margin:0 auto 16px; font-size:28px; border:2px solid rgba(255,255,255,.2); }
+    .header h1  { color:#fff; margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-.5px; position:relative; }
+    .header p   { color:rgba(255,255,255,.7); margin:0; font-size:14px; position:relative; }
+    .badge      { display:inline-block; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:999px; padding:4px 14px; font-size:12px; font-weight:600; color:#fff; margin-top:12px; text-transform:uppercase; letter-spacing:.8px; position:relative; }
+    .body       { padding:36px 40px; }
+    .greeting   { font-size:17px; color:#e2e8f0; font-weight:600; margin:0 0 8px; }
+    .subtext    { font-size:14px; color:#94a3b8; line-height:1.7; margin:0 0 28px; }
+    .info-card  { background:#0f172a; border:1px solid #334155; border-radius:14px; overflow:hidden; margin-bottom:24px; }
+    .info-row   { display:flex; align-items:center; padding:16px 20px; border-bottom:1px solid #1e293b; }
+    .info-row:last-child { border-bottom:none; }
+    .info-icon  { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; margin-right:14px; flex-shrink:0; }
+    .icon-time  { background:rgba(99,102,241,.15); }
+    .info-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin:0 0 3px; }
+    .info-value { font-size:14px; font-weight:600; color:#e2e8f0; margin:0; }
+    .alert-box  { background:linear-gradient(135deg,rgba(220,38,38,.1),rgba(153,27,27,.1)); border:1px solid rgba(220,38,38,.3); border-radius:14px; padding:20px 24px; margin-bottom:24px; }
+    .alert-box p { margin:0; font-size:13px; color:#fca5a5; line-height:1.7; }
+    .alert-box strong { color:#f87171; }
+    .contact-card  { background:#0f172a; border:1px solid #334155; border-radius:14px; padding:20px 24px; margin-bottom:24px; }
+    .contact-title { margin:0 0 14px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:#94a3b8; }
+    .contact-row   { display:block; text-decoration:none; padding:10px 0; border-bottom:1px solid #1e293b; }
+    .contact-row:last-of-type { border-bottom:none; }
+    .contact-icon  { display:inline-block; width:24px; }
+    .contact-val   { font-size:14px; font-weight:600; color:#a5b4fc; }
+    .divider    { border:none; border-top:1px solid #334155; margin:0 0 24px; }
+    .footer-txt { font-size:12px; color:#475569; text-align:center; line-height:1.6; margin:0; }
+    .footer-txt a { color:#6366f1; text-decoration:none; }
+    .footer     { background:#0f172a; padding:20px 40px; border-top:1px solid #334155; text-align:center; }
+    .footer p   { margin:0; font-size:11px; color:#475569; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="shield">🛡️</div>
+      <h1>New Login Detected</h1>
+      <p>${this.systemName}</p>
+      <span class="badge">${roleLabel}</span>
+    </div>
+    <div class="body">
+      <p class="greeting">Hello ${fullName},</p>
+      <p class="subtext">A new login to your <strong style="color:#a5b4fc">${roleLabel}</strong> account was just detected. Here are the details:</p>
+
+      <div class="info-card">
+        <div class="info-row">
+          <div class="info-icon icon-time">🕐</div>
+          <div>
+            <p class="info-label">Login Time</p>
+            <p class="info-value">${loginTime}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert-box">
+        <p>⚠️ <strong>Wasn't you?</strong> If you did not initiate this login, your account may be compromised. Please contact your system administrator immediately and change your password.</p>
+      </div>
+
+      <div class="contact-card">
+        <p class="contact-title">📞 Contact System Administrator</p>
+        ${displayPhone ? `<a href="tel:${displayPhone}" class="contact-row"><span class="contact-icon">📱</span><span class="contact-val">${displayPhone}</span></a>` : ''}
+        ${displayEmail ? `<a href="mailto:${displayEmail}" class="contact-row"><span class="contact-icon">✉️</span><span class="contact-val">${displayEmail}</span></a>` : ''}
+      </div>
+
+      <hr class="divider"/>
+      <p class="footer-txt">If this login was initiated by you, no further action is required.<br/>For security questions, contact the admin team above.</p>
+    </div>
+    <div class="footer">
+      <p>© ${year} ${this.systemName} &nbsp;·&nbsp; Automated security alert — please do not reply directly.</p>
+    </div>
+  </div>
 </body>
 </html>`;
   }

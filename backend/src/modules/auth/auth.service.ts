@@ -22,8 +22,10 @@ import { LoginDto } from './dto/login.dto';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { FirebaseAdminService } from './firebase/firebase-admin.service';
 import { MailService } from '../mail/mail.service';
+import { ContactService } from '../contact/contact.service';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
 import { SECURITY_CONSTANTS } from '../../common/constants/security.constants';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 
 @Injectable()
 export class AuthService {
@@ -37,6 +39,8 @@ export class AuthService {
     private readonly firebaseAdmin: FirebaseAdminService,
     private readonly adminService: AdminService,
     private readonly mailService: MailService,
+    private readonly contactService: ContactService,
+    private readonly cloudinaryService: CloudinaryService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
@@ -121,6 +125,45 @@ export class AuthService {
     await this.usersService.resetFailedLoginAttempts(user.id);
 
     const token = this.generateToken(user.id, user.email, user.role);
+
+    // Send login security notification to privileged roles only (fire-and-forget)
+    const privilegedRoles = [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.DOCTOR,
+      UserRole.CAREGIVER,
+    ];
+    if (privilegedRoles.includes(user.role)) {
+      const loginTime = new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short',
+      });
+
+      // Non-blocking — notification failure must never reject the login
+      void (async () => {
+        // Fetch live facility contact details; fall back gracefully if not configured
+        let phone = '';
+        let contactEmail = '';
+        try {
+          const info = await this.contactService.getInfo();
+          phone = info.phonePrimary ?? '';
+          contactEmail = info.email ?? '';
+        } catch {
+          // contact_info row may not exist yet — silently ignore
+        }
+
+        await this.mailService.sendLoginNotificationEmail(
+          user.email,
+          user.fullName,
+          { role: user.role, loginTime, phone, contactEmail },
+        );
+      })();
+    }
 
     return {
       message: 'Login successful',
@@ -274,18 +317,13 @@ export class AuthService {
     };
   }
 
-  // Converts uploaded image buffers into data URLs for efficient storage and immediate UI rendering.
+  // Validates the file and uploads the image buffer to Cloudinary, then persists the returned secure CDN URL in the database.
   async uploadAvatar(
     userId: string,
     file: { mimetype: string; size: number; buffer: Buffer },
   ): Promise<{ avatarUrl: string }> {
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/gif',
-    ];
-    const maxFileSizeBytes = 5 * 1024 * 1024;
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
@@ -296,11 +334,11 @@ export class AuthService {
       throw new BadRequestException('Avatar image must be smaller than 5 MB');
     }
 
-    const base64 = file.buffer.toString('base64');
-    const dataUrl = `data:${file.mimetype};base64,${base64}`;
+    const result = await this.cloudinaryService.uploadFile(file, 'ecms/avatars');
+    const avatarUrl = result.secure_url;
 
-    await this.usersService.updateAvatar(userId, dataUrl);
-    return { avatarUrl: dataUrl };
+    await this.usersService.updateAvatar(userId, avatarUrl);
+    return { avatarUrl };
   }
 
   // Clears the avatar reference to return the user profile to its default state.
