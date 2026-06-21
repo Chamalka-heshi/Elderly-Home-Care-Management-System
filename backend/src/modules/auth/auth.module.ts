@@ -13,6 +13,8 @@ import { CaregiversModule } from '../caregivers/caregivers.module';
 import { PatientsModule } from '../patients/patients.module';
 import { AdminModule } from '../admin/admin.module';
 import { MailModule } from '../mail/mail.module';
+import { ContactModule } from '../contact/contact.module';
+import { CloudinaryModule } from '../../cloudinary/cloudinary.module';
 
 // Aggregates authentication strategies, user validation logic, and third-party provider integrations.
 @Module({
@@ -26,6 +28,8 @@ import { MailModule } from '../mail/mail.module';
     PatientsModule,
     AdminModule,
     MailModule,
+    ContactModule,
+    CloudinaryModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, FirebaseAdminService],

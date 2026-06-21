@@ -17,6 +17,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
+import { ContactService } from '../contact/contact.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -42,9 +44,16 @@ describe('AuthService', () => {
   const mockCaregiversService = { findByUserId: jest.fn() };
   const mockPatientsService = { findByUserId: jest.fn() };
   const mockAdminService = { findByUserId: jest.fn() };
-  const mockMailService = { sendPasswordResetEmail: jest.fn() };
+  const mockMailService = { sendPasswordResetEmail: jest.fn(), sendLoginNotificationEmail: jest.fn() };
   const mockFirebaseAdmin = { verifyIdToken: jest.fn() };
   const mockJwtService = { sign: jest.fn() };
+  const mockCloudinaryService = {
+    uploadFile: jest.fn().mockResolvedValue({
+      secure_url: 'https://res.cloudinary.com/test/image/upload/v1/ecms/avatars/sample.jpg',
+    }),
+    deleteFile: jest.fn(),
+  };
+  const mockContactService = { getInfo: jest.fn() };
   const mockUserRepo = {
     findOne: jest.fn(),
     create: jest.fn(),
@@ -64,6 +73,8 @@ describe('AuthService', () => {
         { provide: MailService, useValue: mockMailService },
         { provide: FirebaseAdminService, useValue: mockFirebaseAdmin },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: ContactService, useValue: mockContactService },
+        { provide: CloudinaryService, useValue: mockCloudinaryService },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
       ],
     }).compile();
@@ -250,10 +261,10 @@ describe('AuthService', () => {
       buffer: Buffer.from('img'),
     };
 
-    it('should return a data URL and persist it', async () => {
+    it('should return a Cloudinary URL and persist it', async () => {
       mockUsersService.updateAvatar.mockResolvedValue(undefined);
       const result = await service.uploadAvatar('u1', validFile);
-      expect(result.avatarUrl).toMatch(/^data:image\/jpeg;base64,/);
+      expect(result.avatarUrl).toMatch(/^https:\/\/res\.cloudinary\.com\//);
       expect(mockUsersService.updateAvatar).toHaveBeenCalledWith(
         'u1',
         result.avatarUrl,
@@ -275,13 +286,13 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should accept PNG images', async () => {
+    it('should accept PNG images and return a Cloudinary URL', async () => {
       mockUsersService.updateAvatar.mockResolvedValue(undefined);
       const result = await service.uploadAvatar('u1', {
         ...validFile,
         mimetype: 'image/png',
       });
-      expect(result.avatarUrl).toMatch(/^data:image\/png;base64,/);
+      expect(result.avatarUrl).toMatch(/^https:\/\/res\.cloudinary\.com\//);
     });
   });
 

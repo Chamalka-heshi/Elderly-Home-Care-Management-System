@@ -53,7 +53,7 @@ export class User {
   })
   firebaseUid: string | null;
 
-  @Column({ type: 'text', nullable: true, name: 'avatar_url' })
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'avatar_url' })
   avatarUrl: string | null;
 
   // Tracks the timestamp of the most recent session termination to facilitate global token invalidation and security auditing.
