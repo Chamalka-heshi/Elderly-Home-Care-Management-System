@@ -26,6 +26,7 @@ import { AppointmentModule } from './modules/appointments/appointment.module';
 import { CarePlanModule } from './modules/care-plan/care-plan.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 // Orchestrates the entire clinical system by aggregating core configurations, security guards, and feature-specific modules into a unified root.
 @Module({
@@ -58,20 +59,27 @@ import { PaymentsModule } from './modules/payments/payments.module';
     // Database Connectivity
     // Establishes a persistent connection to the PostgreSQL cluster, enabling secure data storage for clinical and administrative records.
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('app.db.host'),
-        port: configService.get<number>('app.db.port'),
-        username: configService.get<string>('app.db.username'),
-        password: configService.get<string>('app.db.password'),
-        database: configService.get<string>('app.db.name'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get<string>('app.nodeEnv') === 'development',
-        logging: configService.get<string>('app.nodeEnv') === 'development',
-      }),
-    }),
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    type: 'postgres',
+
+    host: configService.get<string>('DB_HOST'),
+    port: Number(configService.get<string>('DB_PORT')),
+    username: configService.get<string>('DB_USERNAME'),
+    password: configService.get<string>('DB_PASSWORD'),
+    database: configService.get<string>('DB_NAME'),
+
+    entities: [__dirname + '/**/*.entity{.ts,.js}'],
+
+    synchronize: configService.get<string>('NODE_ENV') === 'development',
+    logging: configService.get<string>('NODE_ENV') === 'development',
+
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  }),
+}),
 
     // Feature Modules
     AuthModule,
@@ -88,6 +96,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     CarePlanModule,
     BookingsModule,
     PaymentsModule,
+    CloudinaryModule,
   ],
 
   // Global Security Guards
