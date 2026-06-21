@@ -273,6 +273,15 @@ export class AuthService {
       throw new UnauthorizedException('This account has been deactivated');
     }
 
+    // Only FAMILY accounts may use Google login.
+    // Admin, Doctor, and Caregiver accounts are created by the admin and are
+    // password-only — blocking Google login prevents unauthorized access.
+    if (user && user.role !== UserRole.FAMILY) {
+      throw new UnauthorizedException(
+        'Google sign-in is not available for this account. Please use your email and password to log in.',
+      );
+    }
+
     if (!user) {
       user = this.userRepository.create({
         email,
