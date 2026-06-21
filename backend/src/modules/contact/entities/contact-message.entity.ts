@@ -14,13 +14,13 @@ export class ContactMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 150 })
   fullName: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   phone?: string;
 
   @Column('text')
@@ -34,7 +34,7 @@ export class ContactMessage {
   @Column({ nullable: true })
   repliedByAdminId?: string;
 
-  @Column({ type: 'varchar', default: 'pending' })
+  @Column({ type: 'varchar', length: 20, default: 'pending' })
   status: MessageStatus;
 
   @CreateDateColumn()

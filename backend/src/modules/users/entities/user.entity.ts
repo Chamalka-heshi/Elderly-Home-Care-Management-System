@@ -16,11 +16,18 @@ export class User {
   id: string;
 
   @Index({ unique: true })
-  @Column()
+  @Column({
+    type: 'varchar',
+    length: 255,
+  })
   email: string;
 
   // Hashed credentials are excluded from default queries to prevent accidental exposure in application logs or API responses.
-  @Column({ select: false })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    select: false,
+  })
   password: string;
 
   // Determines the user's primary permission level and controls access to specialized modules like clinical dashboard or administrative tools.
@@ -31,11 +38,18 @@ export class User {
   })
   role: UserRole;
 
-  @Column()
+  @Column({
+    type: 'varchar',
+    length: 150,
+  })
   fullName: string;
 
-  @Column({ nullable: true })
-  contactNumber: string;
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
+  contactNumber: string | null;
 
   @Column({ default: true })
   isActive: boolean;
@@ -47,6 +61,7 @@ export class User {
   // The unique identifier provided by the identity provider for federated authentication flows.
   @Column({
     type: 'varchar',
+    length: 128,
     nullable: true,
     unique: true,
     name: 'firebase_uid',
@@ -73,7 +88,7 @@ export class User {
   emailVerified: boolean;
 
   // @deprecated Kept for database backward compatibility. Email verification is not used in the application.
-  @Column({ type: 'varchar', nullable: true, name: 'email_verification_token' })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'email_verification_token' })
   emailVerificationToken: string | null;
 
   // @deprecated Kept for database backward compatibility. Email verification is not used in the application.

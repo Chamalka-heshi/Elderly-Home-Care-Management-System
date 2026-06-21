@@ -58,7 +58,7 @@ export class Prescription {
   @Column({ name: 'patient_id', nullable: true, type: 'varchar', length: 100 })
   patientId: string | null;
 
-  @Column({ name: 'patient_name', length: 200 })
+  @Column({ name: 'patient_name', type: 'varchar', length: 200 })
   patientName: string;
 
   @Column({ name: 'patient_age', type: 'int' })

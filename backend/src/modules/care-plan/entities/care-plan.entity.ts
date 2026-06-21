@@ -16,7 +16,10 @@ export class CarePlan {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({
+    type: 'varchar',
+    length: 150,
+  })
   name: string;
 
   @Column({ type: 'text' })

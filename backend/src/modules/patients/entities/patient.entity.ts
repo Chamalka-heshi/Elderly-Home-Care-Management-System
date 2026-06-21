@@ -20,10 +20,17 @@ export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({
+    type: 'varchar',
+    length: 150,
+  })
   fullName: string;
 
-  @Column({ unique: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    unique: true,
+  })
   nic: string;
 
   @Column({ type: 'date' })
@@ -35,16 +42,32 @@ export class Patient {
   })
   gender: Gender;
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+  })
   bloodGroup: string;
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   address: string;
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   contactNumber: string;
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   emergencyContact: string;
 
   @Column({ type: 'text', nullable: true })
@@ -81,7 +104,11 @@ export class Patient {
   isActive: boolean;
 
   /** Set when family member selects a plan on the payments page: BASIC | REGULAR | PREMIUM */
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   paymentPlan: string;
 
   @CreateDateColumn()

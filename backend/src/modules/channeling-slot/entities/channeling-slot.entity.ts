@@ -34,10 +34,10 @@ export class ChannelingSlot {
   @Column({ type: 'date' })
   date: string;
 
-  @Column({ name: 'start_time', length: 5 })
+  @Column({ name: 'start_time', type: 'varchar', length: 5 })
   startTime: string;
 
-  @Column({ name: 'end_time', length: 5 })
+  @Column({ name: 'end_time', type: 'varchar', length: 5 })
   endTime: string;
 
   @Column({ name: 'booking_cutoff_minutes', default: 15 })

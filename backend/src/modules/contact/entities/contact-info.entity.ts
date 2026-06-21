@@ -12,28 +12,28 @@ export class ContactInfo {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'phone_primary' })
+  @Column({ name: 'phone_primary', type: 'varchar', length: 20 })
   phonePrimary: string;
 
-  @Column({ name: 'phone_emergency', nullable: true })
+  @Column({ name: 'phone_emergency', type: 'varchar', length: 20, nullable: true })
   phoneEmergency: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   email: string;
 
-  @Column({ name: 'address_line1' })
+  @Column({ name: 'address_line1', type: 'varchar', length: 255 })
   addressLine1: string;
 
-  @Column({ name: 'address_line2', nullable: true })
+  @Column({ name: 'address_line2', type: 'varchar', length: 255, nullable: true })
   addressLine2: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 100 })
   city: string;
 
-  @Column({ name: 'open_hours', nullable: true })
+  @Column({ name: 'open_hours', type: 'varchar', length: 255, nullable: true })
   openHours: string;
 
-  @Column({ name: 'map_url', nullable: true })
+  @Column({ name: 'map_url', type: 'varchar', length: 1000, nullable: true })
   mapUrl: string;
 
   @CreateDateColumn({ name: 'created_at' })

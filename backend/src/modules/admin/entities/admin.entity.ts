@@ -18,6 +18,11 @@ export class Admin {
   @JoinColumn()
   user: User;
 
-  @Column({ unique: true, nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    unique: true,
+    nullable: true,
+  })
   nic: string;
 }

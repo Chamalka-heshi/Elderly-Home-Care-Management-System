@@ -21,22 +21,41 @@ export class Doctor {
   @JoinColumn()
   user: User;
 
-  @Column({ unique: true, nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    unique: true,
+    nullable: true,
+  })
   nic: string;
 
-  @Column()
+  @Column({
+    type: 'varchar',
+    length: 100,
+  })
   specialization: string;
 
-  @Column({ unique: true })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    unique: true,
+  })
   licenseNumber: string;
 
-  @Column()
+  @Column({
+    type: 'varchar',
+    length: 255,
+  })
   qualification: string;
 
   @Column({ type: 'int' })
   experienceYears: number;
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   hospitalAffiliation: string;
 
   @Column({ nullable: true, type: 'decimal', precision: 10, scale: 2 })
@@ -45,10 +64,18 @@ export class Doctor {
   @Column({ type: 'simple-json', nullable: true })
   availableDays: string[];
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+  })
   availableTimeStart: string;
 
-  @Column({ nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+  })
   availableTimeEnd: string;
 
   @OneToMany(() => Prescription, (prescription) => prescription.doctor, {
