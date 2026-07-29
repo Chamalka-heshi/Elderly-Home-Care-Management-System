@@ -97,6 +97,7 @@ describe('AuthService', () => {
         role: UserRole.FAMILY,
         mustChangePassword: false,
         contactNumber: '123',
+        avatarUrl: 'http://avatar.url',
       };
       mockUsersService.findByEmail.mockResolvedValue(user);
       mockUsersService.validatePassword.mockResolvedValue(true);
@@ -105,6 +106,7 @@ describe('AuthService', () => {
       const result = await service.login(dto);
       expect(result.token).toBe('jwt_token');
       expect(result.user.email).toBe('test@test.com');
+      expect(result.user.avatarUrl).toBe('http://avatar.url');
     });
 
     it('should throw UnauthorizedException when user not found', async () => {
@@ -541,6 +543,7 @@ describe('AuthService', () => {
         role: UserRole.FAMILY,
         contactNumber: '',
         mustChangePassword: false,
+        avatarUrl: 'http://avatar.url',
       };
       mockFirebaseAdmin.verifyIdToken.mockResolvedValue({
         uid: 'fb1',
@@ -554,6 +557,23 @@ describe('AuthService', () => {
       const result = await service.firebaseAuth('token');
       expect(result.token).toBe('jwt_token');
       expect(result.isNewUser).toBe(false);
+      expect(result.user.avatarUrl).toBe('http://avatar.url');
+    });
+
+    it('should throw UnauthorizedException when existing user is not a FAMILY member', async () => {
+      mockFirebaseAdmin.verifyIdToken.mockResolvedValue({
+        uid: 'fb1',
+        email: 'admin@test.com',
+        name: 'Admin User',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        email: 'admin@test.com',
+        isActive: true,
+        role: UserRole.ADMIN,
+      });
+      await expect(service.firebaseAuth('token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

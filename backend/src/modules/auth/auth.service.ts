@@ -174,6 +174,7 @@ export class AuthService {
         role: user.role,
         contactNumber: user.contactNumber,
         mustChangePassword: user.mustChangePassword,
+        avatarUrl: user.avatarUrl ?? null,
       },
       token,
     };
@@ -321,6 +322,7 @@ export class AuthService {
         role: user.role,
         contactNumber: user.contactNumber,
         mustChangePassword: user.mustChangePassword,
+        avatarUrl: user.avatarUrl ?? null,
       },
       isNewUser,
     };

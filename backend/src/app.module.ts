@@ -27,6 +27,7 @@ import { CarePlanModule } from './modules/care-plan/care-plan.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 // Orchestrates the entire clinical system by aggregating core configurations, security guards, and feature-specific modules into a unified root.
 @Module({
@@ -97,6 +98,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     BookingsModule,
     PaymentsModule,
     CloudinaryModule,
+    BackupModule,
   ],
 
   // Global Security Guards

@@ -4,3 +4,10 @@ dist/
 build/
 a/
 *.tsbuildinfo
+
+# Backups
+backups/
+backend/backups/
+*.json.gz
+*.bak
+*.sql
