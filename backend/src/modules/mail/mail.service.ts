@@ -661,4 +661,135 @@ export class MailService implements OnModuleInit {
 </body>
 </html>`;
   }
+
+  async sendBackupNotification(
+    email: string,
+    opts: {
+      backupName: string;
+      status: string;
+      fileSizeBytes?: number;
+      errorMessage?: string;
+      notes?: string;
+      completedAt?: Date;
+    },
+  ): Promise<void> {
+    const html = this.buildBackupNotificationHtml(opts);
+    const systemName = this.systemName;
+    const isSuccess = opts.status === 'success';
+    const subject = isSuccess
+      ? `[${systemName}] Backup Completed Successfully - ${opts.backupName}`
+      : `[${systemName}] Backup Creation Failed - ${opts.backupName}`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFromAddress,
+        to: email,
+        subject,
+        html,
+      });
+      this.logger.log(`Backup notification email sent → ${email}`);
+    } catch (err) {
+      this.logger.error(
+        `Failed to send backup notification email → ${email}: ${this.errMsg(err)}`,
+      );
+    }
+  }
+
+  private buildBackupNotificationHtml(opts: {
+    backupName: string;
+    status: string;
+    fileSizeBytes?: number;
+    errorMessage?: string;
+    notes?: string;
+    completedAt?: Date;
+  }): string {
+    const isSuccess = opts.status === 'success';
+    const year = new Date().getFullYear();
+    
+    const formatBytes = (bytes?: number): string => {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+    };
+
+    const formattedSize = opts.fileSizeBytes ? formatBytes(opts.fileSizeBytes) : '—';
+    const dateStr = opts.completedAt
+      ? new Date(opts.completedAt).toLocaleString('en-US', { timeZone: 'Asia/Colombo' }) + ' (Colombo time)'
+      : '—';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Database Backup Notification</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:600px;">
+        <tr>
+          <td style="background:${isSuccess ? 'linear-gradient(135deg,#059669 0%,#047857 100%)' : 'linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)'};padding:28px 40px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:.5px;">🏥 ${this.systemName}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <h2 style="margin:0 0 16px;font-size:18px;color:${isSuccess ? '#059669' : '#dc2626'};">
+              ${isSuccess ? '✔ Database Backup Succeeded' : '✕ Database Backup Failed'}
+            </h2>
+            <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
+              ${isSuccess 
+                ? 'A new database backup snapshot has been created successfully. Below are the details:'
+                : 'An error occurred while creating the scheduled or manual database backup. Below are the details:'}
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:20px 0;">
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;width:150px;">Backup Name:</td>
+                <td style="padding:10px 0;font-size:14px;color:#1f2937;font-family:monospace;">${opts.backupName}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">Status:</td>
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:${isSuccess ? '#059669' : '#dc2626'};text-transform:capitalize;">${opts.status}</td>
+              </tr>
+              ${isSuccess ? `
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">File Size:</td>
+                <td style="padding:10px 0;font-size:14px;color:#1f2937;">${formattedSize}</td>
+              </tr>
+              ` : ''}
+              ${!isSuccess && opts.errorMessage ? `
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#dc2626;">Error Message:</td>
+                <td style="padding:10px 0;font-size:14px;color:#dc2626;">${opts.errorMessage}</td>
+              </tr>
+              ` : ''}
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">Completed At:</td>
+                <td style="padding:10px 0;font-size:14px;color:#1f2937;">${dateStr}</td>
+              </tr>
+              ${opts.notes ? `
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">Notes:</td>
+                <td style="padding:10px 0;font-size:14px;color:#4b5563;font-style:italic;">${opts.notes}</td>
+              </tr>
+              ` : ''}
+            </table>
+            
+            <p style="margin:32px 0 0;font-size:14px;color:#374151;line-height:1.6;">Warm regards,<br><strong>${this.systemName} System</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #edf2f7;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">© ${year} ${this.systemName} &nbsp;·&nbsp; Automated system alert — please do not reply directly.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
 }

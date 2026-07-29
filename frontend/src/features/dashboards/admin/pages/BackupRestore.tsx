@@ -677,17 +677,6 @@ const SettingsTab: React.FC<{
       <div className="rounded-3xl border border-white/10 bg-white/80 p-6 shadow-sm backdrop-blur-xl space-y-5">
         <h3 className="text-sm font-bold text-slate-800">Backup Options</h3>
 
-        <label className="grid gap-1.5">
-          <span className="text-xs font-semibold text-slate-600">Max Backups to Keep</span>
-          <input
-            type="number" min={1} max={100}
-            value={form.maxBackupsToKeep}
-            onChange={(e) => setF("maxBackupsToKeep", parseInt(e.target.value) || 10)}
-            className={inputCls}
-          />
-          <span className="text-[11px] text-slate-400">Older backups are automatically deleted when this limit is exceeded</span>
-        </label>
-
         {/* Toggle rows */}
         {([
           ["compressionEnabled", "Enable Compression", "Compress backup files using gzip to save storage space"],

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import * as fs from 'fs';
@@ -17,6 +18,7 @@ import { BackupSettings } from './entities/backup-settings.entity';
 import { BackupActivityLog, ActivityAction } from './entities/backup-activity-log.entity';
 import { CreateBackupDto } from './dto/create-backup.dto';
 import { UpdateBackupSettingsDto } from './dto/update-backup-settings.dto';
+import { MailService } from '../mail/mail.service';
 
 const gzip   = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -40,6 +42,9 @@ export class BackupService {
 
     @InjectDataSource()
     private readonly dataSource: DataSource,
+
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {
     // Ensure backup directory exists on startup
     this.ensureBackupDir();
@@ -108,7 +113,7 @@ export class BackupService {
       status: 'running',
       createdByUserId: userId,
       createdByName: userName,
-      notes: dto?.notes ?? null,
+      notes: dto?.notes ?? undefined,
       backupVersion: '1.0.0',
       createdAt: new Date(),
     });
@@ -168,6 +173,20 @@ export class BackupService {
 
       await this.log('BACKUP_CREATED', userId, userName, ip, record.id, safeName, 'success', `Backup created (${this.formatBytes(fileBuffer.byteLength)})`);
 
+      // Send email notification if configured
+      if (settings.emailNotification && settings.emailNotification.trim()) {
+        this.mailService.sendBackupNotification(settings.emailNotification, {
+          backupName: record.backupName,
+          status: record.status,
+          fileSizeBytes: Number(record.fileSizeBytes),
+          errorMessage: record.errorMessage ?? undefined,
+          notes: record.notes ?? undefined,
+          completedAt: record.completedAt ?? undefined,
+        }).catch((err) =>
+          this.logger.error('Failed to send backup email notification', err),
+        );
+      }
+
       // Enforce retention policy
       await this.purgeOldBackups(settings.maxBackupsToKeep);
 
@@ -179,6 +198,20 @@ export class BackupService {
       record.completedAt = new Date();
       await this.backupRepo.save(record);
       await this.log('BACKUP_CREATED', userId, userName, ip, record.id, safeName, 'failed', record.errorMessage);
+
+      // Send email notification if configured
+      if (settings.emailNotification && settings.emailNotification.trim()) {
+        this.mailService.sendBackupNotification(settings.emailNotification, {
+          backupName: record.backupName,
+          status: record.status,
+          errorMessage: record.errorMessage ?? undefined,
+          notes: record.notes ?? undefined,
+          completedAt: record.completedAt ?? undefined,
+        }).catch((e) =>
+          this.logger.error('Failed to send backup failure email notification', e),
+        );
+      }
+
       throw new InternalServerErrorException('Backup creation failed: ' + record.errorMessage);
     }
   }
@@ -461,12 +494,21 @@ export class BackupService {
     userId: string,
     userName: string,
     ip: string,
-    backupId: string | null,
-    backupName: string | null,
+    backupId: string | null | undefined,
+    backupName: string | null | undefined,
     status: 'success' | 'failed' | 'info',
     details: string,
   ): Promise<void> {
-    const entry = this.logRepo.create({ action, userId, userName, ipAddress: ip, backupId, backupName, status, details });
+    const entry = this.logRepo.create({
+      action,
+      userId: userId ?? undefined,
+      userName: userName ?? undefined,
+      ipAddress: ip ?? undefined,
+      backupId: backupId ?? undefined,
+      backupName: backupName ?? undefined,
+      status,
+      details,
+    });
     await this.logRepo.save(entry).catch(() => {});
   }
 
