@@ -12,6 +12,7 @@ import {
   getFamilyDashboard,
   type FamilyDashboardSummary,
 } from "../../../../api/family/family-dashboard.api";
+import { fmtDate } from '../../../../utils/dateTime';
 
 import iconImg from "../../../../assets/landing/icon.png";
 import {
@@ -81,17 +82,7 @@ const QUICK_ACTIONS: {
 
 const statusTone = (active: boolean) => (active ? ("emerald" as const) : ("slate" as const));
 
-const formatDate = (iso: string) => {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-};
+
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -248,7 +239,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                             {p.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{formatDate(p.createdAt)}</td>
+                        <td className="px-4 py-3 text-slate-600">{fmtDate(p.createdAt)}</td>
                         <td className="px-4 py-3 text-slate-600">
                           {p.paymentPlan ? (
                             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">

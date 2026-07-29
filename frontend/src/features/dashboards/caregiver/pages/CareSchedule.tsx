@@ -45,7 +45,7 @@ function buildSchedule(patients: Patient[]): Shift[] {
     const date = new Date(today);
     date.setDate(today.getDate() + d);
     const dateStr = date.toISOString().split("T")[0];
-    const dayStr = date.toLocaleDateString("en-US", { weekday: "long" });
+    const dayStr = date.toLocaleDateString('en-LK', { weekday: 'long', timeZone: 'Asia/Colombo' });
     const hours = today.getHours();
     shiftDefs.forEach((s, i) => {
       const id = `${dateStr}-${s.type}`;

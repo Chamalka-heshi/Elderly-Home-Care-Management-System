@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { fmtDateTime } from '../../../../utils/dateTime';
 import { getAllAppointmentsAdmin } from "../../../../api/appointment/admin-appointment.api";
 import type { Appointment, AppointmentStatus } from "../../../../api/appointment/appointment.types";
 import { fmt12, fmtDate, statusColor, statusLabel } from "../../../../api/appointment/appointment.types";
@@ -112,9 +113,7 @@ const DetailDrawer: React.FC<{ appt: Appointment; onClose: () => void }> = ({ ap
         <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
           <div>
             <p className="font-semibold text-slate-400">Last Updated</p>
-            <p>{new Date(appt.updatedAt).toLocaleString("en-GB", {
-              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-            })}</p>
+            <p>{fmtDateTime(appt.updatedAt)}</p>
           </div>
           <div className="col-span-2">
             <p className="font-semibold text-slate-400">Appointment ID</p>

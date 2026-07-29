@@ -1,4 +1,5 @@
 import React from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 import type { Patient } from "../../../../api/patients/patient.types";
 import type { DashboardStats } from "../AdminDashboard"; 
 import StatCard from "../../common/widgets/StatCard";
@@ -129,7 +130,7 @@ const DashboardHome: React.FC<Props> = ({ stats, patients, onNavigate, onAddAdmi
                     <td className="px-4 py-3 text-slate-600">{p.nic ?? "—"}</td>
                     <td className="px-4 py-3 text-slate-600 truncate max-w-[150px]">{p.contactNumber || p.emergencyContact|| "—"}</td>
                     <td className="px-4 py-3"><Badge tone={statusTone(p.isActive)}>{p.isActive ? "Active" : "Inactive"}</Badge></td>
-                    <td className="px-4 py-3 text-slate-600">{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-slate-600">{fmtDate(p.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <button 
                         onClick={() => onNavigate("Patient Management")} 

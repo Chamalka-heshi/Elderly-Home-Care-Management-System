@@ -21,6 +21,7 @@ import {
   IconTrash,
   IconX,
 } from "../../common/icons";
+import { fmtDateShort } from '../../../../utils/dateTime';
 
 // Helper functions and default values for prescriptions
 
@@ -67,9 +68,7 @@ const ActiveRxReview: React.FC<ActiveRxReviewProps> = ({
         <p className="text-sm font-bold text-amber-900">Active Prescription Detected</p>
         <p className="text-xs text-amber-700 truncate">
           {rx.diagnosis ?? "Existing prescription"} ·{" "}
-          Issued {new Date(rx.issuedDate).toLocaleDateString("en-GB", {
-            day: "2-digit", month: "short", year: "numeric",
-          })}
+          Issued {fmtDateShort(rx.issuedDate)}
         </p>
       </div>
       <span className="shrink-0 rounded-full bg-amber-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-800">
@@ -270,8 +269,7 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
         medEnd.setDate(issued.getDate() + days - 1);
         const validEnd = new Date(validUntil);
         if (medEnd > validEnd) {
-          const fmt = (d: Date) =>
-            d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+          const fmt = (d: Date) => fmtDateShort(d);
           row.durationDays =
             `Last dose falls on ${fmt(medEnd)}, which is after "Valid Until" (${fmt(validEnd)}). ` +
             `Reduce duration to ${Math.max(1, Math.floor((validEnd.getTime() - issued.getTime()) / 86_400_000) + 1)} days or extend "Valid Until".`;
@@ -560,7 +558,7 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
                       : null;
                     const overruns = medEnd && validUntil && medEnd > new Date(validUntil);
                     const medEndLabel = medEnd
-                      ? medEnd.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                      ? fmtDateShort(medEnd)
                       : null;
 
                     return (

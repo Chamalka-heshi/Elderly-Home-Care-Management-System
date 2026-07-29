@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import * as contactApi from '../../../../api/contact/admin-contact.api';
+import { fmtDateTime as fmtDate } from '../../../../utils/dateTime';
 import type { ContactMessage } from '../../../../api/contact/contact.types';
 
 import { IconInbox, IconReply, IconTrash, IconBack, IconClock, IconSpinner, IconRefresh } from '../../common/icons';
@@ -10,12 +11,7 @@ import Pagination from '../../common/Pagination';
 // This value is sent to the backend as the `limit` query parameter so there
 const PAGE_SIZE = 5;
 
-// Formats the date and time for messages
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+
 
 // Shows if a message has been replied to or is still pending
 

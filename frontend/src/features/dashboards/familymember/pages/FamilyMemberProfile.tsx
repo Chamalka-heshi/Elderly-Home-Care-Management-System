@@ -14,6 +14,7 @@ import {
   changePasswordApi,
 } from "../../../../api/auth/auth.api";
 import DeleteAccountButton from "../../../../components/deleteaccount";
+import { fmtDate } from '../../../../utils/dateTime';
 
 // ── Common shared components ──────────────────────────────────────────────────
 import {
@@ -330,11 +331,7 @@ const FamilyMemberProfile: React.FC<Props> = ({ onBack }) => {
                   { label: "Role",         value: user?.role ?? "family" },
                   {
                     label: "Member Since",
-                    value: createdAt
-                      ? new Date(createdAt).toLocaleDateString("en-GB", {
-                          day: "2-digit", month: "short", year: "numeric",
-                        })
-                      : "—",
+                    value: createdAt ? fmtDate(createdAt) : "—",
                   },
                   { label: "Status", value: "Active" },
                 ].map(({ label, value, mono }) => (

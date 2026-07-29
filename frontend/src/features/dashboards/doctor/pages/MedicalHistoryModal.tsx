@@ -13,6 +13,7 @@ import {
   IconSpinner,
   IconX,
 } from "../../common/icons";
+import { fmtDateShort } from '../../../../utils/dateTime';
 
 // Helper functions to calculate age and badge styles
 
@@ -184,7 +185,7 @@ export const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                           {vitalRecords.map((v) => (
                             <tr key={v.id} className="hover:bg-slate-50/70 transition">
                               <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
-                                {new Date(v.recordedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                {fmtDateShort(v.recordedAt)}
                               </td>
                               <td className="px-3 py-2.5 text-slate-600">{v.bloodPressure ?? "—"}</td>
                               <td className="px-3 py-2.5 text-slate-600">{v.heartRate != null ? `${v.heartRate} bpm` : "—"}</td>
@@ -237,7 +238,7 @@ export const MedicalHistoryModal: React.FC<MedicalHistoryModalProps> = ({
                                   {rx.diagnosis ?? "Prescription"}
                                 </p>
                                 <p className="text-xs text-slate-400">
-                                  {new Date(rx.issuedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                  {fmtDateShort(rx.issuedDate)}
                                   {" · "}
                                   {rx.doctor?.user?.fullName ? `Dr. ${rx.doctor.user.fullName}` : "Unknown Doctor"}
                                   {rx.doctor?.specialization && (

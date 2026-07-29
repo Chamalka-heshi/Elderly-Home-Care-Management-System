@@ -51,12 +51,12 @@ export class BackupRecord {
   @Column({ nullable: true })
   errorMessage: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   completedAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

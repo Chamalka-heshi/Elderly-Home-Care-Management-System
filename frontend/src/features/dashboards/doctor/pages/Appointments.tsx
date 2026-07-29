@@ -10,6 +10,7 @@ import {
   fmt12,
   fmtDate,
 } from "../../../../api/appointment/appointment.types";
+import { fmtMonthShort } from '../../../../utils/dateTime';
 
 import {
   IconActivity,
@@ -82,7 +83,7 @@ const SlotCard: React.FC<SlotCardProps> = ({
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-center justify-center rounded-2xl bg-emerald-600 text-white px-3 py-2 min-w-[52px]">
             <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
-              {new Date(group.date + "T00:00:00").toLocaleDateString("en-GB", { month: "short" })}
+              {fmtMonthShort(group.date + "T00:00:00")}
             </span>
             <span className="text-xl font-extrabold leading-tight">
               {new Date(group.date + "T00:00:00").getDate()}

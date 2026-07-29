@@ -14,15 +14,11 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+import { fmtDateShort } from '../../../../utils/dateTime';
+
 const fmtDate = (d?: string | null): string => {
   if (!d) return '—';
-  try {
-    return new Date(d).toLocaleDateString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-    });
-  } catch {
-    return d;
-  }
+  return fmtDateShort(d);
 };
 
 type StatusTone = 'emerald' | 'blue' | 'red';

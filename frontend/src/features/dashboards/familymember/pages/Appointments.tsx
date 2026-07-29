@@ -33,6 +33,7 @@ import {
   statusLabel,
   fmtDate as fmtApptDate,
 } from '../../../../api/appointment/appointment.types';
+import { fmtDateShort } from '../../../../utils/dateTime';
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
 const inputCls =
@@ -49,8 +50,7 @@ import {
 const PrescriptionModal: React.FC<{ rx: FamilyPrescription; onClose: () => void }> = ({ rx, onClose }) => {
   const fmtD = (d?: string | null) => {
     if (!d) return '—';
-    try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
-    catch { return d; }
+    return fmtDateShort(d);
   };
   const statusBg = rx.status === 'active' ? '#d1fae5' : rx.status === 'completed' ? '#dbeafe' : '#fee2e2';
   const statusClr = rx.status === 'active' ? '#065f46' : rx.status === 'completed' ? '#1e40af' : '#991b1b';
@@ -576,9 +576,7 @@ const Appointments: React.FC = () => {
                       <div className="rounded-xl bg-slate-50 px-3 py-2">
                         <p className="text-slate-400">Booked on</p>
                         <p className="mt-0.5 font-semibold text-slate-700">
-                          {new Date(appt.createdAt).toLocaleDateString('en-GB', {
-                            day: '2-digit', month: 'short', year: 'numeric',
-                          })}
+                          {fmtDateShort(appt.createdAt)}
                         </p>
                       </div>
                     </div>

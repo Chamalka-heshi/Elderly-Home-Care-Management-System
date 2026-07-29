@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 import type { Admin } from "../../../../api/users/user.types";
 import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
@@ -84,7 +85,7 @@ const AdminManagement: React.FC<Props> = ({
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {new Date(a.createdAt).toLocaleDateString()}
+                      {fmtDate(a.createdAt)}
                     </td>
                     {onDeleteAdmin && (
                       <td className="px-4 py-3">

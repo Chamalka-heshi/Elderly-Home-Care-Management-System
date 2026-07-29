@@ -5,6 +5,7 @@ import {
   type DoctorPaymentRecord,
 } from "../../../../api/payments/doctor-payment.api";
 
+import { fmtDateShort } from '../../../../utils/dateTime';
 import StatCard from "../../common/widgets/StatCard";
 import Badge, { type BadgeTone } from "../../common/widgets/Badge";
 import TableShell from "../../common/widgets/TableShell";
@@ -26,12 +27,7 @@ const fmt12 = (t: string) => {
   return `${((h % 12) || 12)}:${String(m).padStart(2, "0")} ${ampm}`;
 };
 
-const fmtDate = (d: string) =>
-  new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+const fmtDate = (d: string) => fmtDateShort(d + 'T00:00:00');
 
 const fmtCurrency = (n: number) =>
   `LKR ${n.toLocaleString("en-LK", { minimumFractionDigits: 2 })}`;

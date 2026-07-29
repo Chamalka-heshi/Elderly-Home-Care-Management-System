@@ -27,11 +27,11 @@ import DoctorPayments from "./pages/DoctorPayments";
 // Defines the primary navigation structure for the doctor's clinical workspace, providing quick access to patient records and scheduling tools.
 const MENU_ITEMS: MenuItem[] = [
   { icon: IconLayoutDashboard, label: "Dashboard" },
-  { icon: IconUsers, label: "Patient Management" },
-  { icon: IconActivity, label: "Appointments" },
-  { icon: IconCalendar, label: "Channeling Slots" },
-  { icon: IconHeart, label: "Prescription" },
-  { icon: IconCurrency, label: "Payments" },
+  { icon: IconUsers, label: "Patient Management", section: "Clinical Care" },
+  { icon: IconActivity, label: "Appointments", section: "Clinical Care" },
+  { icon: IconCalendar, label: "Channeling Slots", section: "Clinical Care" },
+  { icon: IconHeart, label: "Prescription", section: "Clinical Care" },
+  { icon: IconCurrency, label: "Payments", section: "Finance" },
 ];
 
 // Doctor Dashboard Root
@@ -45,34 +45,32 @@ const DoctorDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="flex min-h-screen">
-        <Sidebar
-          items={MENU_ITEMS}
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 text-slate-900">
+      <Sidebar
+        items={MENU_ITEMS}
+        activeMenu={activeMenu}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onNavigate={(label) => setActiveMenu(label)}
+      />
+
+      <div className="flex flex-1 flex-col h-screen overflow-y-auto min-w-0">
+        {/* Dashboard Header — Displays the current context and provides access to user profile settings and responsive navigation controls. */}
+        <DashboardTopbar
           activeMenu={activeMenu}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          onNavigate={(label) => setActiveMenu(label)}
+          onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
+          onProfileClick={() => navigate(`/${user!.role}/profile`)}
         />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Dashboard Header — Displays the current context and provides access to user profile settings and responsive navigation controls. */}
-          <DashboardTopbar
-            activeMenu={activeMenu}
-            onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => navigate(`/${user!.role}/profile`)}
-          />
-
-          {/* View Rendering Logic — Dynamically mounts the appropriate clinical or administrative view based on the current navigation selection. */}
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-            {activeMenu === "Dashboard" && <DashboardHome onNavigate={setActiveMenu} />}
-            {activeMenu === "Patient Management" && <PatientMgmt />}
-            {activeMenu === "Prescription" && <Prescription />}
-            {activeMenu === "Channeling Slots" && <ChannelingSlots />}
-            {activeMenu === "Appointments" && <Appointments />}
-            {activeMenu === "Payments" && <DoctorPayments />}
-          </main>
-        </div>
+        {/* View Rendering Logic — Dynamically mounts the appropriate clinical or administrative view based on the current navigation selection. */}
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+          {activeMenu === "Dashboard" && <DashboardHome onNavigate={setActiveMenu} />}
+          {activeMenu === "Patient Management" && <PatientMgmt />}
+          {activeMenu === "Prescription" && <Prescription />}
+          {activeMenu === "Channeling Slots" && <ChannelingSlots />}
+          {activeMenu === "Appointments" && <Appointments />}
+          {activeMenu === "Payments" && <DoctorPayments />}
+        </main>
       </div>
     </div>
   );

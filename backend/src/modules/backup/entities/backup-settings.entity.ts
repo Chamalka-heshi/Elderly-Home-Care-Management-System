@@ -40,6 +40,6 @@ export class BackupSettings {
   @Column({ nullable: true })
   emailNotification: string;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

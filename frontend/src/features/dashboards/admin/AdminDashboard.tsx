@@ -68,6 +68,15 @@ import {
   IconSpinner, type IconProps,
 } from "../common/icons";
 
+// Local database icon for backup menu item
+const IconDatabase: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <ellipse cx="12" cy="5" rx="9" ry="3" strokeWidth={2} />
+    <path strokeWidth={2} strokeLinecap="round" d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+    <path strokeWidth={2} strokeLinecap="round" d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
+  </svg>
+);
+
 // Admin-specific pages to handle various module workflows
 import DashboardHome from "./pages/DashboardHome";
 import AdminManagement from "./pages/AdminManagement";
@@ -82,6 +91,7 @@ import Settings from "./pages/Settings";
 import PaymentsApproval from "./pages/PaymentsApproval";
 import CarePlanManagement from "./pages/CarePlanManagement";
 import PatientCarePlans from "./pages/PatientCarePlans";
+import BackupRestore from "./pages/BackupRestore";
 
 // Dynamic form configurations for adding new system users with localized validation hints to reduce data entry errors
 // Shared validation patterns used across all staff account creation forms
@@ -134,21 +144,31 @@ const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
 
-  // Menu items built based on user permissions to control module access and maintain security boundaries
+  // Menu items categorized into sections for clear navigation
   const MENU_ITEMS: MenuItem[] = [
+    // Main Overview
     { icon: IconLayoutDashboard, label: "Dashboard" },
-    ...(isSuperAdmin ? [{ icon: IconShield, label: "Admin Management" as MenuLabel }] : []),
-    { icon: IconStethoscope, label: "Doctor Management" },
-    { icon: IconUserPlus, label: "Caregiver Management" },
-    { icon: IconUsers, label: "Family Management" },
-    { icon: IconHeart, label: "Patient Management" },
-    { icon: IconCalendar, label: "Channeling Slot Management" },
-    { icon: IconCalendar, label: "Appointment Management" },
-    { icon: IconHeart, label: "Patient Care Plans" },
-    { icon: IconHeart, label: "Care Plan Management" },
-    { icon: IconCurrency, label: "Payments Management" },
-    { icon: IconInbox, label: "Contact Messages" },
-    { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings" },
+
+    // User Management
+    ...(isSuperAdmin ? [{ icon: IconShield, label: "Admin Management" as MenuLabel, section: "User Management" }] : []),
+    { icon: IconStethoscope, label: "Doctor Management", section: "User Management" },
+    { icon: IconUserPlus, label: "Caregiver Management", section: "User Management" },
+    { icon: IconUsers, label: "Family Management", section: "User Management" },
+    { icon: IconHeart, label: "Patient Management", section: "User Management" },
+
+    // Care & Appointments
+    { icon: IconCalendar, label: "Channeling Slot Management", section: "Care & Appointments" },
+    { icon: IconCalendar, label: "Appointment Management", section: "Care & Appointments" },
+    { icon: IconHeart, label: "Patient Care Plans", section: "Care & Appointments" },
+    { icon: IconHeart, label: "Care Plan Management", section: "Care & Appointments" },
+
+    // Operations & Finance
+    { icon: IconCurrency, label: "Payments Management", section: "Operations & Finance" },
+    { icon: IconInbox, label: "Contact Messages", section: "Operations & Finance" },
+
+    // System Management
+    { icon: (p: IconProps) => <IconSettings {...p} />, label: "Settings", section: "System Management" },
+    { icon: IconDatabase, label: "Backup & Restore" as MenuLabel, section: "System Management" },
   ];
 
   // UI state
@@ -189,6 +209,7 @@ const AdminDashboard: React.FC = () => {
     'Payments Management': '/admin/payments',
     'Contact Messages': '/admin/contact-messages',
     Settings: '/admin/settings',
+    'Backup & Restore': '/admin/backup-restore',
   };
 
   const pathToMenu = useCallback((path: string): MenuLabel => {
@@ -199,6 +220,7 @@ const AdminDashboard: React.FC = () => {
     if (path.includes('/channeling-slots')) return 'Channeling Slot Management';
     if (path.includes('/contact-messages')) return 'Contact Messages';
     if (path.includes('/settings')) return 'Settings';
+    if (path.includes('/backup-restore')) return 'Backup & Restore';
     if (path.includes('/caregiver-management')) return 'Caregiver Management';
     if (path.includes('/doctor-management')) return 'Doctor Management';
     if (path.includes('/patient-management')) return 'Patient Management';
@@ -401,14 +423,14 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 text-slate-900">
 
-      <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2">
+      <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={[
-              "flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-xl",
+              "pointer-events-auto flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-xl",
               t.kind === "success" ? "bg-emerald-600" : "bg-red-600",
             ].join(" ")}
           >
@@ -418,21 +440,20 @@ const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex min-h-screen">
-        <Sidebar
-          items={MENU_ITEMS}
-          activeMenu={activeMenu}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          onNavigate={handleAdminMenuNavigation}
-        />
+      <Sidebar
+        items={MENU_ITEMS}
+        activeMenu={activeMenu}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onNavigate={handleAdminMenuNavigation}
+      />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <DashboardTopbar
-            activeMenu={activeMenu}
-            onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => navigate(`/${user!.role}/profile`)}
-          />
+      <div className="flex flex-1 flex-col h-screen overflow-y-auto min-w-0">
+        <DashboardTopbar
+          activeMenu={activeMenu}
+          onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
+          onProfileClick={() => navigate(`/${user!.role}/profile`)}
+        />
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
             {pageLoading && (
@@ -484,9 +505,9 @@ const AdminDashboard: React.FC = () => {
               <PaymentsApproval addToast={addToast} />
             )}
             {!pageLoading && activeMenu === "Settings" && <Settings />}
+            {activeMenu === "Backup & Restore" && <BackupRestore />}
           </main>
         </div>
-      </div>
 
       {isSuperAdmin && <FormModal title="Add New Admin — Password auto-generated & emailed" open={showAddAdmin} loading={modalLoading} error={modalError} onErrorClear={() => setModalError(null)} onClose={() => { setShowAddAdmin(false); setModalError(null); }} onSubmit={handleCreateAdmin} fields={ADMIN_FIELDS} />}
       <FormModal title="Add New Doctor — Password auto-generated & emailed" open={showAddDoctor} loading={modalLoading} error={modalError} onErrorClear={() => setModalError(null)} onClose={() => { setShowAddDoctor(false); setModalError(null); }} onSubmit={handleCreateDoctor} fields={DOCTOR_FIELDS} />

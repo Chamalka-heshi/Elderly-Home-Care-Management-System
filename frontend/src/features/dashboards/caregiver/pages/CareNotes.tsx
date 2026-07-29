@@ -3,6 +3,7 @@ import TableShell from "../../common/widgets/TableShell";
 import { getAssignedPatients, createCareNote, updateCareNote } from "../../../../api/caregivers/caregiver.api";
 import type { CareNote } from "../../../../api/caregivers/caregiver.api";
 import type { Patient } from "../../../../api/patients/patient.types";
+import { fmtDateTime } from '../../../../utils/dateTime';
 
 const CATEGORIES = ["general", "medical", "behavioral"] as const;
 type Category = typeof CATEGORIES[number];
@@ -181,7 +182,7 @@ const CareNotes: React.FC = () => {
                         {categoryLabel[n.category as Category] ?? n.category}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{new Date(n.createdAt).toLocaleString()}</p>
+                    <p className="mt-1 text-xs text-slate-500">{fmtDateTime(n.createdAt)}</p>
                     <p className="mt-2 text-sm text-slate-600">{n.note}</p>
                   </div>
                   <button onClick={() => openEdit(n)}

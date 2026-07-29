@@ -1,4 +1,5 @@
 import React from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 import type { Family } from "../../../../api/users/user.types";
 import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
@@ -39,7 +40,7 @@ const FamilyManagement: React.FC<Props> = ({ families, loading, onToggleStatus }
                 <td className="px-4 py-3 text-slate-600">{f.email}</td>
                 <td className="px-4 py-3 text-slate-600">{f.contactNumber || "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{f.patientsCount ?? 0}</td>
-                <td className="px-4 py-3 text-slate-600">{new Date((f as any).joinedDate).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-slate-600">{fmtDate((f as any).joinedDate)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={f.isActive ? "emerald" : "red"}>{f.isActive ? "Active" : "Blocked"}</Badge>
                 </td>

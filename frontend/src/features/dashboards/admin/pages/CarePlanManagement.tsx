@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 import {
   createCarePlan,
   deactivateCarePlan,
@@ -246,7 +247,7 @@ const CarePlanManagement: React.FC<Props> = ({ addToast }) => {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {new Date(plan.createdAt).toLocaleDateString()}
+                      {fmtDate(plan.createdAt)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">

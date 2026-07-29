@@ -46,6 +46,6 @@ export class BackupActivityLog {
   @Column({ nullable: true, type: 'text' })
   details: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

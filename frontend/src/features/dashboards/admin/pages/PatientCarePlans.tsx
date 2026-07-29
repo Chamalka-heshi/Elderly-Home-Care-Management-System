@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 import { getAllBookings } from "../../../../api/bookings/admin-booking.api";
 import type { Booking, BookingStatus } from "../../../../api/bookings/booking.types";
 import TableShell from "../../common/widgets/TableShell";
@@ -95,7 +96,7 @@ const PatientCarePlans: React.FC<Props> = ({ addToast }) => {
                     {booking.carePlanSnapshot?.duration} {booking.carePlanSnapshot?.durationUnit}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {new Date(booking.createdAt).toLocaleDateString()}
+                    {fmtDate(booking.createdAt)}
                   </td>
                   <td className="px-4 py-3">
                     <Badge tone={statusTone(booking.status)}>

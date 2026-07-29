@@ -74,11 +74,9 @@ export const fmt12 = (hhmm: string): string => {
 // Format date string
 export const fmtDate = (dateStr: string): string => {
   if (!dateStr) return '—';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-LK', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+    timeZone: 'Asia/Colombo',
   });
 };
 

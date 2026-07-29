@@ -39,11 +39,11 @@ import CarePlans           from "./pages/CarePlans";
 
 const MENU_ITEMS: MenuItem[] = [
   { icon: IconLayoutDashboard, label: "Dashboard"       },
-  { icon: IconUsers,           label: "Elderly Profile" },
-  { icon: IconHeart,           label: "Prescription"    },
-  { icon: IconHeart,           label: "Care Plans"      },
-  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Appointments" },
-  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Payments"  },
+  { icon: IconUsers,           label: "Elderly Profile", section: "Care Directory" },
+  { icon: IconHeart,           label: "Prescription",    section: "Care & Appointments"    },
+  { icon: IconHeart,           label: "Care Plans",      section: "Care & Appointments"      },
+  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Appointments", section: "Care & Appointments" },
+  { icon: (p: IconProps) => <IconCalendar {...p} />, label: "Payments", section: "Finance"  },
 ];
 
 // ── Toast type ────────────────────────────────────────────────────────────────
@@ -98,17 +98,17 @@ const FamilyMemberDashboard: React.FC = () => {
   }, [location.pathname, pathToMenu]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 text-slate-900">
 
       <DashboardAmbientBg />
 
       {/* Toasts */}
-      <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2">
+      <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={[
-              "flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-xl",
+              "pointer-events-auto flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-xl",
               t.kind === "success" ? "bg-emerald-600" : "bg-red-600",
             ].join(" ")}
           >
@@ -118,31 +118,29 @@ const FamilyMemberDashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex min-h-screen">
-        <Sidebar
-          items={MENU_ITEMS}
+      <Sidebar
+        items={MENU_ITEMS}
+        activeMenu={activeMenu}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onNavigate={handleFamilyMenuNavigation}
+      />
+
+      <div className="flex flex-1 flex-col h-screen overflow-y-auto min-w-0">
+        <DashboardTopbar
           activeMenu={activeMenu}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          onNavigate={handleFamilyMenuNavigation}
+          onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
+          onProfileClick={() => navigate(`/${user!.role}/profile`)}
         />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <DashboardTopbar
-            activeMenu={activeMenu}
-            onToggleSidebar={() => setIsSidebarOpen((s) => !s)}
-            onProfileClick={() => navigate(`/${user!.role}/profile`)}
-          />
-
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-            {activeMenu === "Dashboard"       && <DashboardHome onNavigate={handleFamilyMenuNavigation} />}
-            {activeMenu === "Elderly Profile" && <ElderlyProfile />}
-            {activeMenu === "Prescription"    && <Prescription />}
-            {activeMenu === "Care Plans"      && <CarePlans addToast={addToast} />}
-            {activeMenu === "Appointments"    && <Appointments />}
-            {activeMenu === "Payments"        && <Payments addToast={addToast} />}
-          </main>
-        </div>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+          {activeMenu === "Dashboard"       && <DashboardHome onNavigate={handleFamilyMenuNavigation} />}
+          {activeMenu === "Elderly Profile" && <ElderlyProfile />}
+          {activeMenu === "Prescription"    && <Prescription />}
+          {activeMenu === "Care Plans"      && <CarePlans addToast={addToast} />}
+          {activeMenu === "Appointments"    && <Appointments />}
+          {activeMenu === "Payments"        && <Payments addToast={addToast} />}
+        </main>
       </div>
 
     </div>

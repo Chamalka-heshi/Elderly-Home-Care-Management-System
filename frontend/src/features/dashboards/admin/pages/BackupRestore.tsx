@@ -47,11 +47,6 @@ const IconDownload: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const IconUpload: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-  </svg>
-);
 
 const IconRestore: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -321,8 +316,8 @@ const DetailsModal: React.FC<{ record: BackupRecord; onClose: () => void }> = ({
           ["Backup Version",  record.backupVersion ?? "1.0.0"],
           ["DB Version",      record.databaseVersion ?? "—"],
           ["Created By",      record.createdByName ?? "—"],
-          ["Created At",      fmtDateTime(record.createdAt)],
-          ["Completed At",    fmtDateTime(record.completedAt)],
+          ["Created At",      fmtDateTime(record.completedAt || record.createdAt)],
+          ["Completed At",    fmtDateTime(record.completedAt || record.createdAt)],
           ["Checksum (SHA256)", record.checksum ? record.checksum.slice(0, 32) + "…" : "—"],
           ["Notes",           record.notes ?? "—"],
         ].map(([k, v]) => (
@@ -373,7 +368,7 @@ const OverviewTab: React.FC<{
       <BStatCard
         title="Storage Used"
         value={stats.totalStorageFormatted}
-        sub={`${stats.total} file${stats.total !== 1 ? "s" : ""}`}
+        sub={`${stats.success} file${stats.success !== 1 ? "s" : ""}`}
         icon={IconStorage}
         color="bg-amber-50 text-amber-700"
       />
@@ -519,8 +514,8 @@ const HistoryTab: React.FC<{
                   <td className="px-4 py-3 font-medium text-slate-800 max-w-[200px]">
                     <p className="truncate text-xs font-mono">{r.backupName}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{fmtDate(r.createdAt)}</td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{fmtTime(r.createdAt)}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{fmtDate(r.completedAt || r.createdAt)}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{fmtTime(r.completedAt || r.createdAt)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       r.backupType === "pre-restore" ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200"
@@ -813,7 +808,7 @@ const RestoreTab: React.FC<{
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    {fmtDateTime(r.createdAt)} · {formatBytes(Number(r.fileSizeBytes))} · by {r.createdByName ?? "—"}
+                    {fmtDateTime(r.completedAt || r.createdAt)} · {formatBytes(Number(r.fileSizeBytes))} · by {r.createdByName ?? "—"}
                   </p>
                 </div>
                 <button

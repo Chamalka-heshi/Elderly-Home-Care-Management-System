@@ -20,12 +20,11 @@ import {
 export type PrescriptionStatus = 'active' | 'completed' | 'discontinued';
 type FilterTab = 'all' | 'active' | 'completed' | 'discontinued';
 
-// Helper functions to format dates and badge styles
+import { fmtDateShort } from '../../../../utils/dateTime';
 
 const fmtDate = (d?: string | null): string => {
   if (!d) return '—';
-  try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
-  catch { return d; }
+  return fmtDateShort(d);
 };
 
 const statusConfig: Record<PrescriptionStatus, { tone: 'emerald' | 'blue' | 'red'; label: string }> = {

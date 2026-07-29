@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 import { useAuth } from "../../../../auth/AuthContext";
 import {
   getProfile,
@@ -418,11 +419,7 @@ const CaregiverProfile: React.FC<Props> = ({ onBack }) => {
                   },
                   {
                     label: "Member Since",
-                    value: createdAt
-                      ? new Date(createdAt).toLocaleDateString("en-GB", {
-                          day: "2-digit", month: "short", year: "numeric",
-                        })
-                      : "—",
+                    value: createdAt ? fmtDate(createdAt) : "—",
                   },
                   { label: "Status", value: "Active" },
                 ].map(({ label, value, mono }) => (

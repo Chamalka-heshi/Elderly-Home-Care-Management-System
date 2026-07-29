@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useAuth } from "../../../../auth/AuthContext";
+import { fmtDateShort } from "../../../../utils/dateTime";
 import type { User } from "../../../../auth/AuthContext";         
 import {
   getProfile,
@@ -395,13 +396,7 @@ const AdminProfile: React.FC<Props> = ({ onBack }) => {
                   { label: "NIC", value: nic ?? "—", mono: true },
                   {
                     label: "Member Since",
-                    value: createdAt
-                      ? new Date(createdAt).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "—",
+                    value: createdAt ? fmtDateShort(createdAt) : "—",
                   },
                   { label: "Status", value: "Active" },
                 ].map(({ label, value, mono }) => (

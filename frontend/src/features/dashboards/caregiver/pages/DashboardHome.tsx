@@ -9,6 +9,7 @@ import {
 } from "../../../../api/caregivers/caregiver.api";
 import type { Patient } from "../../../../api/patients/patient.types";
 import type { VitalRecord, MedicationLog } from "../../../../api/caregivers/caregiver.api";
+import { todayLocal, fmtDayLabel, fmtTime, fmtDate } from '../../../../utils/dateTime';
 
 import iconImg from "../../../../assets/landing/icon.png";
 import {
@@ -147,7 +148,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
   const handleNoteSaved = useCallback(() => setNoteRefresh((n) => n + 1), []);
 
   // ── Derived stats ──
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayLocal();
   const pendingMeds   = medLogs.filter((m) => m.status === "Pending" && m.scheduledDate === today).length;
   const administeredMeds = medLogs.filter((m) => m.status === "Administered" && m.scheduledDate === today).length;
   const criticalVitals = vitals.filter((v) => v.status === "Critical").length;
@@ -185,7 +186,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
     },
   ];
 
-  const todayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const todayLabel = fmtDayLabel();
 
   return (
     <div className="space-y-6">
@@ -267,7 +268,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${v.status === "Critical" ? "bg-red-200 text-red-800" : "bg-amber-200 text-amber-800"}`}>
                       {v.status.toUpperCase()}
                     </span>
-                    <span className="text-[11px] text-slate-500">{new Date(v.recordedAt).toLocaleTimeString()}</span>
+                    <span className="text-[11px] text-slate-500">{fmtTime(v.recordedAt)}</span>
                   </div>
                   <p className={`mt-0.5 text-xs ${v.status === "Critical" ? "text-red-700" : "text-amber-700"}`}>
                     BP: {v.bloodPressure ?? "—"} · HR: {v.heartRate ? `${v.heartRate} bpm` : "—"} · SpO₂: {v.oxygenSaturation ? `${v.oxygenSaturation}%` : "—"} · Temp: {v.temperature ? `${v.temperature}°C` : "—"}
@@ -322,7 +323,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                           <Badge tone={latestVital.status === "Normal" ? "emerald" : latestVital.status === "Warning" ? "amber" : "red"}>
                             {latestVital.status}
                           </Badge>
-                          <p className="mt-0.5 text-[11px] text-slate-400">Last vitals: {new Date(latestVital.recordedAt).toLocaleDateString()}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-400">Last vitals: {fmtDate(latestVital.recordedAt)}</p>
                         </>
                       ) : (
                         <span className="text-xs text-slate-400">No vitals yet</span>

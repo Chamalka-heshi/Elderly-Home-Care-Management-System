@@ -9,6 +9,7 @@ import {
 } from "../../../../api/caregivers/caregiver.api";
 import type { VitalRecord } from "../../../../api/caregivers/caregiver.api";
 import type { Patient } from "../../../../api/patients/patient.types";
+import { fmtDateTime } from '../../../../utils/dateTime';
 
 const statusTone = (s: string) =>
   s === "Normal" ? ("emerald" as const) : s === "Warning" ? ("amber" as const) : ("red" as const);
@@ -201,7 +202,7 @@ const VitalRecords: React.FC = () => {
                 {filtered.map((r) => (
                   <tr key={r.id} className="transition hover:bg-slate-50/60">
                     <td className="px-4 py-3 font-semibold text-slate-800">{patientName(r.patientId)}</td>
-                    <td className="px-4 py-3 text-slate-600">{new Date(r.recordedAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-slate-600">{fmtDateTime(r.recordedAt)}</td>
                     <td className="px-4 py-3 text-slate-600">{r.bloodPressure ?? "—"}</td>
                     <td className="px-4 py-3 text-slate-600">{r.heartRate ? `${r.heartRate} bpm` : "—"}</td>
                     <td className="px-4 py-3 text-slate-600">{r.temperature ?? "—"}</td>

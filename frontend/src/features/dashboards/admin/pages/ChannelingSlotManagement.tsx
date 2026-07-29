@@ -4,6 +4,7 @@ import { getAllDoctors } from "../../../../api/users/admin-users.api";
 import type { Doctor } from "../../../../api/users/user.types";
 import type { ChannelingSlot } from "../../../../api/channeling/channeling.types";
 import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen } from "../../../../api/channeling/channeling.types";
+import { todayLocal, fmtDateTime } from "../../../../utils/dateTime";
 import {
   IconCalendar,
   IconClock,
@@ -15,7 +16,7 @@ import {
   IconRefresh,
 } from "../../common/icons";
 
-const today = () => new Date().toISOString().split("T")[0];
+const today = () => todayLocal();
 
 // Finds the doctor's name by their ID
 function resolveDoctorName(slot: ChannelingSlot, doctors: Doctor[]): string {
@@ -122,9 +123,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
 
   const cutoffDisplay = useMemo(() => {
     if (!date || !startTime) return null;
-    return bookingCutoffDate(date, startTime, cutoff).toLocaleString("en-GB", {
-      hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
-    });
+    return fmtDateTime(bookingCutoffDate(date, startTime, cutoff));
   }, [date, startTime, cutoff]);
 
   // Saves the new slot to the database after checking fields
@@ -317,9 +316,7 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slot, doctors, onClose, o
   }, [startTime, endTime, validEndTimes]);
 
   const cutoffDisplay = useMemo(() =>
-    bookingCutoffDate(slot.date, startTime, cutoff).toLocaleString("en-GB", {
-      hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
-    }),
+    fmtDateTime(bookingCutoffDate(slot.date, startTime, cutoff)),
     [slot.date, startTime, cutoff]
   );
 

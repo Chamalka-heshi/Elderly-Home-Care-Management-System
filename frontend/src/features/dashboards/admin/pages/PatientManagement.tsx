@@ -1,4 +1,5 @@
 import React from "react";
+import { fmtDate } from '../../../../utils/dateTime';
 // ── NEW API IMPORT ──
 import type { Patient } from "../../../../api/patients/patient.types";
 
@@ -52,7 +53,7 @@ const PatientManagement: React.FC<Props> = ({ patients, loading, onDelete }) => 
               const isActive = p.isActive ?? p.Patient_isActive ?? false;
 
               // Prevent "Invalid Date" errors
-              const displayDate = rawDate ? new Date(rawDate).toLocaleDateString() : "—";
+              const displayDate = rawDate ? fmtDate(rawDate) : "—";
 
               return (
                 <tr key={id} className="transition hover:bg-slate-50/60">

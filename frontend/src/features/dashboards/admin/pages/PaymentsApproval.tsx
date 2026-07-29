@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDateTime as fmtDT, fmtDateShort, fmtTime } from '../../../../utils/dateTime';
 import {
   getAllPayments,
   approvePayment,
@@ -8,12 +9,7 @@ import type { Payment, PaymentStatus } from '../../../../api/payments/payment.ty
 import { IconCheck, IconCurrency, IconX, IconFilter, IconRefresh, IconSpinner } from '../../common/icons';
 import { useAuth } from '../../../../auth/AuthContext';
 
-// Formats date and time for the table
-const fmtDT = (v: string) =>
-  new Date(v).toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+
 
 // Formats numbers as LKR currency (e.g. LKR 1,000.00)
 const fmtLKR = (n: number) =>
@@ -515,8 +511,8 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                       </td>
 
                       <td className="px-5 py-3.5 text-xs text-slate-500">
-                        <p>{new Date(payment.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                        <p className="text-slate-400">{new Date(payment.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p>{fmtDateShort(payment.createdAt)}</p>
+                        <p className="text-slate-400">{fmtTime(payment.createdAt)}</p>
                       </td>
 
                       <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>

@@ -76,6 +76,10 @@ import { BackupModule } from './modules/backup/backup.module';
     synchronize: configService.get<string>('NODE_ENV') === 'development',
     logging: configService.get<string>('NODE_ENV') === 'development',
 
+    // Force all Date columns to be returned/stored as UTC ISO strings with Z suffix
+    // Without this, dates lack the Z marker and browsers misparse them as local time
+    timezone: 'Z',
+
     ssl: {
       rejectUnauthorized: false,
     },

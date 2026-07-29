@@ -39,7 +39,7 @@ const MedModal: React.FC<MedModalProps> = ({ patient, appointment, onClose }) =>
   const personal = [
     { label: "Full Name", value: patient.fullName },
     { label: "NIC", value: patient.nic },
-    { label: "Date of Birth", value: patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString("en-GB") : undefined },
+    { label: "Date of Birth", value: patient.dateOfBirth ? fmtDate(patient.dateOfBirth) : undefined },
     { label: "Gender", value: patient.gender },
     { label: "Blood Group", value: patient.bloodGroup },
     { label: "Address", value: patient.address },

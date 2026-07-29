@@ -27,6 +27,7 @@ import {
   fmt12,
   fmtDate as fmtApptDate,
 } from '../../../../api/appointment/appointment.types';
+import { fmtDateShort } from '../../../../utils/dateTime';
 import Badge from '../../common/widgets/Badge';
 import TableShell from '../../common/widgets/TableShell';
 
@@ -548,9 +549,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
                     <Badge tone={toneForStatus(item.status)}>{item.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {new Date(item.createdAt).toLocaleDateString('en-GB', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
+                    {fmtDateShort(item.createdAt)}
                   </td>
                 </tr>
               ))}

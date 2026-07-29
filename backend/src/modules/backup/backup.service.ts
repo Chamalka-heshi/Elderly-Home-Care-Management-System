@@ -26,6 +26,7 @@ const gunzip = promisify(zlib.gunzip);
 export class BackupService {
   private readonly logger = new Logger(BackupService.name);
   private schedulerInterval: NodeJS.Timeout | null = null;
+  private schedulerTimeout: NodeJS.Timeout | null = null;
 
   constructor(
     @InjectRepository(BackupRecord)
@@ -98,7 +99,8 @@ export class BackupService {
   ): Promise<BackupRecord> {
     const settings = await this.getSettings();
     const timestamp = new Date();
-    const safeName = `backup_${type}_${timestamp.toISOString().replace(/[:.]/g, '-')}`;
+    const localTimeStr = this.getLocalTimestampStr(timestamp);
+    const safeName = `backup_${type}_${localTimeStr}`;
 
     const record = this.backupRepo.create({
       backupName: safeName,
@@ -108,6 +110,7 @@ export class BackupService {
       createdByName: userName,
       notes: dto?.notes ?? null,
       backupVersion: '1.0.0',
+      createdAt: new Date(),
     });
     await this.backupRepo.save(record);
 
@@ -400,19 +403,28 @@ export class BackupService {
       clearInterval(this.schedulerInterval);
       this.schedulerInterval = null;
     }
+    if (this.schedulerTimeout) {
+      clearTimeout(this.schedulerTimeout);
+      this.schedulerTimeout = null;
+    }
 
     const settings = await this.getSettings();
     if (!settings.autoBackupEnabled) return;
 
-    const ms = this.frequencyToMs(settings.frequency);
-    this.schedulerInterval = setInterval(async () => {
-      this.logger.log('Running scheduled backup…');
+    const nextRunIso = this.computeNextRun(settings.frequency, settings.backupTime);
+    const delayMs = Math.max(1000, new Date(nextRunIso).getTime() - Date.now());
+
+    this.logger.log(`Auto-backup scheduled to run in ${Math.round(delayMs / 60000)} minute(s) at ${nextRunIso} (Colombo time)`);
+
+    this.schedulerTimeout = setTimeout(async () => {
+      this.logger.log('Running scheduled auto backup at target time…');
       try {
-        await this.createBackup({}, 'scheduled', 'system', 'Scheduler', '127.0.0.1');
+        await this.createBackup({ notes: 'Automatic scheduled backup' }, 'scheduled', 'system', 'Scheduler', '127.0.0.1');
       } catch (err) {
         this.logger.error('Scheduled backup failed', err);
       }
-    }, ms);
+      this.rescheduleAuto();
+    }, delayMs);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -456,6 +468,13 @@ export class BackupService {
   ): Promise<void> {
     const entry = this.logRepo.create({ action, userId, userName, ipAddress: ip, backupId, backupName, status, details });
     await this.logRepo.save(entry).catch(() => {});
+  }
+
+  private getLocalTimestampStr(d: Date = new Date()): string {
+    const colomboMs = d.getTime() + (5 * 60 + 30) * 60 * 1000;
+    const cd = new Date(colomboMs);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${cd.getUTCFullYear()}-${pad(cd.getUTCMonth() + 1)}-${pad(cd.getUTCDate())}_${pad(cd.getUTCHours())}-${pad(cd.getUTCMinutes())}-${pad(cd.getUTCSeconds())}`;
   }
 
   private getBackupDir(): string {
@@ -510,19 +529,49 @@ export class BackupService {
       hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
     });
     const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
-    const colomboNowMs = Date.UTC(
-      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-      Number(parts.hour), Number(parts.minute), Number(parts.second),
-    );
-    const utcOffsetMs = now.getTime() - colomboNowMs; // e.g. +19800000 for +5:30
+    const year = Number(parts.year);
+    const month = Number(parts.month) - 1;
+    const day = Number(parts.day);
+    const hour = Number(parts.hour);
+    const minute = Number(parts.minute);
+    const second = Number(parts.second);
 
-    // Build "today at targetH:targetM" in Colombo wall-clock ms
-    let nextColomboMs = Date.UTC(
-      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-      targetH, targetM, 0,
-    );
-    // If that moment has already passed, roll to tomorrow
-    if (nextColomboMs <= colomboNowMs) nextColomboMs += 86_400_000;
+    const colomboNowMs = Date.UTC(year, month, day, hour, minute, second);
+    const utcOffsetMs = now.getTime() - colomboNowMs; // e.g. -19800000 for +5:30
+
+    let nextColomboMs: number;
+
+    if (frequency === 'hourly') {
+      nextColomboMs = Date.UTC(year, month, day, hour, targetM, 0);
+      if (nextColomboMs <= colomboNowMs) {
+        nextColomboMs += 3_600_000; // +1 hour
+      }
+    } else if (frequency === '6hours') {
+      const baseMs = Date.UTC(year, month, day, targetH, targetM, 0);
+      const intervalMs = 6 * 3_600_000;
+      const diffMs = colomboNowMs - baseMs;
+      const intervals = Math.floor(diffMs / intervalMs);
+      nextColomboMs = baseMs + intervals * intervalMs;
+      if (nextColomboMs <= colomboNowMs) {
+        nextColomboMs += intervalMs;
+      }
+    } else if (frequency === 'weekly') {
+      nextColomboMs = Date.UTC(year, month, day, targetH, targetM, 0);
+      if (nextColomboMs <= colomboNowMs) {
+        nextColomboMs += 7 * 86_400_000;
+      }
+    } else if (frequency === 'monthly') {
+      nextColomboMs = Date.UTC(year, month, day, targetH, targetM, 0);
+      if (nextColomboMs <= colomboNowMs) {
+        nextColomboMs += 30 * 86_400_000;
+      }
+    } else {
+      // default: daily
+      nextColomboMs = Date.UTC(year, month, day, targetH, targetM, 0);
+      if (nextColomboMs <= colomboNowMs) {
+        nextColomboMs += 86_400_000;
+      }
+    }
 
     // Convert back to UTC ISO string
     return new Date(nextColomboMs + utcOffsetMs).toISOString();
