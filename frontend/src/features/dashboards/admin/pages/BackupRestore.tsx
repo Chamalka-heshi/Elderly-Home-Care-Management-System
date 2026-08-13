@@ -707,12 +707,19 @@ const SettingsTab: React.FC<{
 
         <label className="grid gap-1.5">
           <span className="text-xs font-semibold text-slate-600">Backup Storage Location</span>
-          <input
-            value={form.backupLocation}
-            onChange={(e) => setF("backupLocation", e.target.value)}
-            placeholder="./backups"
+          <select
+            value={form.storageLocation}
+            onChange={(e) => setF("storageLocation", e.target.value as "LOCAL" | "S3")}
             className={inputCls}
-          />
+          >
+            <option value="S3">☁️ AWS S3 (Recommended)</option>
+            <option value="LOCAL">💾 Local Server Storage</option>
+          </select>
+          <span className="text-[11px] text-slate-400">
+            {form.storageLocation === "S3"
+              ? "Backup files are uploaded to your AWS S3 bucket (ecms-backups)"
+              : "Backup files are saved to the local ./backups directory on the server"}
+          </span>
         </label>
 
         <label className="grid gap-1.5">

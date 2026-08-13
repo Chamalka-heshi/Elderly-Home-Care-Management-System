@@ -1,8 +1,10 @@
 // ── Data shapes returned by the backup API ──────────────────────────────────
 
-export type BackupStatus = 'pending' | 'running' | 'success' | 'failed';
-export type BackupType   = 'manual' | 'scheduled' | 'pre-restore';
+export type BackupStatus    = 'pending' | 'running' | 'success' | 'failed';
+export type BackupType      = 'manual' | 'scheduled' | 'pre-restore';
 export type BackupFrequency = 'hourly' | '6hours' | 'daily' | 'weekly' | 'monthly';
+export type StorageType     = 'LOCAL' | 'S3';
+export type StorageLocation = 'LOCAL' | 'S3';
 
 export interface BackupRecord {
   id: string;
@@ -11,6 +13,9 @@ export interface BackupRecord {
   status: BackupStatus;
   fileSizeBytes: number;
   filePath: string | null;
+  s3Key: string | null;
+  s3Url: string | null;
+  storageType: StorageType;
   checksum: string | null;
   backupVersion: string;
   databaseVersion: string | null;
@@ -32,7 +37,7 @@ export interface BackupSettings {
   compressionEnabled: boolean;
   includeDatabase: boolean;
   includeFiles: boolean;
-  backupLocation: string;
+  storageLocation: StorageLocation;  // 'LOCAL' | 'S3'
   emailNotification: string | null;
   updatedAt: string;
 }

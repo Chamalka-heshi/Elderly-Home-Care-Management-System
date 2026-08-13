@@ -15,8 +15,6 @@ import {
   DefaultValuePipe,
 } from '@nestjs/common';
 import { Response } from 'express';
-import * as path from 'path';
-import * as fs from 'fs';
 
 import { BackupService } from './backup.service';
 import { CreateBackupDto } from './dto/create-backup.dto';
@@ -80,12 +78,12 @@ export class BackupController {
   ) {
     const { userId, userName } = this.getUserInfo(req);
     const ip = this.getIp(req);
-    const filePath = await this.backupService.getBackupFilePath(id, userId, userName, ip);
-    const fileName = path.basename(filePath);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    const { buffer, filename } = await this.backupService.getBackupFileBuffer(id, userId, userName, ip);
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
-    const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
+    res.setHeader('Content-Length', buffer.byteLength);
+    res.end(buffer);
   }
 
   // ── Delete ─────────────────────────────────────────────────────────────────

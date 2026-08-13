@@ -41,8 +41,8 @@ export class UpdateBackupSettingsDto {
   includeFiles?: boolean;
 
   @IsOptional()
-  @IsString()
-  backupLocation?: string;
+  @IsIn(['LOCAL', 'S3'])
+  storageLocation?: 'LOCAL' | 'S3';
 
   @IsOptional()
   @IsEmail()

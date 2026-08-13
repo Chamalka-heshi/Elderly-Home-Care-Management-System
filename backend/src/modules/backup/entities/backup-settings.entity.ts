@@ -5,7 +5,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type BackupFrequency = 'hourly' | '6hours' | 'daily' | 'weekly' | 'monthly';
+export type BackupFrequency  = 'hourly' | '6hours' | 'daily' | 'weekly' | 'monthly';
+export type StorageLocation  = 'LOCAL' | 'S3';
 
 // Singleton configuration entity — only one row should exist
 @Entity('backup_settings')
@@ -34,8 +35,9 @@ export class BackupSettings {
   @Column({ default: false })
   includeFiles: boolean;
 
-  @Column({ default: './backups' })
-  backupLocation: string;
+  // 'S3' = upload to AWS S3 bucket; 'LOCAL' = write to local ./backups directory
+  @Column({ type: 'varchar', default: 'S3' })
+  storageLocation: StorageLocation;
 
   @Column({ nullable: true })
   emailNotification: string;

@@ -6,8 +6,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type BackupStatus = 'pending' | 'running' | 'success' | 'failed';
-export type BackupType   = 'manual' | 'scheduled' | 'pre-restore';
+export type BackupStatus  = 'pending' | 'running' | 'success' | 'failed';
+export type BackupType    = 'manual' | 'scheduled' | 'pre-restore';
+export type StorageType   = 'LOCAL' | 'S3';
 
 // Stores metadata for every backup snapshot created by the system
 @Entity('backup_records')
@@ -29,6 +30,19 @@ export class BackupRecord {
 
   @Column({ nullable: true })
   filePath: string;
+
+  // ── S3 Storage Fields ─────────────────────────────────────────────────────
+  // Populated when storageType = 'S3'; null for LOCAL backups
+
+  @Column({ nullable: true })
+  s3Key: string;
+
+  @Column({ nullable: true })
+  s3Url: string;
+
+  // 'LOCAL' = legacy file-system backup; 'S3' = stored in AWS S3
+  @Column({ type: 'varchar', default: 'LOCAL' })
+  storageType: StorageType;
 
   @Column({ nullable: true })
   checksum: string;
