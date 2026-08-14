@@ -5,10 +5,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type BackupFrequency  = 'hourly' | '6hours' | 'daily' | 'weekly' | 'monthly';
-export type StorageLocation  = 'LOCAL' | 'S3';
+export type BackupFrequency = 'hourly' | '6hours' | 'daily' | 'weekly' | 'monthly';
 
-// Singleton configuration entity — only one row should exist
+// Singleton configuration entity — only one row should exist.
+// Storage is always AWS S3; compression is always GZIP — neither is configurable.
 @Entity('backup_settings')
 export class BackupSettings {
   @PrimaryGeneratedColumn('uuid')
@@ -25,19 +25,6 @@ export class BackupSettings {
 
   @Column({ default: 10 })
   maxBackupsToKeep: number;
-
-  @Column({ default: true })
-  compressionEnabled: boolean;
-
-  @Column({ default: true })
-  includeDatabase: boolean;
-
-  @Column({ default: false })
-  includeFiles: boolean;
-
-  // 'S3' = upload to AWS S3 bucket; 'LOCAL' = write to local ./backups directory
-  @Column({ type: 'varchar', default: 'S3' })
-  storageLocation: StorageLocation;
 
   @Column({ nullable: true })
   emailNotification: string;

@@ -3,8 +3,6 @@
 export type BackupStatus    = 'pending' | 'running' | 'success' | 'failed';
 export type BackupType      = 'manual' | 'scheduled' | 'pre-restore';
 export type BackupFrequency = 'hourly' | '6hours' | 'daily' | 'weekly' | 'monthly';
-export type StorageType     = 'LOCAL' | 'S3';
-export type StorageLocation = 'LOCAL' | 'S3';
 
 export interface BackupRecord {
   id: string;
@@ -12,10 +10,7 @@ export interface BackupRecord {
   backupType: BackupType;
   status: BackupStatus;
   fileSizeBytes: number;
-  filePath: string | null;
   s3Key: string | null;
-  s3Url: string | null;
-  storageType: StorageType;
   checksum: string | null;
   backupVersion: string;
   databaseVersion: string | null;
@@ -28,16 +23,22 @@ export interface BackupRecord {
   updatedAt: string;
 }
 
+export interface VerifyResponse {
+  valid: boolean;
+  checksumValid: boolean | null;
+  structureValid: boolean;
+  tables: string[];
+  rowCounts: Record<string, number>;
+  snapshotDate: string | null;
+  details: string;
+}
+
 export interface BackupSettings {
   id: string;
   autoBackupEnabled: boolean;
   frequency: BackupFrequency;
   backupTime: string;
   maxBackupsToKeep: number;
-  compressionEnabled: boolean;
-  includeDatabase: boolean;
-  includeFiles: boolean;
-  storageLocation: StorageLocation;  // 'LOCAL' | 'S3'
   emailNotification: string | null;
   updatedAt: string;
 }
@@ -90,9 +91,7 @@ export interface ActivityLogsResponse {
   pages: number;
 }
 
-export interface VerifyResult {
-  valid: boolean;
-  storedChecksum: string;
-  computedChecksum: string;
-  reason: string;
+export interface RestoreResponse {
+  message: string;
+  tablesRestored: number;
 }

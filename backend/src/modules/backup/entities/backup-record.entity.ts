@@ -6,11 +6,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type BackupStatus  = 'pending' | 'running' | 'success' | 'failed';
-export type BackupType    = 'manual' | 'scheduled' | 'pre-restore';
-export type StorageType   = 'LOCAL' | 'S3';
+// Valid backup types
+export type BackupStatus = 'pending' | 'running' | 'success' | 'failed';
+export type BackupType   = 'manual' | 'scheduled' | 'pre-restore';
 
-// Stores metadata for every backup snapshot created by the system
+// Stores metadata for every backup snapshot created by the system.
+// All backups are stored exclusively in AWS S3.
 @Entity('backup_records')
 export class BackupRecord {
   @PrimaryGeneratedColumn('uuid')
@@ -28,24 +29,14 @@ export class BackupRecord {
   @Column({ type: 'bigint', default: 0 })
   fileSizeBytes: number;
 
-  @Column({ nullable: true })
-  filePath: string;
-
-  // ── S3 Storage Fields ─────────────────────────────────────────────────────
-  // Populated when storageType = 'S3'; null for LOCAL backups
-
+  // S3 object key — e.g. "backups/backup_manual_2026-08-14_00-27-00.json.gz"
   @Column({ nullable: true })
   s3Key: string;
 
-  @Column({ nullable: true })
-  s3Url: string;
-
-  // 'LOCAL' = legacy file-system backup; 'S3' = stored in AWS S3
-  @Column({ type: 'varchar', default: 'LOCAL' })
-  storageType: StorageType;
-
-  @Column({ nullable: true })
-  checksum: string;
+  // SHA-256 hex digest of the compressed (.json.gz) buffer — used to verify integrity before restore.
+  // 64 hex characters = 256 bits. Null for older backups created before this feature was added.
+  @Column({ nullable: true, length: 64 })
+  checksum: string | null;
 
   @Column({ default: '1.0.0' })
   backupVersion: string;

@@ -5,16 +5,18 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
+// Actions recorded in the activity audit log.
 export type ActivityAction =
   | 'BACKUP_CREATED'
-  | 'BACKUP_DOWNLOADED'
+  | 'BACKUP_FAILED'
   | 'BACKUP_DELETED'
   | 'BACKUP_VERIFIED'
+  | 'SETTINGS_UPDATED'
+  | 'SCHEDULER_TRIGGERED'
   | 'RESTORE_STARTED'
   | 'RESTORE_COMPLETED'
-  | 'RESTORE_FAILED'
-  | 'SETTINGS_UPDATED'
-  | 'SCHEDULER_TRIGGERED';
+  | 'RESTORE_FAILED';
+
 
 // Immutable audit trail of all backup-related actions performed in the system
 @Entity('backup_activity_logs')

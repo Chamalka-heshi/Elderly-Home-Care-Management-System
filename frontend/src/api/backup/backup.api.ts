@@ -1,11 +1,12 @@
-import { apiFetch, API_BASE_URL, getCsrfToken } from '../core/apiClient';
+import { apiFetch } from '../core/apiClient';
 import type {
   BackupStats,
   BackupListResponse,
   BackupRecord,
   BackupSettings,
   ActivityLogsResponse,
-  VerifyResult,
+  RestoreResponse,
+  VerifyResponse,
 } from './backup.types';
 
 // ── Stats ──────────────────────────────────────────────────────────────────
@@ -30,38 +31,10 @@ export const createBackup = (notes?: string): Promise<BackupRecord> =>
     body: JSON.stringify({ notes }),
   });
 
-// ── Download ───────────────────────────────────────────────────────────────
-
-export const downloadBackup = async (id: string, backupName: string): Promise<void> => {
-  const csrfToken = getCsrfToken();
-  const res = await fetch(`${API_BASE_URL}/backup/${id}/download`, {
-    credentials: 'include',
-    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
-  });
-  if (!res.ok) throw new Error('Download failed');
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = backupName;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
 // ── Delete ─────────────────────────────────────────────────────────────────
 
 export const deleteBackup = (id: string): Promise<{ message: string }> =>
   apiFetch<{ message: string }>(`/backup/${id}`, { method: 'DELETE' });
-
-// ── Verify ─────────────────────────────────────────────────────────────────
-
-export const verifyBackup = (id: string): Promise<VerifyResult> =>
-  apiFetch<VerifyResult>(`/backup/${id}/verify`, { method: 'POST' });
-
-// ── Restore ────────────────────────────────────────────────────────────────
-
-export const restoreBackup = (id: string): Promise<{ message: string }> =>
-  apiFetch<{ message: string }>(`/backup/${id}/restore`, { method: 'POST' });
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
@@ -87,3 +60,13 @@ export const getActivityLogs = (
   limit = 50,
 ): Promise<ActivityLogsResponse> =>
   apiFetch<ActivityLogsResponse>(`/backup/activity-logs?page=${page}&limit=${limit}`);
+
+// ── Restore ───────────────────────────────────────────────────────────────
+
+export const restoreBackup = (id: string): Promise<RestoreResponse> =>
+  apiFetch<RestoreResponse>(`/backup/${id}/restore`, { method: 'POST' });
+
+// ── Verify ────────────────────────────────────────────────────────────────
+
+export const verifyBackup = (id: string): Promise<VerifyResponse> =>
+  apiFetch<VerifyResponse>(`/backup/${id}/verify`, { method: 'POST' });

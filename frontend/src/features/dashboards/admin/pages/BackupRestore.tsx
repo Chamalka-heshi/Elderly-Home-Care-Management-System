@@ -4,9 +4,7 @@ import {
   getBackupStats,
   listBackups,
   createBackup,
-  downloadBackup,
   deleteBackup,
-  verifyBackup,
   restoreBackup,
   getBackupSettings,
   updateBackupSettings,
@@ -20,17 +18,16 @@ import type {
   BackupRecord,
   BackupSettings,
   BackupActivityLog,
-  BackupFrequency,
 } from "../../../../api/backup/backup.types";
 
 import {
-  IconSpinner, IconCheckCircle, IconAlertCircle, IconShield,
+  IconSpinner, IconCheckCircle, IconAlertCircle,
   IconRefresh, IconTrash, IconEye, IconSearch, IconSettings,
   IconCheck, IconAlert, IconClock, IconCalendar,
 } from "../../common/icons";
 
 // ──────────────────────────────────────────────────────────────────────────
-// Local icon primitives (backup-specific)
+// Local icon primitives
 // ──────────────────────────────────────────────────────────────────────────
 
 const IconDatabase: React.FC<{ className?: string }> = ({ className }) => (
@@ -38,19 +35,6 @@ const IconDatabase: React.FC<{ className?: string }> = ({ className }) => (
     <ellipse cx="12" cy="5" rx="9" ry="3" strokeWidth={2} />
     <path strokeWidth={2} strokeLinecap="round" d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
     <path strokeWidth={2} strokeLinecap="round" d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
-  </svg>
-);
-
-const IconDownload: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-  </svg>
-);
-
-
-const IconRestore: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className ?? "h-4 w-4"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
   </svg>
 );
 
@@ -68,6 +52,14 @@ const IconActivity: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const IconRestore: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className ?? "h-5 w-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+      d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
+  </svg>
+);
+
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────
@@ -80,8 +72,6 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-
-
 type Toast = { id: number; kind: "success" | "error" | "info"; message: string };
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -90,11 +80,11 @@ type Toast = { id: number; kind: "success" | "error" | "info"; message: string }
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const map: Record<string, string> = {
-    success:  "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200",
-    failed:   "bg-red-100 text-red-700 ring-1 ring-red-200",
-    running:  "bg-amber-100 text-amber-700 ring-1 ring-amber-200",
-    pending:  "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
-    info:     "bg-blue-100 text-blue-700 ring-1 ring-blue-200",
+    success: "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200",
+    failed:  "bg-red-100 text-red-700 ring-1 ring-red-200",
+    running: "bg-amber-100 text-amber-700 ring-1 ring-amber-200",
+    pending: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+    info:    "bg-blue-100 text-blue-700 ring-1 ring-blue-200",
   };
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${map[status] ?? map.pending}`}>
@@ -181,6 +171,120 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 );
 
 // ──────────────────────────────────────────────────────────────────────────
+// Restore Confirm Modal (2-step: warning → typed confirmation)
+// ──────────────────────────────────────────────────────────────────────────
+
+const RestoreConfirmModal: React.FC<{
+  record: BackupRecord;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ record, onConfirm, onCancel }) => {
+  const [step, setStep] = React.useState<1 | 2>(1);
+  const [typed, setTyped] = React.useState("");
+  const canConfirm = typed === "RESTORE";
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-amber-100 bg-amber-50/80 px-6 py-4">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100">
+            <IconRestore className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Restore Database</h3>
+            <p className="text-xs text-amber-700 font-medium">Step {step} of 2 — {step === 1 ? "Review warning" : "Confirm action"}</p>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {step === 1 ? (
+            <>
+              {/* Warning banner */}
+              <div className="rounded-2xl bg-red-50 border border-red-200 p-4 space-y-2">
+                <p className="text-sm font-bold text-red-700 flex items-center gap-2">
+                  <IconAlert className="h-4 w-4 flex-shrink-0" /> Destructive Operation
+                </p>
+                <p className="text-xs text-red-600">
+                  Restoring this backup will <strong>permanently overwrite</strong> all current application data.
+                  All patients, caregivers, appointments, care plans, bookings, and other records will be
+                  replaced with the snapshot from <strong>{new Date(record.createdAt).toLocaleString()}</strong>.
+                </p>
+                <p className="text-xs text-red-600">
+                  This action <strong>cannot be undone</strong>. Backup tables and audit logs are preserved.
+                </p>
+              </div>
+
+              {/* Backup details */}
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Backup</span>
+                  <span className="font-mono text-slate-700 truncate max-w-[260px]" title={record.backupName}>{record.backupName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Created</span>
+                  <span className="text-slate-700">{new Date(record.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Created By</span>
+                  <span className="text-slate-700">{record.createdByName ?? "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Size</span>
+                  <span className="font-mono text-slate-700">{formatBytes(Number(record.fileSizeBytes))}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={onCancel} className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex-1 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600"
+                >
+                  I Understand — Continue
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-700">
+                To confirm, type <strong className="font-mono text-red-600 bg-red-50 px-1.5 py-0.5 rounded">RESTORE</strong> in the box below:
+              </p>
+              <input
+                autoFocus
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                placeholder="Type RESTORE to confirm"
+                className={[
+                  "w-full rounded-2xl border px-4 py-3 text-sm font-mono outline-none transition",
+                  canConfirm
+                    ? "border-red-300 bg-red-50 text-red-700 focus:ring-4 focus:ring-red-500/10"
+                    : "border-slate-200 bg-white text-slate-800 focus:border-amber-300 focus:ring-4 focus:ring-amber-500/10",
+                ].join(" ")}
+              />
+              <div className="flex gap-3">
+                <button onClick={() => { setStep(1); setTyped(""); }} className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  Back
+                </button>
+                <button
+                  onClick={onConfirm}
+                  disabled={!canConfirm}
+                  className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Restore Database
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────────
 // SVG Bar Chart
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -197,7 +301,6 @@ const BarChart: React.FC<{ data: { label: string; success: number; failed: numbe
         const failedH  = Math.round((d.failed  / maxVal) * H);
         return (
           <g key={d.label}>
-            {/* Failed portion (bottom) */}
             {failedH > 0 && (
               <rect
                 x={x} y={H - successH - failedH}
@@ -205,7 +308,6 @@ const BarChart: React.FC<{ data: { label: string; success: number; failed: numbe
                 rx={4} fill="#fca5a5"
               />
             )}
-            {/* Success portion (top) */}
             {successH > 0 && (
               <rect
                 x={x} y={H - successH}
@@ -215,17 +317,14 @@ const BarChart: React.FC<{ data: { label: string; success: number; failed: numbe
                 fill="#10b981"
               />
             )}
-            {/* Zero state */}
             {total === 0 && (
               <rect x={x} y={H - 2} width={BAR_W} height={2} rx={1} fill="#e2e8f0" />
             )}
-            {/* Count label */}
             {total > 0 && (
               <text x={x + BAR_W / 2} y={H - successH - failedH - 4} textAnchor="middle" fontSize={9} fill="#64748b">
                 {total}
               </text>
             )}
-            {/* Month label */}
             <text x={x + BAR_W / 2} y={H + 16} textAnchor="middle" fontSize={9} fill="#94a3b8">
               {d.label}
             </text>
@@ -247,9 +346,7 @@ const DonutChart: React.FC<{ success: number; failed: number }> = ({ success, fa
   const successPct = success / total;
   return (
     <svg viewBox="0 0 120 120" className="w-32 h-32">
-      {/* bg ring */}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth={16} />
-      {/* failed arc */}
       <circle
         cx={cx} cy={cy} r={r} fill="none"
         stroke="#fca5a5" strokeWidth={16}
@@ -257,7 +354,6 @@ const DonutChart: React.FC<{ success: number; failed: number }> = ({ success, fa
         strokeDashoffset={circ * successPct}
         transform={`rotate(-90 ${cx} ${cy})`}
       />
-      {/* success arc */}
       <circle
         cx={cx} cy={cy} r={r} fill="none"
         stroke="#10b981" strokeWidth={16}
@@ -274,7 +370,7 @@ const DonutChart: React.FC<{ success: number; failed: number }> = ({ success, fa
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// Stat Card (local compact version)
+// Stat Card
 // ──────────────────────────────────────────────────────────────────────────
 
 const BStatCard: React.FC<{
@@ -296,36 +392,114 @@ const BStatCard: React.FC<{
 );
 
 // ──────────────────────────────────────────────────────────────────────────
-// Backup Details Modal
+// Backup Details Modal (Structured cleanly into sections)
 // ──────────────────────────────────────────────────────────────────────────
 
 const DetailsModal: React.FC<{ record: BackupRecord; onClose: () => void }> = ({ record, onClose }) => (
-  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
     <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white shadow-2xl overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-        <h3 className="text-base font-bold text-slate-900">Backup Details</h3>
-        <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100">✕</button>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">Backup Details</h3>
+          <p className="text-xs text-slate-500 font-mono truncate max-w-xs">{record.backupName}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          ✕
+        </button>
       </div>
-      <div className="p-6 space-y-3">
-        {[
-          ["Backup Name",     record.backupName],
-          ["Backup ID",       record.id],
-          ["Type",            record.backupType],
-          ["Status",          record.status],
-          ["File Size",       formatBytes(Number(record.fileSizeBytes))],
-          ["Backup Version",  record.backupVersion ?? "1.0.0"],
-          ["DB Version",      record.databaseVersion ?? "—"],
-          ["Created By",      record.createdByName ?? "—"],
-          ["Created At",      fmtDateTime(record.completedAt || record.createdAt)],
-          ["Completed At",    fmtDateTime(record.completedAt || record.createdAt)],
-          ["Checksum (SHA256)", record.checksum ? record.checksum.slice(0, 32) + "…" : "—"],
-          ["Notes",           record.notes ?? "—"],
-        ].map(([k, v]) => (
-          <div key={k} className="flex gap-3">
-            <span className="w-36 shrink-0 text-xs font-semibold text-slate-500">{k}</span>
-            <span className="flex-1 truncate text-xs text-slate-800">{v}</span>
+
+      <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        {/* Section 1: Backup Information */}
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Backup Information</h4>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Name</span>
+              <span className="font-mono font-semibold text-slate-800 text-right truncate max-w-[240px]" title={record.backupName}>
+                {record.backupName}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Type</span>
+              <span className="capitalize font-semibold text-slate-700">{record.backupType}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Status</span>
+              <StatusBadge status={record.status} />
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Created By</span>
+              <span className="font-medium text-slate-800">{record.createdByName ?? "—"}</span>
+            </div>
           </div>
-        ))}
+        </div>
+
+        {/* Section 2: File Information */}
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">File Information</h4>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Size</span>
+              <span className="font-mono font-semibold text-slate-800">{formatBytes(Number(record.fileSizeBytes))}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Format</span>
+              <span className="font-mono text-slate-700">.json.gz (GZIP / AES-256)</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Created At</span>
+              <span className="text-slate-800">{fmtDateTime(record.completedAt || record.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Technical Information */}
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Technical Information</h4>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Backup Version</span>
+              <span className="font-mono text-slate-700">{record.backupVersion ?? "1.0.0"}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-slate-500">Database Version</span>
+              <span className="font-mono text-slate-700">{record.databaseVersion ?? "PostgreSQL"}</span>
+            </div>
+            {record.s3Key && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-slate-500">S3 Key</span>
+                <span className="font-mono text-[11px] text-slate-600 truncate max-w-[220px]" title={record.s3Key}>
+                  {record.s3Key}
+                </span>
+              </div>
+            )}
+            {record.notes && (
+              <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200/60">
+                <span className="font-medium text-slate-500">Notes</span>
+                <span className="text-slate-700 italic">{record.notes}</span>
+              </div>
+            )}
+            {record.errorMessage && (
+              <div className="flex justify-between items-start text-xs pt-1 border-t border-red-200 text-red-600">
+                <span className="font-medium">Error</span>
+                <span className="text-right max-w-[240px]">{record.errorMessage}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-slate-100 px-6 py-3.5 bg-slate-50/50 flex justify-end">
+        <button
+          onClick={onClose}
+          className="rounded-2xl border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+        >
+          Close
+        </button>
       </div>
     </div>
   </div>
@@ -368,7 +542,7 @@ const OverviewTab: React.FC<{
       <BStatCard
         title="Storage Used"
         value={stats.totalStorageFormatted}
-        sub={`${stats.success} file${stats.success !== 1 ? "s" : ""}`}
+        sub={`${stats.success} backup${stats.success !== 1 ? "s" : ""}`}
         icon={IconStorage}
         color="bg-amber-50 text-amber-700"
       />
@@ -435,7 +609,7 @@ const OverviewTab: React.FC<{
 );
 
 // ──────────────────────────────────────────────────────────────────────────
-// TAB 2 — Backup History
+// TAB 2 — Backup History (Clean 5-column layout: Name | Date & Time | Status | Created By | Actions)
 // ──────────────────────────────────────────────────────────────────────────
 
 const HistoryTab: React.FC<{
@@ -445,15 +619,19 @@ const HistoryTab: React.FC<{
   pages: number;
   search: string;
   loading: boolean;
+  isCreating: boolean;
+  isRestoring: boolean;
   onSearch: (s: string) => void;
   onPage: (p: number) => void;
   onRefresh: () => void;
-  onDownload: (r: BackupRecord) => void;
-  onRestore: (r: BackupRecord) => void;
+  onCreateNow: () => void;
   onDelete: (r: BackupRecord) => void;
-  onVerify: (r: BackupRecord) => void;
   onView: (r: BackupRecord) => void;
-}> = ({ records, total, page, pages, search, loading, onSearch, onPage, onRefresh, onDownload, onRestore, onDelete, onVerify, onView }) => (
+  onRestore: (r: BackupRecord) => void;
+}> = ({
+  records, total, page, pages, search, loading, isCreating, isRestoring,
+  onSearch, onPage, onRefresh, onCreateNow, onDelete, onView, onRestore,
+}) => (
   <div className="space-y-4">
     {/* Toolbar */}
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -469,7 +647,7 @@ const HistoryTab: React.FC<{
       <div className="flex gap-2">
         <button
           onClick={onRefresh}
-          className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+          className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
         >
           <IconRefresh className="h-3.5 w-3.5" /> Refresh
         </button>
@@ -484,89 +662,94 @@ const HistoryTab: React.FC<{
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold text-slate-600">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Size</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Created By</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-5 py-3.5">Name</th>
+              <th className="px-5 py-3.5">Date &amp; Time</th>
+              <th className="px-5 py-3.5">Status</th>
+              <th className="px-5 py-3.5">Created By</th>
+              <th className="px-5 py-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center">
+                <td colSpan={5} className="py-12 text-center">
                   <IconSpinner className="mx-auto h-8 w-8 text-emerald-500 animate-spin" />
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-sm text-slate-400">
-                  No backups found.{" "}
-                  <span className="text-emerald-600 cursor-pointer" onClick={onRefresh}>Refresh?</span>
+                <td colSpan={5} className="py-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <IconDatabase className="h-10 w-10 text-slate-300" />
+                    <p className="text-sm font-semibold text-slate-700">No backups yet</p>
+                    <p className="text-xs text-slate-400 max-w-xs">
+                      Create your first backup to protect your database with AWS S3 storage.
+                    </p>
+                    <button
+                      onClick={onCreateNow}
+                      disabled={isCreating}
+                      className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {isCreating ? <IconSpinner className="h-3.5 w-3.5 animate-spin" /> : <IconDatabase className="h-3.5 w-3.5" />}
+                      Create Backup Now
+                    </button>
+                  </div>
                 </td>
               </tr>
             ) : (
               records.map((r) => (
                 <tr key={r.id} className="transition hover:bg-slate-50/60">
-                  <td className="px-4 py-3 font-medium text-slate-800 max-w-[200px]">
-                    <p className="truncate text-xs font-mono">{r.backupName}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{fmtDate(r.completedAt || r.createdAt)}</td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{fmtTime(r.completedAt || r.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      r.backupType === "pre-restore" ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200"
-                      : r.backupType === "manual" ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
-                      : "bg-violet-100 text-violet-800 ring-1 ring-violet-200"
-                    }`}>
-                      {r.backupType === "pre-restore" ? "Safety Backup" : r.backupType.charAt(0).toUpperCase() + r.backupType.slice(1)}
+                  {/* Name (Visually truncated) */}
+                  <td className="px-5 py-3.5 font-medium text-slate-800 max-w-[240px]">
+                    <span className="truncate block font-mono text-xs text-slate-700" title={r.backupName}>
+                      {r.backupName}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{formatBytes(Number(r.fileSizeBytes))}</td>
-                  <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{r.createdByName ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
+
+                  {/* Combined Date & Time */}
+                  <td className="px-5 py-3.5 text-xs text-slate-600 whitespace-nowrap">
+                    {fmtDateTime(r.completedAt || r.createdAt)}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-5 py-3.5">
+                    <StatusBadge status={r.status} />
+                  </td>
+
+                  {/* Created By */}
+                  <td className="px-5 py-3.5 text-xs text-slate-600 font-medium">
+                    {r.createdByName ?? "—"}
+                  </td>
+
+                  {/* Actions (View | Restore | Delete) */}
+                  <td className="px-5 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={() => onView(r)}
                         title="View Details"
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
                       >
-                        <IconEye className="h-3.5 w-3.5" />
+                        <IconEye className="h-4 w-4 text-slate-500" />
+                        <span>View</span>
                       </button>
-                      <button
-                        onClick={() => onDownload(r)}
-                        title="Download"
-                        disabled={r.status !== "success"}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30"
-                      >
-                        <IconDownload className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onVerify(r)}
-                        title="Verify Integrity"
-                        disabled={r.status !== "success"}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-30"
-                      >
-                        <IconShield className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onRestore(r)}
-                        title="Restore"
-                        disabled={r.status !== "success"}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 disabled:opacity-30"
-                      >
-                        <IconRestore className="h-3.5 w-3.5" />
-                      </button>
+                      {r.status === "success" && (
+                        <button
+                          onClick={() => onRestore(r)}
+                          disabled={isRestoring}
+                          title="Restore from this backup"
+                          className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <IconRestore className="h-4 w-4 text-amber-500" />
+                          <span>Restore</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => onDelete(r)}
-                        title="Delete"
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        title="Delete Backup"
+                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
                       >
-                        <IconTrash className="h-3.5 w-3.5" />
+                        <IconTrash className="h-4 w-4 text-red-500" />
+                        <span>Delete</span>
                       </button>
                     </div>
                   </td>
@@ -601,7 +784,7 @@ const HistoryTab: React.FC<{
 );
 
 // ──────────────────────────────────────────────────────────────────────────
-// TAB 3 — Settings
+// TAB 3 — Settings (Preserved for Stage 5 refactor)
 // ──────────────────────────────────────────────────────────────────────────
 
 const inputCls =
@@ -620,13 +803,12 @@ const SettingsTab: React.FC<{
 
   return (
     <div className="max-w-2xl space-y-6">
-      {/* Auto backup toggle */}
       <div className="rounded-3xl border border-white/10 bg-white/80 p-6 shadow-sm backdrop-blur-xl">
-        <h3 className="text-sm font-bold text-slate-800 mb-4">Automatic Backup</h3>
+        <h3 className="text-sm font-bold text-slate-800 mb-4">Automatic Backup Schedule</h3>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-700">Enable Automatic Backups</p>
-            <p className="text-xs text-slate-500 mt-0.5">Automatically create backups on the configured schedule</p>
+            <p className="text-xs text-slate-500 mt-0.5">Automatically create snapshots on AWS S3 according to schedule</p>
           </div>
           <button
             onClick={() => setF("autoBackupEnabled", !form.autoBackupEnabled)}
@@ -650,7 +832,7 @@ const SettingsTab: React.FC<{
               <span className="text-xs font-semibold text-slate-600">Backup Frequency</span>
               <select
                 value={form.frequency}
-                onChange={(e) => setF("frequency", e.target.value as BackupFrequency)}
+                onChange={(e) => setF("frequency", e.target.value)}
                 className={inputCls}
               >
                 <option value="hourly">Every Hour</option>
@@ -661,7 +843,7 @@ const SettingsTab: React.FC<{
               </select>
             </label>
             <label className="grid gap-1.5">
-              <span className="text-xs font-semibold text-slate-600">Backup Time</span>
+              <span className="text-xs font-semibold text-slate-600">Backup Time (Asia/Colombo)</span>
               <input
                 type="time"
                 value={form.backupTime}
@@ -673,53 +855,20 @@ const SettingsTab: React.FC<{
         )}
       </div>
 
-      {/* Retention & Options */}
       <div className="rounded-3xl border border-white/10 bg-white/80 p-6 shadow-sm backdrop-blur-xl space-y-5">
-        <h3 className="text-sm font-bold text-slate-800">Backup Options</h3>
-
-        {/* Toggle rows */}
-        {([
-          ["compressionEnabled", "Enable Compression", "Compress backup files using gzip to save storage space"],
-          ["includeDatabase",    "Include Database",    "Include all database tables in the backup snapshot"],
-          ["includeFiles",       "Include Uploaded Files", "Include files uploaded to the system (if stored locally)"],
-        ] as [keyof BackupSettings, string, string][]).map(([key, label, hint]) => (
-          <div key={key} className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">{label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
-            </div>
-            <button
-              onClick={() => setF(key, !form[key])}
-              className={[
-                "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200",
-                form[key] ? "bg-emerald-600" : "bg-slate-200",
-              ].join(" ")}
-            >
-              <span
-                className={[
-                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200",
-                  form[key] ? "translate-x-5" : "translate-x-0",
-                ].join(" ")}
-              />
-            </button>
-          </div>
-        ))}
+        <h3 className="text-sm font-bold text-slate-800">Retention &amp; Notifications</h3>
 
         <label className="grid gap-1.5">
-          <span className="text-xs font-semibold text-slate-600">Backup Storage Location</span>
-          <select
-            value={form.storageLocation}
-            onChange={(e) => setF("storageLocation", e.target.value as "LOCAL" | "S3")}
+          <span className="text-xs font-semibold text-slate-600">Maximum Backups to Keep</span>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={form.maxBackupsToKeep}
+            onChange={(e) => setF("maxBackupsToKeep", Number(e.target.value))}
             className={inputCls}
-          >
-            <option value="S3">☁️ AWS S3 (Recommended)</option>
-            <option value="LOCAL">💾 Local Server Storage</option>
-          </select>
-          <span className="text-[11px] text-slate-400">
-            {form.storageLocation === "S3"
-              ? "Backup files are uploaded to your AWS S3 bucket (ecms-backups)"
-              : "Backup files are saved to the local ./backups directory on the server"}
-          </span>
+          />
+          <span className="text-[11px] text-slate-400">Oldest S3 backups will be automatically purged when limit is exceeded</span>
         </label>
 
         <label className="grid gap-1.5">
@@ -731,7 +880,7 @@ const SettingsTab: React.FC<{
             placeholder="admin@carehome.lk"
             className={inputCls}
           />
-          <span className="text-[11px] text-slate-400">Receive an email notification after each backup completes</span>
+          <span className="text-[11px] text-slate-400">Receive an email status report after each backup completes</span>
         </label>
       </div>
 
@@ -748,82 +897,7 @@ const SettingsTab: React.FC<{
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// TAB 4 — Restore
-// ──────────────────────────────────────────────────────────────────────────
-
-const RestoreTab: React.FC<{
-  records: BackupRecord[];
-  onRestore: (r: BackupRecord) => void;
-}> = ({ records, onRestore }) => {
-  // Only show manual and scheduled backups — exclude auto-safety (pre-restore) backups
-  // to prevent confusion and circular restore chains
-  const restorableRecords = records.filter(
-    (r) => r.status === "success" && r.backupType !== "pre-restore"
-  );
-
-  return (
-    <div className="max-w-2xl space-y-6">
-      {/* Warning banner */}
-      <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <IconAlert className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
-        <div>
-          <p className="text-sm font-bold text-amber-800">⚠ Warning — Destructive Operation</p>
-          <p className="mt-1 text-xs text-amber-700">
-            Restoring from a backup will <strong>overwrite the current database</strong>.
-            A safety backup of the current system will be created automatically before the restore begins.
-            This action cannot be undone.
-          </p>
-        </div>
-      </div>
-
-      {/* Select existing backup */}
-      <div className="rounded-3xl border border-white/10 bg-white/80 p-6 shadow-sm backdrop-blur-xl">
-        <h3 className="text-sm font-bold text-slate-800 mb-1">Select a Backup to Restore</h3>
-        <p className="text-xs text-slate-500 mb-4">Choose from your existing successful backups below</p>
-
-        {restorableRecords.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
-            No manual or scheduled backups available to restore.
-            <p className="mt-1 text-xs text-slate-400">Auto safety backups are excluded. Create a manual backup first.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {restorableRecords.slice(0, 10).map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-200 hover:shadow-sm"
-              >
-                <div className="min-w-0 flex-1 pr-3">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-xs font-mono font-semibold text-slate-800">{r.backupName}</p>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      r.backupType === "manual" ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
-                      : "bg-violet-100 text-violet-800 ring-1 ring-violet-200"
-                    }`}>
-                      {r.backupType.charAt(0).toUpperCase() + r.backupType.slice(1)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {fmtDateTime(r.completedAt || r.createdAt)} · {formatBytes(Number(r.fileSizeBytes))} · by {r.createdByName ?? "—"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => onRestore(r)}
-                  className="ml-4 flex shrink-0 items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-violet-600/25 transition hover:bg-violet-700"
-                >
-                  <IconRestore className="h-3.5 w-3.5" /> Restore
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ──────────────────────────────────────────────────────────────────────────
-// TAB 5 — Activity Log
+// TAB 4 — Activity Log
 // ──────────────────────────────────────────────────────────────────────────
 
 const LogTab: React.FC<{
@@ -835,15 +909,10 @@ const LogTab: React.FC<{
   onPage: (p: number) => void;
 }> = ({ logs, total, page, pages, loading, onPage }) => {
   const actionLabel: Record<string, string> = {
-    BACKUP_CREATED:     "Backup Created",
-    BACKUP_DOWNLOADED:  "Backup Downloaded",
-    BACKUP_DELETED:     "Backup Deleted",
-    BACKUP_VERIFIED:    "Integrity Verified",
-    RESTORE_STARTED:    "Restore Started",
-    RESTORE_COMPLETED:  "Restore Completed",
-    RESTORE_FAILED:     "Restore Failed",
-    SETTINGS_UPDATED:   "Settings Updated",
-    SCHEDULER_TRIGGERED:"Scheduler Triggered",
+    BACKUP_CREATED:      "Backup Created",
+    BACKUP_DELETED:      "Backup Deleted",
+    SETTINGS_UPDATED:    "Settings Updated",
+    SCHEDULER_TRIGGERED: "Scheduler Triggered",
   };
 
   return (
@@ -859,7 +928,7 @@ const LogTab: React.FC<{
               <tr>
                 <th className="px-4 py-3">Action</th>
                 <th className="px-4 py-3">User</th>
-                <th className="px-4 py-3">Date & Time</th>
+                <th className="px-4 py-3">Date &amp; Time</th>
                 <th className="px-4 py-3">IP Address</th>
                 <th className="px-4 py-3">Backup</th>
                 <th className="px-4 py-3">Status</th>
@@ -922,42 +991,42 @@ const LogTab: React.FC<{
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// Root BackupRestore page component
+// Root Backup Management page component
 // ──────────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "history" | "settings" | "restore" | "logs";
+type Tab = "overview" | "history" | "settings" | "logs";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: "overview",  label: "Overview",       icon: IconDatabase  },
-  { id: "history",   label: "Backup History", icon: IconClock     },
-  { id: "settings",  label: "Settings",       icon: IconSettings  },
-  { id: "restore",   label: "Restore System", icon: IconRestore   },
-  { id: "logs",      label: "Activity Log",   icon: IconActivity  },
+  { id: "overview", label: "Overview",       icon: IconDatabase },
+  { id: "history",  label: "Backup History", icon: IconClock    },
+  { id: "settings", label: "Settings",       icon: IconSettings },
+  { id: "logs",     label: "Activity Log",   icon: IconActivity },
 ];
 
 const BackupRestore: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
   // Data state
-  const [stats,        setStats]        = useState<BackupStats | null>(null);
-  const [settings,     setSettings]     = useState<BackupSettings | null>(null);
+  const [stats, setStats] = useState<BackupStats | null>(null);
+  const [settings, setSettings] = useState<BackupSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [records, setRecords] = useState<BackupRecord[]>([]);
-  const [total,   setTotal]   = useState(0);
-  const [page,    setPage]    = useState(1);
-  const [pages,   setPages]   = useState(1);
-  const [search,  setSearch]  = useState("");
-  const [logs,    setLogs]    = useState<BackupActivityLog[]>([]);
-  const [logTotal,  setLogTotal]  = useState(0);
-  const [logPage,   setLogPage]   = useState(1);
-  const [logPages,  setLogPages]  = useState(1);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const [logs, setLogs] = useState<BackupActivityLog[]>([]);
+  const [logTotal, setLogTotal] = useState(0);
+  const [logPage, setLogPage] = useState(1);
+  const [logPages, setLogPages] = useState(1);
 
   // Loading state
-  const [loadingStats,   setLoadingStats]   = useState(false);
-  const [statsError,     setStatsError]     = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [statsError, setStatsError] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [loadingLogs,    setLoadingLogs]    = useState(false);
-  const [isCreating,     setIsCreating]     = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Toasts
@@ -974,6 +1043,7 @@ const BackupRestore: React.FC = () => {
     extra?: React.ReactNode; onConfirm: () => void;
   } | null>(null);
   const [detailsRecord, setDetailsRecord] = useState<BackupRecord | null>(null);
+  const [restoreRecord, setRestoreRecord] = useState<BackupRecord | null>(null);
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
 
   // ── Loaders ──────────────────────────────────────────────────────────────
@@ -984,7 +1054,6 @@ const BackupRestore: React.FC = () => {
       setStatsError(false);
       const s = await getBackupStats();
       setStats(s);
-      // Sync settings from stats response
       setSettings(s.settings);
     } catch (err) {
       setStatsError(true);
@@ -1039,17 +1108,16 @@ const BackupRestore: React.FC = () => {
   // Initial load
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => {
-    if (activeTab === "history" || activeTab === "restore") loadHistory(1, "");
+    if (activeTab === "history") loadHistory(1, "");
   }, [activeTab, loadHistory]);
   useEffect(() => {
     if (activeTab === "logs") loadLogs(1);
   }, [activeTab, loadLogs]);
-  // Load settings independently when the Settings tab is opened
   useEffect(() => {
     if (activeTab === "settings" && !settings) loadSettings();
   }, [activeTab, settings, loadSettings]);
 
-  // Search debounce — skip on initial mount (history is already loaded by tab effect)
+  // Search debounce
   const isFirstSearchRender = React.useRef(true);
   useEffect(() => {
     if (isFirstSearchRender.current) { isFirstSearchRender.current = false; return; }
@@ -1062,15 +1130,15 @@ const BackupRestore: React.FC = () => {
   const handleCreateNow = () => {
     setConfirmModal({
       title: "Create Backup Now",
-      message: "This will create a full database snapshot. The process may take a few seconds.",
+      message: "This will create a full database snapshot compressed with GZIP and saved securely to AWS S3.",
       confirmLabel: "Create Backup",
       onConfirm: async () => {
         setConfirmModal(null);
-        setProgressLabel("Creating backup…");
+        setProgressLabel("Creating backup and uploading to AWS S3…");
         setIsCreating(true);
         try {
           await createBackup("Manual backup");
-          addToast("success", "Backup created successfully!");
+          addToast("success", "Backup created and uploaded to AWS S3 successfully!");
           await loadStats();
           await loadHistory(1, "");
         } catch (err) {
@@ -1083,34 +1151,10 @@ const BackupRestore: React.FC = () => {
     });
   };
 
-  const handleDownload = (r: BackupRecord) => {
-    downloadBackup(r.id, r.backupName)
-      .then(() => addToast("success", `Download started: ${r.backupName}`))
-      .catch((err) => addToast("error", err instanceof Error ? err.message : "Download failed"));
-  };
-
-  const handleVerify = (r: BackupRecord) => {
-    setProgressLabel("Verifying integrity…");
-    verifyBackup(r.id)
-      .then((res) => {
-        setProgressLabel(null);
-        if (res.valid) {
-          addToast("success", "✓ Integrity check passed — checksum verified");
-        } else {
-          addToast("error", `✕ Integrity check failed: ${res.reason}`);
-        }
-        loadLogs();
-      })
-      .catch((err) => {
-        setProgressLabel(null);
-        addToast("error", err instanceof Error ? err.message : "Verification failed");
-      });
-  };
-
   const handleDelete = (r: BackupRecord) => {
     setConfirmModal({
       title: "Delete Backup",
-      message: `This will permanently delete "${r.backupName}" (${formatBytes(Number(r.fileSizeBytes))}). This action cannot be undone.`,
+      message: `This will permanently delete "${r.backupName}" (${formatBytes(Number(r.fileSizeBytes))}) from AWS S3 storage. This action cannot be undone.`,
       danger: true,
       confirmLabel: "Delete Backup",
       onConfirm: async () => {
@@ -1128,33 +1172,25 @@ const BackupRestore: React.FC = () => {
   };
 
   const handleRestore = (r: BackupRecord) => {
-    setConfirmModal({
-      title: "Restore System",
-      danger: true,
-      confirmLabel: "Yes, Restore System",
-      message: `You are about to restore the system from backup: "${r.backupName}" (${fmtDateTime(r.createdAt)}).`,
-      extra: (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          <strong>⚠ A safety backup of the current system will be automatically created before proceeding.</strong>{" "}
-          All current data will be overwritten. This cannot be undone.
-        </div>
-      ),
-      onConfirm: async () => {
-        setConfirmModal(null);
-        setProgressLabel("Restoring system… (creating safety backup first)");
-        try {
-          const res = await restoreBackup(r.id);
-          addToast("success", res.message);
-          await loadStats();
-          await loadHistory(1, "");
-          await loadLogs(1);
-        } catch (err) {
-          addToast("error", err instanceof Error ? err.message : "Restore failed");
-        } finally {
-          setProgressLabel(null);
-        }
-      },
-    });
+    setRestoreRecord(r);
+  };
+
+  const handleRestoreConfirm = async () => {
+    if (!restoreRecord) return;
+    setRestoreRecord(null);
+    setProgressLabel("Downloading and restoring database from AWS S3 backup\u2026");
+    setIsRestoring(true);
+    try {
+      const res = await restoreBackup(restoreRecord.id);
+      addToast("success", `${res.message} (${res.tablesRestored} tables restored)`);
+      await loadStats();
+      await loadHistory(1, "");
+    } catch (err) {
+      addToast("error", err instanceof Error ? err.message : "Restore failed");
+    } finally {
+      setIsRestoring(false);
+      setProgressLabel(null);
+    }
   };
 
   const handleSaveSettings = async (s: BackupSettings) => {
@@ -1162,7 +1198,7 @@ const BackupRestore: React.FC = () => {
     try {
       const updated = await updateBackupSettings(s);
       setSettings(updated);
-      addToast("success", "Backup settings saved");
+      addToast("success", "Backup settings saved successfully");
       await loadStats();
     } catch (err) {
       addToast("error", err instanceof Error ? err.message : "Failed to save settings");
@@ -1212,6 +1248,15 @@ const BackupRestore: React.FC = () => {
         <DetailsModal record={detailsRecord} onClose={() => setDetailsRecord(null)} />
       )}
 
+      {/* Restore confirm modal */}
+      {restoreRecord && (
+        <RestoreConfirmModal
+          record={restoreRecord}
+          onConfirm={handleRestoreConfirm}
+          onCancel={() => setRestoreRecord(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/70 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl">
         <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
@@ -1221,8 +1266,8 @@ const BackupRestore: React.FC = () => {
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
               <IconDatabase className="h-3.5 w-3.5" /> System Management
             </div>
-            <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Backup &amp; Restore</h2>
-            <p className="mt-1 text-sm text-slate-600">Protect, manage, and recover your ECMS database with confidence.</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Backup Management</h2>
+            <p className="mt-1 text-sm text-slate-600">Automated, encrypted AWS S3 snapshots for ECMS data security.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1241,6 +1286,14 @@ const BackupRestore: React.FC = () => {
       {progressLabel && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
           <ProgressBar label={progressLabel} />
+        </div>
+      )}
+
+      {/* Restore in-progress banner */}
+      {isRestoring && !progressLabel && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
+          <IconSpinner className="h-5 w-5 text-amber-500 animate-spin flex-shrink-0" />
+          <p className="text-sm font-semibold text-amber-700">Restore in progress\u2026 please do not close this page.</p>
         </div>
       )}
 
@@ -1299,14 +1352,15 @@ const BackupRestore: React.FC = () => {
             pages={pages}
             search={search}
             loading={loadingHistory}
+            isCreating={isCreating}
+            isRestoring={isRestoring}
             onSearch={(s) => setSearch(s)}
             onPage={(p) => { setPage(p); loadHistory(p, search); }}
             onRefresh={() => { loadHistory(page, search); loadStats(); }}
-            onDownload={handleDownload}
-            onRestore={handleRestore}
+            onCreateNow={handleCreateNow}
             onDelete={handleDelete}
-            onVerify={handleVerify}
             onView={(r) => setDetailsRecord(r)}
+            onRestore={handleRestore}
           />
         )}
 
@@ -1322,10 +1376,6 @@ const BackupRestore: React.FC = () => {
               onSave={handleSaveSettings}
             />
           )
-        )}
-
-        {activeTab === "restore" && (
-          <RestoreTab records={records} onRestore={handleRestore} />
         )}
 
         {activeTab === "logs" && (

@@ -9,6 +9,7 @@ import {
   Min,
 } from 'class-validator';
 
+// Only the five settings that remain after removing storage/compression/scope toggles
 export class UpdateBackupSettingsDto {
   @IsOptional()
   @IsBoolean()
@@ -27,22 +28,6 @@ export class UpdateBackupSettingsDto {
   @Min(1)
   @Max(100)
   maxBackupsToKeep?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  compressionEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  includeDatabase?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  includeFiles?: boolean;
-
-  @IsOptional()
-  @IsIn(['LOCAL', 'S3'])
-  storageLocation?: 'LOCAL' | 'S3';
 
   @IsOptional()
   @IsEmail()

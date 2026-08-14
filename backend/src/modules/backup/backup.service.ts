@@ -3,17 +3,16 @@ import {
   Logger,
   NotFoundException,
   InternalServerErrorException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
+import { Repository, DataSource, LessThan, EntityManager } from 'typeorm';
 import * as zlib from 'zlib';
+import * as crypto from 'crypto';
 import { promisify } from 'util';
 
-import { BackupRecord, BackupStatus } from './entities/backup-record.entity';
+import { BackupRecord, BackupType } from './entities/backup-record.entity';
 import { BackupSettings } from './entities/backup-settings.entity';
 import { BackupActivityLog, ActivityAction } from './entities/backup-activity-log.entity';
 import { CreateBackupDto } from './dto/create-backup.dto';
@@ -24,14 +23,37 @@ import { S3StorageService } from './s3-storage.service';
 const gzip   = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
-// Orchestrates all backup and restore operations, scheduler logic, and retention enforcement.
-// Storage backend is chosen per-backup based on BackupSettings.storageLocation:
-//   'S3'    → upload/download/delete via S3StorageService (AWS SDK v3)
-//   'LOCAL' → legacy fs.* file-system operations (./backups directory)
+// ─────────────────────────────────────────────────────────────────────────────
+// Advisory lock ID — unique integer used by PostgreSQL pg_advisory_xact_lock()
+// to prevent two restore operations running at the same time.
+// This number just needs to be unique within the application; the value itself
+// has no special meaning.
+const RESTORE_ADVISORY_LOCK_ID = 987_654_321;
+
+// How long a backup may stay in 'running' status before being considered stuck.
+// If the server crashes mid-backup the record stays at 'running' forever unless
+// we clean it up on the next startup.
+const STUCK_BACKUP_TIMEOUT_MINUTES = 60;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Snapshot shape produced by createBackup and consumed by restoreBackup.
+interface BackupSnapshot {
+  version:   string;
+  createdAt: string;
+  createdBy: string;
+  tables:    Record<string, unknown[]>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Orchestrates all backup operations, scheduler logic, retention enforcement,
+// and restore.
+// All backups are stored exclusively in AWS S3 (via S3StorageService, AWS SDK v3).
+// GZIP compression (.json.gz) and AES-256 server-side encryption are always
+// applied.  SHA-256 checksum is calculated over the compressed buffer for
+// integrity verification.
 @Injectable()
-export class BackupService {
+export class BackupService implements OnModuleInit {
   private readonly logger = new Logger(BackupService.name);
-  private schedulerInterval: NodeJS.Timeout | null = null;
   private schedulerTimeout: NodeJS.Timeout | null = null;
 
   constructor(
@@ -50,15 +72,25 @@ export class BackupService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
     private readonly s3StorageService: S3StorageService,
-  ) {
-    // Ensure local backup directory exists on startup (used for LOCAL-type backups)
-    this.ensureBackupDir();
-    // Bootstrap singleton settings row if missing
-    this.initSettings().catch((err) =>
+  ) {}
+
+  // Called automatically by NestJS after all dependencies are injected.
+  async onModuleInit(): Promise<void> {
+    // ── 1. Bootstrap singleton settings row if it doesn't exist yet ───────────
+    await this.initSettings().catch((err) =>
       this.logger.error('Failed to init backup settings', err),
     );
-    // Start scheduler
-    this.rescheduleAuto().catch(() => {});
+
+    // ── 2. Clean up stuck 'running' records from a previous server crash ──────
+    // If the server was killed while a backup was in progress the record
+    // stays at status='running' forever.  We detect these on startup and mark
+    // them as failed so the UI shows an honest state.
+    await this.cleanStuckBackups().catch((err) =>
+      this.logger.error('Failed to clean stuck backups', err),
+    );
+
+    // ── 3. Start the auto-backup scheduler ───────────────────────────────────
+    await this.rescheduleAuto().catch(() => {});
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -102,34 +134,36 @@ export class BackupService {
 
   async createBackup(
     dto: CreateBackupDto,
-    type: 'manual' | 'scheduled' | 'pre-restore',
+    type: BackupType,
     userId: string,
     userName: string,
     ip: string,
   ): Promise<BackupRecord> {
-    const settings = await this.getSettings();
-    const timestamp = new Date();
+    const settings     = await this.getSettings();
+    const timestamp    = new Date();
     const localTimeStr = this.getLocalTimestampStr(timestamp);
-    const safeName = `backup_${type}_${localTimeStr}`;
+    const safeName     = `backup_${type}_${localTimeStr}`;
 
+    // Create the DB record immediately with status='running' so the UI can
+    // show the in-progress state even if the operation takes a while.
     const record = this.backupRepo.create({
-      backupName: safeName,
-      backupType: type,
-      status: 'running',
+      backupName:      safeName,
+      backupType:      type,
+      status:          'running',
       createdByUserId: userId,
-      createdByName: userName,
-      notes: dto?.notes ?? undefined,
-      backupVersion: '1.0.0',
-      createdAt: new Date(),
+      createdByName:   userName,
+      notes:           dto?.notes ?? undefined,
+      backupVersion:   '1.0.0',
+      createdAt:       new Date(),
     });
     await this.backupRepo.save(record);
 
-    try {
-      // ── Gather all entity table data ──────────────────────────────────────
-      const entityMetadatas = this.dataSource.entityMetadatas;
-      const snapshot: Record<string, unknown[]> = {};
+    let uploadedKey: string | null = null;
 
-      for (const meta of entityMetadatas) {
+    try {
+      // ── Step 1: Gather all entity table data ─────────────────────────────
+      const snapshot: Record<string, unknown[]> = {};
+      for (const meta of this.dataSource.entityMetadatas) {
         // Skip backup module's own tables to avoid circular references
         if (['backup_records', 'backup_settings', 'backup_activity_logs'].includes(meta.tableName)) {
           continue;
@@ -143,79 +177,77 @@ export class BackupService {
         }
       }
 
-      const snapshotJson = JSON.stringify({
+      // ── Step 2: Serialise to JSON ─────────────────────────────────────────
+      const snapshotJson: BackupSnapshot = {
         version:   '1.0.0',
         createdAt: timestamp.toISOString(),
         createdBy: userName,
         tables:    snapshot,
-      });
+      };
+      const jsonString = JSON.stringify(snapshotJson);
 
-      // ── Compress / serialise ──────────────────────────────────────────────
-      let fileBuffer: Buffer;
-      let fileExt: string;
+      // ── Step 3: GZIP compress (always enabled — plain JSON never stored) ──
+      const fileBuffer = await gzip(Buffer.from(jsonString, 'utf8'));
+      const fileName   = `${safeName}.json.gz`;
 
-      if (settings.compressionEnabled) {
-        fileBuffer = await gzip(Buffer.from(snapshotJson, 'utf8'));
-        fileExt = '.json.gz';
-      } else {
-        fileBuffer = Buffer.from(snapshotJson, 'utf8');
-        fileExt = '.json';
-      }
+      // ── Step 4: SHA-256 checksum of the compressed buffer ─────────────────
+      // We hash AFTER compression so that the stored checksum matches exactly
+      // what is uploaded to and downloaded from S3.
+      const checksum = crypto
+        .createHash('sha256')
+        .update(fileBuffer)
+        .digest('hex');
 
-      const fileName = `${safeName}${fileExt}`;
+      // ── Step 5: Upload to AWS S3 (sole storage backend) ───────────────────
+      // AES-256 server-side encryption is applied by S3StorageService on every upload.
+      const uploadResult = await this.s3StorageService.uploadBackup(fileBuffer, fileName);
+      uploadedKey = uploadResult.key;
 
-      // ── Compute checksum (always, regardless of storage backend) ──────────
-      const checksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      // ── Step 6: Update DB record with success metadata ────────────────────
       const dbVersion = await this.getDatabaseVersion();
-
-      // ── Storage: S3 or LOCAL ──────────────────────────────────────────────
-      const useS3 = settings.storageLocation === 'S3';
-
-      if (useS3) {
-        // ── Upload to AWS S3 ────────────────────────────────────────────────
-        const uploadResult = await this.s3StorageService.uploadBackup(fileBuffer, fileName);
-
-        record.storageType    = 'S3';
-        record.s3Key          = uploadResult.key;
-        record.s3Url          = uploadResult.location;
-        record.filePath       = null!; // not stored locally
-        record.fileSizeBytes  = uploadResult.size;
-      } else {
-        // ── Write to local disk (legacy / LOCAL mode) ───────────────────────
-        const filePath = path.join(this.getBackupDir(), fileName);
-        fs.writeFileSync(filePath, fileBuffer);
-
-        record.storageType   = 'LOCAL';
-        record.filePath      = filePath;
-        record.fileSizeBytes = fileBuffer.byteLength;
-      }
-
-      record.status          = 'success';
+      record.s3Key           = uploadResult.key;
+      record.fileSizeBytes   = uploadResult.size;
       record.checksum        = checksum;
+      record.status          = 'success';
       record.databaseVersion = dbVersion;
       record.completedAt     = new Date();
-      await this.backupRepo.save(record);
 
+      try {
+        await this.backupRepo.save(record);
+      } catch (dbErr) {
+        // DB metadata save failed AFTER a successful S3 upload — orphaned S3
+        // object.  Try to roll back by deleting the S3 object.
+        this.logger.error('DB record update failed after S3 upload — attempting S3 rollback', dbErr);
+        try {
+          await this.s3StorageService.deleteBackup(uploadedKey);
+          this.logger.log(`S3 rollback succeeded for key: ${uploadedKey}`);
+        } catch (s3Err) {
+          this.logger.error(`S3 rollback FAILED for key: ${uploadedKey} — orphaned object`, s3Err);
+        }
+        throw dbErr;
+      }
+
+      // ── Step 7: Audit log ─────────────────────────────────────────────────
       await this.log(
         'BACKUP_CREATED', userId, userName, ip, record.id, safeName, 'success',
-        `Backup created (${this.formatBytes(fileBuffer.byteLength)}) — storage: ${record.storageType}`,
+        `Backup created (${this.formatBytes(fileBuffer.byteLength)}) — S3 key: ${record.s3Key} — SHA-256: ${checksum.slice(0, 8)}...`,
       );
 
-      // ── Email notification ─────────────────────────────────────────────────
+      // ── Step 8: Email notification (fire-and-forget) ──────────────────────
       if (settings.emailNotification?.trim()) {
         this.mailService.sendBackupNotification(settings.emailNotification, {
           backupName:    record.backupName,
           status:        record.status,
           fileSizeBytes: Number(record.fileSizeBytes),
           errorMessage:  record.errorMessage ?? undefined,
-          notes:         record.notes ?? undefined,
-          completedAt:   record.completedAt ?? undefined,
+          notes:         record.notes        ?? undefined,
+          completedAt:   record.completedAt  ?? undefined,
         }).catch((err) =>
           this.logger.error('Failed to send backup email notification', err),
         );
       }
 
-      // ── Enforce retention policy ───────────────────────────────────────────
+      // ── Step 9: Enforce retention policy ──────────────────────────────────
       await this.purgeOldBackups(settings.maxBackupsToKeep);
 
       return record;
@@ -225,15 +257,15 @@ export class BackupService {
       record.errorMessage = err instanceof Error ? err.message : 'Unknown error';
       record.completedAt  = new Date();
       await this.backupRepo.save(record);
-      await this.log('BACKUP_CREATED', userId, userName, ip, record.id, safeName, 'failed', record.errorMessage);
+      await this.log('BACKUP_FAILED', userId, userName, ip, record.id, safeName, 'failed', record.errorMessage);
 
       if (settings.emailNotification?.trim()) {
         this.mailService.sendBackupNotification(settings.emailNotification, {
           backupName:   record.backupName,
           status:       record.status,
           errorMessage: record.errorMessage ?? undefined,
-          notes:        record.notes ?? undefined,
-          completedAt:  record.completedAt ?? undefined,
+          notes:        record.notes        ?? undefined,
+          completedAt:  record.completedAt  ?? undefined,
         }).catch((e) =>
           this.logger.error('Failed to send backup failure email notification', e),
         );
@@ -263,15 +295,15 @@ export class BackupService {
   }
 
   async getStats() {
-    const all    = await this.backupRepo.find({ order: { createdAt: 'DESC' } });
-    const total  = all.length;
-    const latest = all[0] ?? null;
+    const all     = await this.backupRepo.find({ order: { createdAt: 'DESC' } });
+    const total   = all.length;
+    const latest  = all[0] ?? null;
     const success = all.filter((r) => r.status === 'success').length;
     const failed  = all.filter((r) => r.status === 'failed').length;
 
     const totalBytes = all.reduce((sum, r) => sum + Number(r.fileSizeBytes || 0), 0);
 
-    const settings = await this.getSettings();
+    const settings      = await this.getSettings();
     const nextScheduled = settings.autoBackupEnabled
       ? this.computeNextRun(settings.frequency, settings.backupTime)
       : null;
@@ -292,137 +324,121 @@ export class BackupService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Download
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Returns { buffer, filename } regardless of storage type.
-   * The controller is responsible for streaming the buffer to the HTTP response.
-   */
-  async getBackupFileBuffer(
-    id: string,
-    userId: string,
-    userName: string,
-    ip: string,
-  ): Promise<{ buffer: Buffer; filename: string }> {
-    const record = await this.findRecord(id);
-    const filename = path.basename(
-      record.storageType === 'S3'
-        ? (record.s3Key ?? record.backupName)
-        : (record.filePath ?? record.backupName),
-    );
-
-    let buffer: Buffer;
-
-    if (record.storageType === 'S3') {
-      // ── Download from S3 ──────────────────────────────────────────────────
-      if (!record.s3Key) {
-        await this.log('BACKUP_DOWNLOADED', userId, userName, ip, id, record.backupName, 'failed', 'S3 key missing on record');
-        throw new NotFoundException('Backup S3 key not found — record may be corrupt');
-      }
-      try {
-        buffer = await this.s3StorageService.downloadBackup(record.s3Key);
-      } catch (err) {
-        await this.log('BACKUP_DOWNLOADED', userId, userName, ip, id, record.backupName, 'failed', err instanceof Error ? err.message : 'S3 download error');
-        throw new InternalServerErrorException('Failed to download backup from S3: ' + (err instanceof Error ? err.message : 'Unknown'));
-      }
-    } else {
-      // ── Read from local disk (LOCAL records) ──────────────────────────────
-      if (!record.filePath || !fs.existsSync(record.filePath)) {
-        await this.log('BACKUP_DOWNLOADED', userId, userName, ip, id, record.backupName, 'failed', 'File missing on disk');
-        throw new NotFoundException('Backup file not found on disk');
-      }
-      buffer = fs.readFileSync(record.filePath);
-    }
-
-    await this.log('BACKUP_DOWNLOADED', userId, userName, ip, id, record.backupName, 'success', `Downloaded (${this.formatBytes(buffer.byteLength)})`);
-    return { buffer, filename };
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
   // Delete
   // ──────────────────────────────────────────────────────────────────────────
 
   async deleteBackup(id: string, userId: string, userName: string, ip: string): Promise<{ message: string }> {
     const record = await this.findRecord(id);
 
-    if (record.storageType === 'S3') {
-      // ── Delete from S3 ────────────────────────────────────────────────────
-      if (record.s3Key) {
-        try {
-          await this.s3StorageService.deleteBackup(record.s3Key);
-        } catch (err) {
-          // Log the S3 error but continue removing the DB record
-          this.logger.error(`S3 delete failed for backup ${id}: ${err instanceof Error ? err.message : err}`);
-        }
-      }
-    } else {
-      // ── Delete local file ─────────────────────────────────────────────────
-      if (record.filePath && fs.existsSync(record.filePath)) {
-        fs.unlinkSync(record.filePath);
+    if (record.s3Key) {
+      try {
+        await this.s3StorageService.deleteBackup(record.s3Key);
+      } catch (err) {
+        // Log the error but still remove the DB record; the orphaned S3 object
+        // will be cleaned up by the bucket's lifecycle policy.
+        this.logger.error(`S3 delete failed for backup ${id}: ${err instanceof Error ? err.message : err}`);
       }
     }
 
     await this.backupRepo.remove(record);
-    await this.log('BACKUP_DELETED', userId, userName, ip, id, record.backupName, 'success', `Backup deleted (storage: ${record.storageType})`);
+    await this.log('BACKUP_DELETED', userId, userName, ip, id, record.backupName, 'success', 'Backup deleted from S3');
 
     return { message: `Backup "${record.backupName}" deleted successfully` };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Verify Integrity
+  // Verify Backup
   // ──────────────────────────────────────────────────────────────────────────
+  // Downloads a backup from S3, verifies its SHA-256 checksum, decompresses
+  // it, and validates its structure.  Does NOT modify the database in any way.
 
-  async verifyBackup(id: string, userId: string, userName: string, ip: string) {
+  async verifyBackup(
+    id: string,
+    userId: string,
+    userName: string,
+    ip: string,
+  ): Promise<{
+    valid:         boolean;
+    checksumValid: boolean | null;
+    structureValid: boolean;
+    tables:        string[];
+    rowCounts:     Record<string, number>;
+    snapshotDate:  string | null;
+    details:       string;
+  }> {
     const record = await this.findRecord(id);
-    let fileBuffer: Buffer;
 
-    if (record.storageType === 'S3') {
-      // ── Download from S3 for verification ────────────────────────────────
-      if (!record.s3Key) {
-        await this.log('BACKUP_VERIFIED', userId, userName, ip, id, record.backupName, 'failed', 'S3 key missing');
-        return { valid: false, reason: 'Backup S3 key not found on record' };
-      }
-
-      const exists = await this.s3StorageService.verifyBackupExists(record.s3Key);
-      if (!exists) {
-        await this.log('BACKUP_VERIFIED', userId, userName, ip, id, record.backupName, 'failed', 'Object not found in S3');
-        return { valid: false, reason: 'Backup object not found in S3 bucket' };
-      }
-
-      try {
-        fileBuffer = await this.s3StorageService.downloadBackup(record.s3Key);
-      } catch (err) {
-        await this.log('BACKUP_VERIFIED', userId, userName, ip, id, record.backupName, 'failed', 'S3 download error during verify');
-        return { valid: false, reason: `S3 download error: ${err instanceof Error ? err.message : 'Unknown'}` };
-      }
-    } else {
-      // ── Read local file for verification ─────────────────────────────────
-      if (!record.filePath || !fs.existsSync(record.filePath)) {
-        await this.log('BACKUP_VERIFIED', userId, userName, ip, id, record.backupName, 'failed', 'File missing on disk');
-        return { valid: false, reason: 'Backup file not found on disk' };
-      }
-      fileBuffer = fs.readFileSync(record.filePath);
+    if (!record.s3Key) {
+      throw new InternalServerErrorException('Backup has no S3 key — cannot verify.');
     }
 
-    const computed = crypto.createHash('sha256').update(fileBuffer).digest('hex');
-    const valid    = computed === record.checksum;
+    // ── Download from S3 ─────────────────────────────────────────────────────
+    const compressedBuffer = await this.s3StorageService.downloadBackup(record.s3Key);
 
-    await this.log(
-      'BACKUP_VERIFIED',
-      userId, userName, ip, id, record.backupName,
-      valid ? 'success' : 'failed',
-      valid
-        ? `Checksum verified OK (storage: ${record.storageType})`
-        : `Checksum mismatch — expected ${record.checksum}, got ${computed}`,
-    );
+    // ── SHA-256 verification ─────────────────────────────────────────────────
+    const computedChecksum = crypto
+      .createHash('sha256')
+      .update(compressedBuffer)
+      .digest('hex');
+
+    let checksumValid: boolean | null = null;
+    if (record.checksum) {
+      // Use timing-safe comparison to be thorough
+      const a = Buffer.from(computedChecksum, 'utf8');
+      const b = Buffer.from(record.checksum,   'utf8');
+      checksumValid = a.length === b.length && crypto.timingSafeEqual(a, b);
+    } else {
+      // Backup was created before checksums were introduced — cannot verify
+      checksumValid = null;
+    }
+
+    // ── Decompress ───────────────────────────────────────────────────────────
+    let snapshot: BackupSnapshot;
+    try {
+      const jsonBuffer = await gunzip(compressedBuffer);
+      snapshot = JSON.parse(jsonBuffer.toString('utf8')) as BackupSnapshot;
+    } catch (err) {
+      await this.log('BACKUP_VERIFIED', userId, userName, ip, record.id, record.backupName, 'failed',
+        `Verify failed — decompression/parse error: ${err instanceof Error ? err.message : String(err)}`);
+      return {
+        valid: false,
+        checksumValid,
+        structureValid: false,
+        tables: [],
+        rowCounts: {},
+        snapshotDate: null,
+        details: 'Backup file is corrupted — decompression failed.',
+      };
+    }
+
+    // ── Structure validation ─────────────────────────────────────────────────
+    const structureValid = this.validateSnapshotStructure(snapshot);
+
+    const tables    = structureValid ? Object.keys(snapshot.tables) : [];
+    const rowCounts = structureValid
+      ? Object.fromEntries(tables.map((t) => [t, (snapshot.tables[t] as unknown[]).length]))
+      : {};
+
+    const overallValid = (checksumValid !== false) && structureValid;
+
+    const details = [
+      checksumValid === true  ? '✓ Checksum matches' :
+      checksumValid === false ? '✗ Checksum MISMATCH — file may be corrupted or tampered' :
+                                '⚠ Checksum not available for this backup (created before checksum feature)',
+      structureValid ? `✓ Structure valid (${tables.length} tables)` : '✗ Snapshot structure is invalid',
+    ].join('; ');
+
+    await this.log('BACKUP_VERIFIED', userId, userName, ip, record.id, record.backupName,
+      overallValid ? 'success' : 'failed', details);
 
     return {
-      valid,
-      storageType:     record.storageType,
-      storedChecksum:  record.checksum,
-      computedChecksum: computed,
-      reason: valid ? 'Integrity check passed' : 'Checksum mismatch — file may be corrupted',
+      valid:          overallValid,
+      checksumValid,
+      structureValid,
+      tables,
+      rowCounts,
+      snapshotDate:   snapshot.createdAt ?? null,
+      details,
     };
   }
 
@@ -435,146 +451,203 @@ export class BackupService {
     userId: string,
     userName: string,
     ip: string,
-  ) {
-    await this.log('RESTORE_STARTED', userId, userName, ip, id, null, 'info', 'Restore initiated — creating safety backup');
-
-    // Step 1: Create a safety backup before restore (pre-restore type)
-    try {
-      await this.createBackup({ notes: 'Auto safety backup before restore' }, 'pre-restore', userId, userName, ip);
-    } catch (err) {
-      this.logger.warn('Safety backup failed, proceeding anyway', err);
-    }
+  ): Promise<{ message: string; tablesRestored: number; preRestoreBackupId: string }> {
 
     const record = await this.findRecord(id);
-    let fileBuffer: Buffer;
 
-    // Step 2: Retrieve the backup file (S3 or local)
-    if (record.storageType === 'S3') {
-      if (!record.s3Key) {
-        await this.log('RESTORE_FAILED', userId, userName, ip, id, record.backupName, 'failed', 'S3 key missing on record');
-        throw new NotFoundException('Backup S3 key not found — record may be corrupt');
-      }
-      try {
-        fileBuffer = await this.s3StorageService.downloadBackup(record.s3Key);
-        this.logger.log(`Restore: downloaded ${fileBuffer.byteLength} bytes from S3 (${record.s3Key})`);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'S3 download error';
-        await this.log('RESTORE_FAILED', userId, userName, ip, id, record.backupName, 'failed', msg);
-        throw new InternalServerErrorException('Restore failed — could not download from S3: ' + msg);
-      }
-    } else {
-      // LOCAL backup
-      if (!record.filePath || !fs.existsSync(record.filePath)) {
-        await this.log('RESTORE_FAILED', userId, userName, ip, id, record.backupName, 'failed', 'File not found on disk');
-        throw new NotFoundException('Backup file not found on disk');
-      }
-      fileBuffer = fs.readFileSync(record.filePath);
+    if (record.status !== 'success') {
+      throw new InternalServerErrorException(
+        `Cannot restore backup "${record.backupName}" — status is "${record.status}". Only successful backups can be restored.`,
+      );
     }
 
+    if (!record.s3Key) {
+      throw new InternalServerErrorException(
+        `Backup "${record.backupName}" has no S3 key. Cannot restore.`,
+      );
+    }
+
+    this.logger.log(`Starting restore from backup "${record.backupName}" (S3: ${record.s3Key})`);
+
+    // ── Log that restore has started (before any destructive operations) ──────
+    await this.log('RESTORE_STARTED', userId, userName, ip, record.id, record.backupName, 'info',
+      `Restore initiated for backup "${record.backupName}" created at ${record.createdAt.toISOString()}`);
+
     try {
-      // Step 3: Decompress if needed
-      let jsonStr: string;
-      if (
-        (record.s3Key && record.s3Key.endsWith('.gz')) ||
-        (record.filePath && record.filePath.endsWith('.gz'))
-      ) {
-        const decompressed = await gunzip(fileBuffer);
-        jsonStr = decompressed.toString('utf8');
-      } else {
-        jsonStr = fileBuffer.toString('utf8');
+      // ── STEP 1: Create a pre-restore safety backup ─────────────────────────
+      // Before touching the current database, we take a snapshot of it.
+      // If the admin restores the wrong backup, this safety copy lets them undo it.
+      this.logger.log('Creating pre-restore safety backup of current data…');
+      let preRestoreRecord: BackupRecord;
+      try {
+        preRestoreRecord = await this.createBackup(
+          { notes: `Pre-restore safety backup — taken automatically before restoring "${record.backupName}"` },
+          'pre-restore',
+          userId,
+          userName,
+          ip,
+        );
+        this.logger.log(`Pre-restore backup created: ${preRestoreRecord.backupName} (${preRestoreRecord.id})`);
+      } catch (preRestoreErr) {
+        const msg = preRestoreErr instanceof Error ? preRestoreErr.message : String(preRestoreErr);
+        await this.log('RESTORE_FAILED', userId, userName, ip, record.id, record.backupName, 'failed',
+          `Restore aborted — could not create pre-restore safety backup: ${msg}`);
+        throw new InternalServerErrorException(
+          `Restore aborted: could not create a safety backup of the current database. Reason: ${msg}`,
+        );
       }
 
-      // Step 4: Parse JSON snapshot
-      const snapshot = JSON.parse(jsonStr);
-      const tables: Record<string, unknown[]> = snapshot.tables ?? {};
+      // ── STEP 2: Download backup from S3 ───────────────────────────────────
+      const compressedBuffer = await this.s3StorageService.downloadBackup(record.s3Key);
 
-      // Step 5: Two-phase restore within a single transaction
-      //
-      // WHY TWO PHASES?
-      // The old single-pass approach (TRUNCATE then INSERT per table) caused FK
-      // violations because child tables (e.g. channeling_slots → doctors) were
-      // inserted before their parent tables had data back.
-      //
-      // Phase A: Truncate ALL tables first (CASCADE removes FK-linked rows)
-      // Phase B: Bypass FK trigger checks via session_replication_role=replica,
-      //          then insert ALL tables — order no longer matters.
-      //
-      await this.dataSource.transaction(async (em) => {
+      // ── STEP 3: SHA-256 integrity verification ────────────────────────────
+      if (record.checksum) {
+        const computedChecksum = crypto
+          .createHash('sha256')
+          .update(compressedBuffer)
+          .digest('hex');
 
-        // ── Phase A: Truncate all tables ─────────────────────────────────────
-        const truncatable: string[] = [];
-        for (const [tableName, rows] of Object.entries(tables)) {
-          if (!Array.isArray(rows)) continue;
-          try {
-            await em.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE`);
-            truncatable.push(tableName);
-          } catch {
-            // Table may not exist in this schema version — skip gracefully
-            this.logger.warn(`Restore: could not truncate "${tableName}" — skipping`);
-          }
+        const a = Buffer.from(computedChecksum,  'utf8');
+        const b = Buffer.from(record.checksum,   'utf8');
+        const checksumOk = a.length === b.length && crypto.timingSafeEqual(a, b);
+
+        if (!checksumOk) {
+          await this.log('RESTORE_FAILED', userId, userName, ip, record.id, record.backupName, 'failed',
+            `Checksum mismatch — computed: ${computedChecksum.slice(0, 8)}..., stored: ${record.checksum.slice(0, 8)}...`);
+          throw new InternalServerErrorException(
+            'Restore ABORTED: the downloaded backup file does not match its stored SHA-256 checksum. ' +
+            'The file may be corrupted or tampered with. Use the Verify feature to inspect this backup.',
+          );
         }
-        this.logger.log(`Restore: truncated ${truncatable.length} table(s)`);
+        this.logger.log(`Checksum verified ✓ (SHA-256: ${computedChecksum.slice(0, 8)}…)`);
+      } else {
+        // Backup was created before checksums were introduced — proceed with a warning
+        this.logger.warn(`Backup "${record.backupName}" has no stored checksum — skipping integrity check.`);
+      }
 
-        // ── Phase B: Disable FK constraint checks for this transaction ────────
-        // SET LOCAL makes the setting transaction-scoped — automatically reverts
-        // when the transaction commits/rolls back.
-        // session_replication_role=replica disables trigger-based FK enforcement,
-        // which is safe here because the backup is a consistent snapshot.
+      // ── STEP 4: Decompress ────────────────────────────────────────────────
+      const jsonBuffer = await gunzip(compressedBuffer);
+      const snapshot   = JSON.parse(jsonBuffer.toString('utf8')) as BackupSnapshot;
+
+      // ── STEP 5: Backup format validation ─────────────────────────────────
+      if (!this.validateSnapshotStructure(snapshot)) {
+        await this.log('RESTORE_FAILED', userId, userName, ip, record.id, record.backupName, 'failed',
+          'Restore aborted — backup JSON structure is invalid (missing version, createdAt, or tables field)');
+        throw new InternalServerErrorException(
+          'Restore ABORTED: the backup file does not have a valid ECMS snapshot structure. ' +
+          'It may be from an incompatible version or created by a different system.',
+        );
+      }
+
+      // ── STEP 6: Determine which tables exist in current schema ────────────
+      const PROTECTED = new Set(['backup_records', 'backup_settings', 'backup_activity_logs']);
+      const tableNames = Object.keys(snapshot.tables).filter((t) => !PROTECTED.has(t));
+
+      const existingTables: string[] = [];
+      for (const t of tableNames) {
+        const res = await this.dataSource.query<{ exists: boolean }[]>(
+          `SELECT EXISTS (
+             SELECT 1 FROM information_schema.tables
+             WHERE table_schema = 'public' AND table_name = $1
+           ) AS "exists"`,
+          [t],
+        );
+        if (res[0]?.exists) existingTables.push(t);
+        else this.logger.warn(`Table "${t}" not found in current schema — skipping`);
+      }
+
+      // ── STEP 7: Transactional restore ─────────────────────────────────────
+      await this.dataSource.transaction(async (manager) => {
+
+        // 7a. Acquire PostgreSQL advisory lock to prevent concurrent restores.
+        //     If another restore is in progress, this query WAITS until it
+        //     finishes (or the transaction ends) and then proceeds.
+        //     The lock is automatically released when this transaction commits
+        //     or rolls back.
+        await manager.query('SELECT pg_advisory_xact_lock($1)', [RESTORE_ADVISORY_LOCK_ID]);
+        this.logger.log(`Advisory lock acquired (id: ${RESTORE_ADVISORY_LOCK_ID})`);
+
+        // 7b. Truncate all tables in one statement — PostgreSQL resolves the
+        //     FK dependency order automatically via CASCADE.
+        if (existingTables.length > 0) {
+          const tableList = existingTables.map((t) => `"${t}"`).join(', ');
+          await manager.query(`TRUNCATE TABLE ${tableList} CASCADE`);
+        }
+
+        // 7c. Disable FK trigger checks during bulk insert so that insert
+        //     order does not matter.  This is reset in the finally block.
+        await manager.query('SET session_replication_role = replica');
+
         try {
-          await em.query(`SET LOCAL session_replication_role = replica`);
-          this.logger.log('Restore: FK constraint checks disabled (session_replication_role=replica)');
-        } catch (fkErr) {
-          // Some RDS configurations restrict this — log and continue anyway
-          this.logger.warn('Restore: could not disable FK checks, restore may still fail on FK constraints', fkErr);
-        }
+          // 7d. Re-insert all rows, 500 at a time to stay within parameter limits.
+          for (const tableName of existingTables) {
+            const rows = snapshot.tables[tableName] as Record<string, unknown>[];
+            if (!rows || rows.length === 0) continue;
 
-        // ── Phase C: Insert all table data ───────────────────────────────────
-        let insertedTables = 0;
-        let insertedRows   = 0;
+            const columns = Object.keys(rows[0]);
+            const colList = columns.map((c) => `"${c}"`).join(', ');
+            const CHUNK   = 500;
 
-        for (const [tableName, rows] of Object.entries(tables)) {
-          if (!Array.isArray(rows) || rows.length === 0) continue;
-          if (!truncatable.includes(tableName)) continue; // skip tables that could not be truncated
-
-          const batchSize = 100;
-          for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize) as Record<string, unknown>[];
-            if (batch.length === 0) continue;
-
-            const cols   = Object.keys(batch[0]).map((c) => `"${c}"`).join(', ');
-            const values = batch
-              .map(
-                (row) =>
-                  '(' +
-                  Object.values(row)
-                    .map((v) =>
-                      v === null
-                        ? 'NULL'
-                        : `'${String(v).replace(/'/g, "''")}'`,
-                    )
-                    .join(', ') +
-                  ')',
-              )
-              .join(', ');
-
-            await em.query(
-              `INSERT INTO "${tableName}" (${cols}) VALUES ${values} ON CONFLICT DO NOTHING`,
-            );
-            insertedRows += batch.length;
+            for (let i = 0; i < rows.length; i += CHUNK) {
+              const chunk  = rows.slice(i, i + CHUNK);
+              const values: unknown[] = [];
+              const placeholders = chunk.map((row, ri) => {
+                const rowPlaceholders = columns.map((col, ci) => {
+                  values.push(row[col] ?? null);
+                  return `$${ri * columns.length + ci + 1}`;
+                });
+                return `(${rowPlaceholders.join(', ')})`;
+              });
+              await manager.query(
+                `INSERT INTO "${tableName}" (${colList}) VALUES ${placeholders.join(', ')} ON CONFLICT DO NOTHING`,
+                values,
+              );
+            }
           }
-          insertedTables++;
-        }
 
-        // session_replication_role resets automatically at transaction end
-        this.logger.log(`Restore: inserted data into ${insertedTables} table(s) (${insertedRows} row(s))`);
+          // 7e. Reset PostgreSQL sequences to the correct next value.
+          //     After restoring data, SERIAL / BIGSERIAL sequences still hold
+          //     their pre-restore values.  We query the actual sequences linked
+          //     to columns in the restored tables and set them to MAX(id).
+          await this.resetSequences(manager, existingTables);
+
+        } finally {
+          // 7f. Always re-enable FK constraints regardless of success/failure.
+          await manager.query('SET session_replication_role = DEFAULT');
+        }
       });
 
-      await this.log('RESTORE_COMPLETED', userId, userName, ip, id, record.backupName, 'success', `System restored from ${record.storageType} backup`);
-      return { message: 'System restored successfully from backup: ' + record.backupName };
+      // ── STEP 8: Audit log — success ───────────────────────────────────────
+      await this.log(
+        'RESTORE_COMPLETED', userId, userName, ip,
+        record.id, record.backupName, 'success',
+        `Database restored — ${existingTables.length} tables replaced. ` +
+        `Pre-restore backup: ${preRestoreRecord!.backupName}. ` +
+        `Snapshot date: ${snapshot.createdAt}`,
+      );
+
+      this.logger.log(`Restore complete — ${existingTables.length} tables restored from "${record.backupName}"`);
+
+      return {
+        message:            `Database successfully restored from backup "${record.backupName}"`,
+        tablesRestored:     existingTables.length,
+        preRestoreBackupId: preRestoreRecord!.id,
+      };
+
     } catch (err) {
-      this.logger.error('Restore failed', err);
-      await this.log('RESTORE_FAILED', userId, userName, ip, id, record.backupName, 'failed', err instanceof Error ? err.message : 'Unknown');
-      throw new InternalServerErrorException('Restore failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      const errMsg = err instanceof Error ? err.message : 'Unknown restore error';
+      this.logger.error(`Restore failed for backup ${id}`, err);
+
+      // Only log RESTORE_FAILED if we didn't already log it above
+      if (!errMsg.startsWith('Restore aborted') && !errMsg.startsWith('Restore ABORTED')) {
+        await this.log(
+          'RESTORE_FAILED', userId, userName, ip,
+          record.id, record.backupName, 'failed',
+          `Restore failed: ${errMsg}`,
+        );
+      }
+
+      throw new InternalServerErrorException(`Restore failed: ${errMsg}`);
     }
   }
 
@@ -596,10 +669,7 @@ export class BackupService {
   // ──────────────────────────────────────────────────────────────────────────
 
   async rescheduleAuto(): Promise<void> {
-    if (this.schedulerInterval) {
-      clearInterval(this.schedulerInterval);
-      this.schedulerInterval = null;
-    }
+    // Cancel any existing scheduled timeout
     if (this.schedulerTimeout) {
       clearTimeout(this.schedulerTimeout);
       this.schedulerTimeout = null;
@@ -609,18 +679,65 @@ export class BackupService {
     if (!settings.autoBackupEnabled) return;
 
     const nextRunIso = this.computeNextRun(settings.frequency, settings.backupTime);
-    const delayMs    = Math.max(1000, new Date(nextRunIso).getTime() - Date.now());
+    const nextRunMs  = new Date(nextRunIso).getTime();
+    const delayMs    = Math.max(1000, nextRunMs - Date.now());
 
-    this.logger.log(`Auto-backup scheduled in ${Math.round(delayMs / 60000)} minute(s) at ${nextRunIso} (Colombo time) — storage: ${settings.storageLocation}`);
+    // ── Fix: Node.js setTimeout uses a 32-bit signed integer for delay (ms).
+    //    Maximum safe value = 2^31 - 1 = 2,147,483,647 ms ≈ 24.8 days.
+    //    Monthly backups require ~30 days (2,592,000,000 ms) which OVERFLOWS,
+    //    causing the timeout to fire immediately.
+    //
+    //    Solution: if the delay exceeds the safe limit, we set a shorter
+    //    intermediate timeout and reschedule again at that point.  If we
+    //    haven't reached the target time yet we simply reschedule again
+    //    without running the backup.
+    const MAX_SAFE_TIMEOUT_MS = 2_147_483_647;
+
+    if (delayMs > MAX_SAFE_TIMEOUT_MS) {
+      // Schedule an intermediate wake-up to re-check (use a safe chunk)
+      const chunkMs = Math.min(delayMs, MAX_SAFE_TIMEOUT_MS);
+      this.logger.log(
+        `Auto-backup scheduled at ${nextRunIso} (Asia/Colombo) — ` +
+        `delay ${Math.round(delayMs / 86_400_000)}d exceeds setTimeout limit; ` +
+        `intermediate wake-up in ${Math.round(chunkMs / 3_600_000)}h`,
+      );
+      this.schedulerTimeout = setTimeout(() => {
+        void this.rescheduleAuto();
+      }, chunkMs);
+      return;
+    }
+
+    this.logger.log(
+      `Auto-backup scheduled in ${Math.round(delayMs / 60000)} minute(s) at ${nextRunIso} (Asia/Colombo)`,
+    );
 
     this.schedulerTimeout = setTimeout(async () => {
+      // Double-check: in case the timer fired slightly early (clock skew),
+      // verify we are actually at or past the scheduled time.
+      if (Date.now() < nextRunMs - 5_000) {
+        this.logger.warn('Scheduler woke up early — rescheduling');
+        void this.rescheduleAuto();
+        return;
+      }
+
       this.logger.log('Running scheduled auto backup…');
+      await this.log('SCHEDULER_TRIGGERED', 'system', 'Scheduler', '127.0.0.1', null, null, 'info',
+        `Scheduled ${settings.frequency} backup triggered at ${new Date().toISOString()}`);
+
       try {
-        await this.createBackup({ notes: 'Automatic scheduled backup' }, 'scheduled', 'system', 'Scheduler', '127.0.0.1');
+        await this.createBackup(
+          { notes: 'Automatic scheduled backup' },
+          'scheduled',
+          'system',
+          'Scheduler',
+          '127.0.0.1',
+        );
       } catch (err) {
         this.logger.error('Scheduled backup failed', err);
       }
-      this.rescheduleAuto();
+
+      // Schedule the next run after this one completes
+      void this.rescheduleAuto();
     }, delayMs);
   }
 
@@ -634,47 +751,159 @@ export class BackupService {
     return record;
   }
 
+  /**
+   * Validates that a parsed JSON object is a well-formed ECMS backup snapshot.
+   * Simple structural check — we do not validate individual row schemas.
+   */
+  private validateSnapshotStructure(obj: unknown): obj is BackupSnapshot {
+    if (!obj || typeof obj !== 'object') return false;
+    const s = obj as Record<string, unknown>;
+
+    if (typeof s['version']   !== 'string') return false;
+    if (typeof s['createdAt'] !== 'string') return false;
+    if (typeof s['tables']    !== 'object' || Array.isArray(s['tables']) || !s['tables']) return false;
+
+    // Every value in tables must be an array
+    for (const val of Object.values(s['tables'] as object)) {
+      if (!Array.isArray(val)) return false;
+    }
+
+    // Only version 1.0.0 is supported
+    if (s['version'] !== '1.0.0') {
+      this.logger.warn(`Unsupported backup version: ${String(s['version'])}`);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * After a restore, PostgreSQL SERIAL/BIGSERIAL sequences still hold their
+   * pre-restore values.  This method queries the database for all sequences
+   * linked to columns in the restored tables and resets each one to MAX(col)+1.
+   *
+   * In this project most primary keys are UUIDs, so this is usually a no-op.
+   * The code handles both integer sequences and UUID tables gracefully.
+   */
+  private async resetSequences(
+    manager: EntityManager,
+    tableNames: string[],
+  ): Promise<void> {
+    if (tableNames.length === 0) return;
+
+    // Query PostgreSQL system catalog for sequences attached to the restored tables
+    const sequences = await manager.query<{
+      sequence_name: string;
+      table_name:    string;
+      column_name:   string;
+    }[]>(`
+      SELECT
+        s.relname    AS sequence_name,
+        t.relname    AS table_name,
+        a.attname    AS column_name
+      FROM pg_class       s
+      JOIN pg_depend      d ON d.objid = s.oid
+                            AND d.classid = 'pg_class'::regclass
+                            AND d.refclassid = 'pg_class'::regclass
+      JOIN pg_class       t ON t.oid = d.refobjid
+      JOIN pg_attribute   a ON a.attrelid = t.oid
+                            AND a.attnum  = d.refobjsubid
+      JOIN pg_namespace   n ON n.oid = t.relnamespace
+      WHERE s.relkind = 'S'
+        AND n.nspname = 'public'
+        AND t.relname = ANY($1)
+    `, [tableNames]);
+
+    if (sequences.length === 0) {
+      this.logger.log('No integer sequences found for restored tables (all PKs are UUIDs).');
+      return;
+    }
+
+    for (const seq of sequences) {
+      try {
+        const result = await manager.query<{ max: string | null }[]>(
+          `SELECT MAX("${seq.column_name}") AS max FROM "${seq.table_name}"`,
+        );
+        const maxVal = result[0]?.max;
+        if (maxVal !== null && maxVal !== undefined) {
+          await manager.query(`SELECT setval($1, $2, false)`, [seq.sequence_name, Number(maxVal) + 1]);
+          this.logger.log(`Sequence "${seq.sequence_name}" reset to ${Number(maxVal) + 1}`);
+        }
+      } catch (err) {
+        this.logger.warn(`Could not reset sequence "${seq.sequence_name}": ${err instanceof Error ? err.message : err}`);
+      }
+    }
+  }
+
+  /**
+   * On startup, any backup that is still at status='running' after more than
+   * STUCK_BACKUP_TIMEOUT_MINUTES has most likely been interrupted by a server
+   * crash.  We mark them as failed so the UI does not show them as in-progress
+   * indefinitely.
+   */
+  private async cleanStuckBackups(): Promise<void> {
+    const cutoff = new Date(Date.now() - STUCK_BACKUP_TIMEOUT_MINUTES * 60 * 1000);
+    const result = await this.backupRepo.update(
+      { status: 'running', createdAt: LessThan(cutoff) },
+      {
+        status:       'failed',
+        errorMessage: 'Backup interrupted because the application stopped unexpectedly.',
+        completedAt:  new Date(),
+      },
+    );
+    if ((result.affected ?? 0) > 0) {
+      this.logger.warn(`Marked ${result.affected} stuck backup(s) as failed on startup.`);
+    }
+  }
+
+  /**
+   * Retention policy — deletes the oldest manual + scheduled backups once
+   * the count exceeds maxToKeep.
+   *
+   * pre-restore backups are intentionally excluded: they are safety snapshots
+   * created automatically before each restore and must never be auto-deleted.
+   */
   private async purgeOldBackups(maxToKeep: number): Promise<void> {
-    // Only enforce retention on manual and scheduled backups;
-    // pre-restore safety backups are never counted towards the limit
     const all = await this.backupRepo.find({
+      // Only count manual and scheduled — pre-restore are never purged
       where: [{ backupType: 'manual' }, { backupType: 'scheduled' }],
       order: { createdAt: 'DESC' },
     });
     if (all.length <= maxToKeep) return;
 
     const toDelete = all.slice(maxToKeep);
+    let purged = 0;
     for (const r of toDelete) {
-      if (r.storageType === 'S3' && r.s3Key) {
+      if (r.s3Key) {
         try {
           await this.s3StorageService.deleteBackup(r.s3Key);
         } catch (err) {
           this.logger.error(`Failed to purge S3 object ${r.s3Key}: ${err instanceof Error ? err.message : err}`);
+          continue; // keep the DB record so the admin can see the failure
         }
-      } else if (r.filePath && fs.existsSync(r.filePath)) {
-        try { fs.unlinkSync(r.filePath); } catch { /* ignore */ }
       }
       await this.backupRepo.remove(r);
+      purged++;
     }
-    this.logger.log(`Purged ${toDelete.length} old backup(s)`);
+    this.logger.log(`Purged ${purged} old backup(s)`);
   }
 
   private async log(
-    action: ActivityAction,
-    userId: string,
-    userName: string,
-    ip: string,
-    backupId: string | null | undefined,
+    action:     ActivityAction,
+    userId:     string,
+    userName:   string,
+    ip:         string,
+    backupId:   string | null | undefined,
     backupName: string | null | undefined,
-    status: 'success' | 'failed' | 'info',
-    details: string,
+    status:     'success' | 'failed' | 'info',
+    details:    string,
   ): Promise<void> {
     const entry = this.logRepo.create({
       action,
-      userId:     userId    ?? undefined,
-      userName:   userName  ?? undefined,
-      ipAddress:  ip        ?? undefined,
-      backupId:   backupId  ?? undefined,
+      userId:     userId     ?? undefined,
+      userName:   userName   ?? undefined,
+      ipAddress:  ip         ?? undefined,
+      backupId:   backupId   ?? undefined,
       backupName: backupName ?? undefined,
       status,
       details,
@@ -687,17 +916,6 @@ export class BackupService {
     const cd  = new Date(colomboMs);
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${cd.getUTCFullYear()}-${pad(cd.getUTCMonth() + 1)}-${pad(cd.getUTCDate())}_${pad(cd.getUTCHours())}-${pad(cd.getUTCMinutes())}-${pad(cd.getUTCSeconds())}`;
-  }
-
-  private getBackupDir(): string {
-    return path.resolve(process.env.BACKUP_DIR || './backups');
-  }
-
-  private ensureBackupDir(): void {
-    const dir = this.getBackupDir();
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
   }
 
   private async getDatabaseVersion(): Promise<string> {
@@ -728,13 +946,13 @@ export class BackupService {
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
     });
-    const parts        = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
-    const year         = Number(parts.year);
-    const month        = Number(parts.month) - 1;
-    const day          = Number(parts.day);
-    const hour         = Number(parts.hour);
-    const minute       = Number(parts.minute);
-    const second       = Number(parts.second);
+    const parts  = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
+    const year   = Number(parts.year);
+    const month  = Number(parts.month) - 1;
+    const day    = Number(parts.day);
+    const hour   = Number(parts.hour);
+    const minute = Number(parts.minute);
+    const second = Number(parts.second);
 
     const colomboNowMs = Date.UTC(year, month, day, hour, minute, second);
     const utcOffsetMs  = now.getTime() - colomboNowMs;
@@ -755,8 +973,14 @@ export class BackupService {
       nextColomboMs = Date.UTC(year, month, day, targetH, targetM, 0);
       if (nextColomboMs <= colomboNowMs) nextColomboMs += 7 * 86_400_000;
     } else if (frequency === 'monthly') {
-      nextColomboMs = Date.UTC(year, month, day, targetH, targetM, 0);
-      if (nextColomboMs <= colomboNowMs) nextColomboMs += 30 * 86_400_000;
+      // Compute the same time next month using the Date constructor
+      // (handles varying month lengths correctly)
+      const candidate = new Date(Date.UTC(year, month, day, targetH, targetM, 0));
+      if (candidate.getTime() <= colomboNowMs) {
+        // Roll to same day next month
+        candidate.setUTCMonth(candidate.getUTCMonth() + 1);
+      }
+      nextColomboMs = candidate.getTime();
     } else {
       // default: daily
       nextColomboMs = Date.UTC(year, month, day, targetH, targetM, 0);
@@ -771,8 +995,8 @@ export class BackupService {
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
-      const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-      const inMonth = records.filter((r) => {
+      const label    = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      const inMonth  = records.filter((r) => {
         const cd = new Date(r.createdAt);
         return cd.getMonth() === d.getMonth() && cd.getFullYear() === d.getFullYear();
       });
