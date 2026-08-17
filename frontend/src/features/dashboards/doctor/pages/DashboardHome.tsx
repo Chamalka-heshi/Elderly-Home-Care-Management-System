@@ -21,10 +21,24 @@ import {
   IconAlertTriangle,
 } from '../../common/icons';
 
-// Status colors for health indicators
+// Returns true when a dashboard appointment is effectively cancelled:
+// the slot time has already passed and no prescription was issued.
+const isExpiredPending = (p: DashboardRecentPatient): boolean => {
+  if (!p.slotDate) return false;
+  // Use slotEndTime for precision when available, otherwise use end of slot day
+  const endStr = p.slotEndTime
+    ? `${p.slotDate}T${p.slotEndTime}:00`
+    : `${p.slotDate}T23:59:59`;
+  return new Date(endStr) < new Date();
+};
 
-// Prescription Pending is the only active appointment status — always amber.
-const statusTone = (_s: DashboardRecentPatient['status']) => 'amber' as const;
+type EffectiveStatus = 'Pending Prescription' | 'Cancelled';
+
+const getEffectiveStatus = (p: DashboardRecentPatient): EffectiveStatus =>
+  isExpiredPending(p) ? 'Cancelled' : 'Pending Prescription';
+
+const statusTone = (s: EffectiveStatus) =>
+  s === 'Cancelled' ? ('red' as const) : ('amber' as const);
 
 // Loading placeholders
 
@@ -221,32 +235,35 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                       </td>
                     </tr>
                   ) : (
-                    (stats?.recentPatients ?? []).map((p) => (
-                      <tr key={p.id} className="transition hover:bg-slate-50/60">
-                        <td className="px-4 py-3 font-semibold text-slate-800">{p.name}</td>
-                        <td className="px-4 py-3 text-slate-600">
-                          <span className="font-semibold">{p.age}</span>
-                          <span className="text-xs text-slate-400"> yrs</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {p.bloodGroup
-                            ? <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700 ring-1 ring-red-100">{p.bloodGroup}</span>
-                            : <span className="text-slate-400">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge tone={statusTone(p.status)}>{p.status === "Prescription Pending" ? "Pending Prescription" : p.status}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{p.slotDate ?? p.prescriptionDate}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => onNavigate('Patient Management')}
-                            className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    (stats?.recentPatients ?? []).map((p) => {
+                      const effStatus = getEffectiveStatus(p);
+                      return (
+                        <tr key={p.id} className="transition hover:bg-slate-50/60">
+                          <td className="px-4 py-3 font-semibold text-slate-800">{p.name}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            <span className="font-semibold">{p.age}</span>
+                            <span className="text-xs text-slate-400"> yrs</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {p.bloodGroup
+                              ? <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700 ring-1 ring-red-100">{p.bloodGroup}</span>
+                              : <span className="text-slate-400">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge tone={statusTone(effStatus)}>{effStatus}</Badge>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{p.slotDate ?? p.prescriptionDate}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => onNavigate('Patient Management')}
+                              className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
