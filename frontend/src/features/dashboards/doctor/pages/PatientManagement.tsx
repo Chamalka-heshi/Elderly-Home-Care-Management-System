@@ -132,6 +132,18 @@ type BT = "emerald" | "amber" | "red" | "slate" | "blue";
 const tone = (s: string): BT =>
   s === "prescription_pending" ? "amber" : s === "cancelled" ? "red" : s === "completed" ? "slate" : "blue";
 
+const getEffectiveStatus = (appt: Appointment): Appointment["status"] => {
+  if (
+    appt.status === "prescription_pending" &&
+    !appt.prescriptionId &&
+    appt.slot
+  ) {
+    const slotEnd = new Date(`${appt.slot.date}T${appt.slot.endTime}:00`);
+    if (slotEnd < new Date()) return "cancelled";
+  }
+  return appt.status;
+};
+
 type Filter = "" | "prescription_pending" | "completed" | "cancelled";
 
 // PatientManagement
@@ -154,7 +166,19 @@ const PatientManagement: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = useMemo(() => filter ? appointments.filter((a) => a.status === filter) : appointments, [appointments, filter]);
+  // Apply effective-status override before filtering
+  const appointmentsWithEffectiveStatus = useMemo(
+    () => appointments.map((a) => ({ ...a, status: getEffectiveStatus(a) })),
+    [appointments],
+  );
+
+  const filtered = useMemo(
+    () =>
+      filter
+        ? appointmentsWithEffectiveStatus.filter((a) => a.status === filter)
+        : appointmentsWithEffectiveStatus,
+    [appointmentsWithEffectiveStatus, filter],
+  );
 
   // Reset to first page whenever the filter changes
   useEffect(() => { setCurrentPage(1); }, [filter]);
@@ -162,13 +186,13 @@ const PatientManagement: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  // Counts total, pending, and completed appointments
+  // Counts total, pending, and completed appointments (using effective status)
   const stats = useMemo(() => ({
-    total: appointments.length,
-    prescriptionPending: appointments.filter((a) => a.status === "prescription_pending").length,
-    completed: appointments.filter((a) => a.status === "completed").length,
-    cancelled: appointments.filter((a) => a.status === "cancelled").length,
-  }), [appointments]);
+    total: appointmentsWithEffectiveStatus.length,
+    prescriptionPending: appointmentsWithEffectiveStatus.filter((a) => a.status === "prescription_pending").length,
+    completed: appointmentsWithEffectiveStatus.filter((a) => a.status === "completed").length,
+    cancelled: appointmentsWithEffectiveStatus.filter((a) => a.status === "cancelled").length,
+  }), [appointmentsWithEffectiveStatus]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
