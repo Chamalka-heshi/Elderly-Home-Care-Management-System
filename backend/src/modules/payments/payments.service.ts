@@ -74,22 +74,19 @@ export class PaymentsService {
         throw new BadRequestException('Booking has an invalid care plan price');
       }
 
-      const existingPending = await this.paymentRepo.findOne({
-        where: {
-          bookingId: booking.id,
-          status: PaymentStatus.PENDING_APPROVAL,
-        },
+      // Guard: prevent duplicate payments (already paid)
+      const existingPaid = await this.paymentRepo.findOne({
+        where: { bookingId: booking.id, status: PaymentStatus.PAID },
         order: { createdAt: 'DESC' },
       });
-      if (existingPending) {
-        throw new BadRequestException(
-          'A bank transfer payment for this booking is already pending approval',
-        );
+      if (existingPaid) {
+        throw new BadRequestException('This booking has already been paid for');
       }
 
       const amount = Number(booking.carePlanSnapshot.price);
 
-      return this.dataSource.transaction(async (manager) => {
+      // Both card and bank transfer are activated immediately — no admin approval needed.
+      const saved = await this.dataSource.transaction(async (manager) => {
         const payRepo = manager.getRepository(Payment);
         const bookingRepo = manager.getRepository(Booking);
         const patRepo = manager.getRepository(Patient);
@@ -100,47 +97,44 @@ export class PaymentsService {
           userId: familyMember.id,
           amount,
           paymentMethod: dto.paymentMethod,
-          status:
-            dto.paymentMethod === PaymentMethod.CARD
-              ? PaymentStatus.PAID
-              : PaymentStatus.PENDING_APPROVAL,
+          status: PaymentStatus.PAID,  // always mark as paid immediately
         });
 
         const saved = await payRepo.save(payment);
 
-        if (dto.paymentMethod === PaymentMethod.CARD) {
-          booking.status = BookingStatus.ACTIVE;
-          await bookingRepo.save(booking);
-          await patRepo.update(booking.patientId, {
-            paymentPlan: booking.carePlanSnapshot.name,
-          });
-
-          // Fetch patient name for the receipt
-          const patient = await patRepo.findOne({
-            where: { id: booking.patientId },
-          });
-          const snapshot = booking.carePlanSnapshot;
-          // Fire receipt email — non-blocking
-          this.mailService
-            .sendPaymentReceiptEmail({
-              familyMemberName: familyMember.user.fullName,
-              to: familyMember.user.email,
-              paymentId: saved.id,
-              paymentMethod: dto.paymentMethod,
-              paidAt: saved.createdAt.toISOString(),
-              amount,
-              serviceType: 'care_plan',
-              patientName: patient?.fullName ?? 'Unknown',
-              carePlanName: snapshot?.name,
-              carePlanDuration: snapshot
-                ? `${snapshot.duration} ${snapshot.durationUnit}`
-                : undefined,
-            })
-            .catch(() => undefined);
-        }
+        // Activate the booking and update patient payment plan for both methods
+        booking.status = BookingStatus.ACTIVE;
+        await bookingRepo.save(booking);
+        await patRepo.update(booking.patientId, {
+          paymentPlan: booking.carePlanSnapshot.name,
+        });
 
         return saved;
       });
+
+      // Send receipt email after successful transaction — non-blocking
+      const patient = await this.paymentRepo.manager
+        .getRepository(Patient)
+        .findOne({ where: { id: booking.patientId } });
+      const snapshot = booking.carePlanSnapshot;
+      this.mailService
+        .sendPaymentReceiptEmail({
+          familyMemberName: familyMember.user.fullName,
+          to: familyMember.user.email,
+          paymentId: saved.id,
+          paymentMethod: dto.paymentMethod,
+          paidAt: saved.createdAt.toISOString(),
+          amount,
+          serviceType: 'care_plan',
+          patientName: patient?.fullName ?? 'Unknown',
+          carePlanName: snapshot?.name,
+          carePlanDuration: snapshot
+            ? `${snapshot.duration} ${snapshot.durationUnit}`
+            : undefined,
+        })
+        .catch(() => undefined);
+
+      return saved;
     }
 
     const appointment = await this.appointmentRepo.findOne({
@@ -160,17 +154,13 @@ export class PaymentsService {
       );
     }
 
-    const existingPending = await this.paymentRepo.findOne({
-      where: {
-        appointmentId: appointment.id,
-        status: PaymentStatus.PENDING_APPROVAL,
-      },
+    // Guard: prevent duplicate payments (already paid)
+    const existingPaid = await this.paymentRepo.findOne({
+      where: { appointmentId: appointment.id, status: PaymentStatus.PAID },
       order: { createdAt: 'DESC' },
     });
-    if (existingPending) {
-      throw new BadRequestException(
-        'A bank transfer payment for this appointment is already pending approval',
-      );
+    if (existingPaid) {
+      throw new BadRequestException('This appointment has already been paid for');
     }
 
     const consultationFee = Number(appointment.slot?.consultationFee ?? 0);
@@ -183,7 +173,8 @@ export class PaymentsService {
       );
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    // Both card and bank transfer are activated immediately — no admin approval needed.
+    const saved = await this.dataSource.transaction(async (manager) => {
       const payRepo = manager.getRepository(Payment);
       const apptRepo = manager.getRepository(Appointment);
 
@@ -193,45 +184,42 @@ export class PaymentsService {
         userId: familyMember.id,
         amount: appointmentAmount,
         paymentMethod: dto.paymentMethod,
-        status:
-          dto.paymentMethod === PaymentMethod.CARD
-            ? PaymentStatus.PAID
-            : PaymentStatus.PENDING_APPROVAL,
+        status: PaymentStatus.PAID,  // always mark as paid immediately
       });
 
       const saved = await payRepo.save(payment);
 
-      if (dto.paymentMethod === PaymentMethod.CARD) {
-        appointment.status = AppointmentStatus.PRESCRIPTION_PENDING;
-        await apptRepo.save(appointment);
-
-        // Eagerly loaded: appointment.slot, appointment.slot.doctor, appointment.patient
-        const slot = (appointment as any).slot;
-        const doctor = slot?.doctor;
-        const patient = (appointment as any).patient;
-        // Fire receipt email — non-blocking
-        this.mailService
-          .sendPaymentReceiptEmail({
-            familyMemberName: familyMember.user.fullName,
-            to: familyMember.user.email,
-            paymentId: saved.id,
-            paymentMethod: dto.paymentMethod,
-            paidAt: saved.createdAt.toISOString(),
-            amount: appointmentAmount,
-            serviceType: 'appointment',
-            patientName: patient?.fullName ?? 'Unknown',
-            doctorName: doctor?.user?.fullName ?? undefined,
-            appointmentDate: slot?.date ?? undefined,
-            appointmentStartTime: slot?.startTime ?? undefined,
-            appointmentEndTime: slot?.endTime ?? undefined,
-            consultationFee: consultationFee,
-            careHomeFee: careHomeFee,
-          })
-          .catch(() => undefined);
-      }
+      // Activate the appointment for both payment methods
+      appointment.status = AppointmentStatus.PRESCRIPTION_PENDING;
+      await apptRepo.save(appointment);
 
       return saved;
     });
+
+    // Send receipt email after successful transaction — non-blocking
+    const slot = (appointment as any).slot;
+    const doctor = slot?.doctor;
+    const patient = (appointment as any).patient;
+    this.mailService
+      .sendPaymentReceiptEmail({
+        familyMemberName: familyMember.user.fullName,
+        to: familyMember.user.email,
+        paymentId: saved.id,
+        paymentMethod: dto.paymentMethod,
+        paidAt: saved.createdAt.toISOString(),
+        amount: appointmentAmount,
+        serviceType: 'appointment',
+        patientName: patient?.fullName ?? 'Unknown',
+        doctorName: doctor?.user?.fullName ?? undefined,
+        appointmentDate: slot?.date ?? undefined,
+        appointmentStartTime: slot?.startTime ?? undefined,
+        appointmentEndTime: slot?.endTime ?? undefined,
+        consultationFee: consultationFee,
+        careHomeFee: careHomeFee,
+      })
+      .catch(() => undefined);
+
+    return saved;
   }
 
   //Retrieves family payments for historical tracking and display

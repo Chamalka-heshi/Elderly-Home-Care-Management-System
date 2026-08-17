@@ -41,9 +41,29 @@ export function bookingCutoffDate(date: string, startTime: string, cutoffMinutes
   return new Date(slotStart.getTime() - cutoffMinutes * 60_000);
 }
 
-// Check if a slot is open for booking
-export const isBookingOpen = (slot: ChannelingSlot): boolean =>
-  new Date() < bookingCutoffDate(slot.date, slot.startTime, slot.bookingCutoffMinutes);
+// Get exact slot start Date
+export function slotStartDate(date: string, startTime: string): Date {
+  const [h, m] = startTime.split(':').map(Number);
+  return new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
+}
+
+// Check if a slot is open for booking (now < cutoffDate and now < slotStartDate)
+export const isBookingOpen = (slot: ChannelingSlot): boolean => {
+  if (slot.status !== 'active') return false;
+  const now = new Date();
+  const cutoff = bookingCutoffDate(slot.date, slot.startTime, slot.bookingCutoffMinutes);
+  const start = slotStartDate(slot.date, slot.startTime);
+  return now < cutoff && now < start;
+};
+
+// Check if a slot's start time has arrived/passed
+export const isSlotPassed = (slot: ChannelingSlot): boolean => {
+  if (slot.status === 'completed') return true;
+  if (slot.status === 'cancelled' || slot.status === 'rejected') return false;
+  const now = new Date();
+  const start = slotStartDate(slot.date, slot.startTime);
+  return now >= start;
+};
 
 // Convert to 12-hour time
 export const fmt12 = (hhmm: string): string => {

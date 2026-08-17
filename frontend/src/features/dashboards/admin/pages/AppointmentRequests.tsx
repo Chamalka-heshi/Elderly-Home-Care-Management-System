@@ -3,7 +3,13 @@ import Pagination from "../../common/Pagination";
 import { fmtDateTime } from '../../../../utils/dateTime';
 import { getAllAppointmentsAdmin } from "../../../../api/appointment/admin-appointment.api";
 import type { Appointment, AppointmentStatus } from "../../../../api/appointment/appointment.types";
-import { fmt12, fmtDate, statusColor, statusLabel } from "../../../../api/appointment/appointment.types";
+import {
+  fmt12,
+  fmtDate,
+  getEffectiveAppointmentStatus,
+  statusColor,
+  statusLabel,
+} from "../../../../api/appointment/appointment.types";
 import { IconCalendar, IconFilter, IconUser, IconPrescription, IconX, IconRefresh } from "../../common/icons";
 
 // StatusBadge
@@ -165,18 +171,27 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
   // Reset to first page whenever the filter changes
   useEffect(() => { setCurrentPage(1); }, [filterStatus]);
 
+  const effectiveAppointments = useMemo(
+    () => appointments.map((appt) => ({ ...appt, status: getEffectiveAppointmentStatus(appt) })),
+    [appointments],
+  );
+
   // Counts how many appointments are in each status for the summary boxes
   const stats = useMemo(() => ({
-    total: appointments.length,
-    paymentPending: appointments.filter((a) => a.status === "payment_pending").length,
-    prescriptionPending: appointments.filter((a) => a.status === "prescription_pending").length,
-    completed: appointments.filter((a) => a.status === "completed").length,
-    cancelled: appointments.filter((a) => a.status === "cancelled").length,
-  }), [appointments]);
+    total: effectiveAppointments.length,
+    paymentPending: effectiveAppointments.filter((a) => a.status === "payment_pending").length,
+    prescriptionPending: effectiveAppointments.filter((a) => a.status === "prescription_pending").length,
+    completed: effectiveAppointments.filter((a) => a.status === "completed").length,
+    cancelled: effectiveAppointments.filter((a) => a.status === "cancelled").length,
+  }), [effectiveAppointments]);
 
   // Reset to page 1 whenever the filter changes
-  const totalPages = Math.ceil(appointments.length / PAGE_SIZE);
-  const paginated = appointments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const filteredAppointments = useMemo(
+    () => (filterStatus ? effectiveAppointments.filter((a) => a.status === filterStatus) : effectiveAppointments),
+    [effectiveAppointments, filterStatus],
+  );
+  const totalPages = Math.ceil(filteredAppointments.length / PAGE_SIZE);
+  const paginated = filteredAppointments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -249,14 +264,14 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
           <h3 className="text-sm font-bold text-slate-800">
             All Appointments
           </h3>
-          <p className="text-xs text-slate-500">{appointments.length} records · Click a row to view full details</p>
+          <p className="text-xs text-slate-500">{filteredAppointments.length} records · Click a row to view full details</p>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
           </div>
-        ) : appointments.length === 0 ? (
+        ) : filteredAppointments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="grid h-16 w-16 place-items-center rounded-2xl bg-slate-100">
               <IconCalendar />
@@ -358,7 +373,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={appointments.length}
+            totalItems={filteredAppointments.length}
               pageSize={PAGE_SIZE}
               itemLabel="appointments"
               onPageChange={setCurrentPage}

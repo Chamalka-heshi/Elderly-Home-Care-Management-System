@@ -155,6 +155,8 @@ export class AppointmentService {
     if (!familyMember)
       throw new NotFoundException('Family member profile not found');
 
+    await this.autoCancelPassedAppointments();
+
     return this.appointmentRepo.find({
       where: { familyMemberId: familyMember.id },
       relations: ['slot', 'slot.doctor', 'slot.doctor.user', 'patient'],
@@ -272,6 +274,8 @@ export class AppointmentService {
 
   //Surfaces all system-wide bookings for administrative oversight
   async getAllAppointments(query: QueryAppointmentsDto): Promise<any[]> {
+    await this.autoCancelPassedAppointments();
+
     const qb = this.appointmentRepo
       .createQueryBuilder('appt')
       .innerJoinAndSelect('appt.slot', 'slot')

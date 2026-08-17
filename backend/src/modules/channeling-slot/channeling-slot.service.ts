@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, In } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 
 import { ChannelingSlot, SlotStatus } from './entities/channeling-slot.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
@@ -173,16 +173,18 @@ export class ChannelingSlotService {
 
   //Marks active slots as completed once their start time is reached to maintain system accuracy
   async autoCompletePassedSlots(): Promise<void> {
+    // Slot times are stored in Asia/Colombo (IST+5:30). We must compare them against
+    // the current time expressed in that same timezone, not UTC.
     await this.slotRepo.query(`
       UPDATE appointments
       SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
       WHERE status = 'prescription_pending'
       AND slot_id IN (
         SELECT id FROM channeling_slots
-        WHERE "date" < CURRENT_DATE
+        WHERE "date"::date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
         OR (
-          "date" = CURRENT_DATE
-          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+          "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+          AND start_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
         )
       )
     `);
@@ -192,10 +194,10 @@ export class ChannelingSlotService {
       SET    status = 'completed'
       WHERE  status = 'active'
       AND (
-        "date" < CURRENT_DATE
+        "date"::date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
         OR (
-          "date" = CURRENT_DATE
-          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+          "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+          AND start_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
         )
       )
     `);
@@ -231,6 +233,11 @@ export class ChannelingSlotService {
     dto: UpdateChannelingSlotDto,
   ): Promise<ChannelingSlot> {
     const slot = await this.findOne(id);
+    if (slot.status !== SlotStatus.PENDING) {
+      throw new BadRequestException(
+        'Channeling slots can only be edited before doctor approval (when pending)',
+      );
+    }
 
     if (dto.date !== undefined) slot.date = dto.date;
     if (dto.startTime !== undefined) slot.startTime = dto.startTime;
@@ -245,11 +252,14 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  //Invalidates an active slot to prevent new patient bookings during doctor emergencies
+  //Invalidates a proposed slot before doctor approval or during emergencies
   async cancel(id: string): Promise<{ message: string }> {
     const slot = await this.findOne(id);
-    if (slot.status === SlotStatus.CANCELLED)
-      throw new BadRequestException('Slot is already cancelled');
+    if (slot.status !== SlotStatus.PENDING) {
+      throw new BadRequestException(
+        'Channeling slots can only be cancelled before doctor approval (when pending)',
+      );
+    }
     slot.status = SlotStatus.CANCELLED;
     await this.slotRepo.save(slot);
     return { message: 'Channeling slot cancelled successfully' };
@@ -282,12 +292,31 @@ export class ChannelingSlotService {
   async getAvailableSlotsWithDoctors(): Promise<ChannelingSlot[]> {
     await this.autoCompletePassedSlots();
 
-    return this.slotRepo.find({
-      where: {
-        status: SlotStatus.ACTIVE,
-        date: MoreThanOrEqual(new Date().toISOString().split('T')[0]) as any,
-      },
-      order: { date: 'ASC', startTime: 'ASC' },
-    });
+    // Return only ACTIVE slots where the booking window is still open:
+    // – future dates: always included
+    // – today: only if (start_time - booking_cutoff_minutes) is still in the future
+    return this.slotRepo
+      .createQueryBuilder('slot')
+      .leftJoinAndSelect('slot.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'user')
+      .where('slot.status = :status', { status: SlotStatus.ACTIVE })
+      .andWhere(
+        // Slot times are stored as Asia/Colombo (IST+5:30) local strings.
+        // We interpret them in that timezone so the cutoff comparison is IST vs IST.
+        `(
+          slot.date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+          OR (
+            slot.date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+            AND (
+              TO_TIMESTAMP(slot.date || ' ' || slot.start_time, 'YYYY-MM-DD HH24:MI')
+                AT TIME ZONE 'Asia/Colombo'
+              - (slot.booking_cutoff_minutes * INTERVAL '1 minute')
+            ) > CURRENT_TIMESTAMP
+          )
+        )`,
+      )
+      .orderBy('slot.date', 'ASC')
+      .addOrderBy('slot.start_time', 'ASC')
+      .getMany();
   }
 }

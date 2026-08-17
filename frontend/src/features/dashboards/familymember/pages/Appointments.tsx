@@ -338,7 +338,18 @@ const Appointments: React.FC = () => {
         const activePats = (patientsRes.patients ?? []).filter((p) => p.isActive);
         setPatients(activePats);
         if (activePats.length > 0) setSelectedPatientId(activePats[0].id);
-        setSlots(Array.isArray(slotsRes) ? slotsRes : []);
+
+        // Client-side safety filter: drop slots whose booking window has closed.
+        // Slot date + startTime are in local time (Asia/Colombo / IST).
+        const now = Date.now();
+        const openSlots = (Array.isArray(slotsRes) ? slotsRes : []).filter((s) => {
+          // Parse "YYYY-MM-DD" + "HH:MM" as a local Date
+          const slotStart = new Date(`${s.date}T${s.startTime}:00`);
+          const cutoffMs = slotStart.getTime() - s.bookingCutoffMinutes * 60_000;
+          return now < cutoffMs;
+        });
+
+        setSlots(openSlots);
         setMyAppointments(Array.isArray(apptRes) ? apptRes : []);
         setPrescriptions(rxRes.data ?? []);
       } catch (err: any) {

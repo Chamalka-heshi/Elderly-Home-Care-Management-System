@@ -96,3 +96,18 @@ export const statusLabel: Record<AppointmentStatus, string> = {
   cancelled:            'Cancelled',
   completed:            'Completed',
 };
+
+export const isExpiredPrescriptionPending = (
+  appointment: Pick<Appointment, 'status' | 'prescriptionId' | 'slot'>,
+): boolean => {
+  if (appointment.status !== 'prescription_pending' || appointment.prescriptionId) return false;
+  if (!appointment.slot?.date || !appointment.slot?.endTime) return false;
+
+  const slotEnd = new Date(`${appointment.slot.date}T${appointment.slot.endTime}:00`);
+  return Number.isFinite(slotEnd.getTime()) && slotEnd < new Date();
+};
+
+export const getEffectiveAppointmentStatus = (
+  appointment: Pick<Appointment, 'status' | 'prescriptionId' | 'slot'>,
+): AppointmentStatus =>
+  isExpiredPrescriptionPending(appointment) ? 'cancelled' : appointment.status;

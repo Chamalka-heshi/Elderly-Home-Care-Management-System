@@ -3,7 +3,7 @@ import * as channelingApi from "../../../../api/channeling/admin-channeling.api"
 import { getAllDoctors } from "../../../../api/users/admin-users.api";
 import type { Doctor } from "../../../../api/users/user.types";
 import type { ChannelingSlot } from "../../../../api/channeling/channeling.types";
-import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen } from "../../../../api/channeling/channeling.types";
+import { bookingCutoffDate, fmt12, fmtDate, isBookingOpen, isSlotPassed } from "../../../../api/channeling/channeling.types";
 import { todayLocal, fmtDateTime } from "../../../../utils/dateTime";
 import {
   IconCalendar,
@@ -31,7 +31,7 @@ function statusBadge(slot: ChannelingSlot) {
         <span className="h-1.5 w-1.5 rounded-full bg-red-400" /> Cancelled
       </span>
     );
-  if (slot.status === "completed")
+  if (slot.status === "completed" || isSlotPassed(slot))
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Completed
@@ -65,7 +65,7 @@ function statusBadge(slot: ChannelingSlot) {
 // Pick a color for the slot card based on its status
 function slotAccentColor(slot: ChannelingSlot): string {
   if (slot.status === "cancelled" || slot.status === "rejected") return "from-red-400 to-rose-500";
-  if (slot.status === "completed") return "from-slate-300 to-slate-400";
+  if (slot.status === "completed" || isSlotPassed(slot)) return "from-slate-300 to-slate-400";
   if (slot.status === "pending") return "from-amber-400 to-orange-500";
   if (isBookingOpen(slot)) return "from-emerald-400 to-teal-500";
   return "from-blue-400 to-indigo-500";
@@ -459,9 +459,8 @@ interface SlotCardProps {
 const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, onDelete }) => {
   const isCancelled = slot.status === "cancelled";
   const isRejected = slot.status === "rejected";
-  const isCompleted = slot.status === "completed";
-  const isPending = slot.status === "pending";
-  const isBookingOpenNow = slot.status === "active" && isBookingOpen(slot);
+  const isCompleted = slot.status === "completed" || isSlotPassed(slot);
+  const isPending = slot.status === "pending" && !isSlotPassed(slot);
 
   const doctorName = resolveDoctorName(slot, doctors);
   const doctorSpec = slot.doctor?.specialization || "—";
@@ -555,13 +554,14 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
             <button
               onClick={() => onDelete(slot.id)}
               className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+              title="Delete slot"
             >
               <IconTrash className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
 
-        {(isCancelled || isRejected) && (
+        {!isCompleted && (isCancelled || isRejected) && (
           <div className="flex justify-end">
             <button
               onClick={() => onDelete(slot.id)}
@@ -572,19 +572,13 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
           </div>
         )}
 
-        {isPending && (
+        {!isCompleted && isPending && (
           <div className="flex justify-end gap-1.5">
             <button
               onClick={() => onEdit(slot)}
               className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition"
             >
               <IconEdit className="h-3.5 w-3.5" /> Edit
-            </button>
-            <button
-              onClick={() => onDelete(slot.id)}
-              className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
-            >
-              <IconTrash className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => onCancel(slot.id)}
@@ -592,34 +586,21 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, doctors, onEdit, onCancel, on
             >
               <IconBan className="h-3.5 w-3.5" /> Cancel
             </button>
-          </div>
-        )}
-
-        {isBookingOpenNow && (
-          <div className="flex justify-end gap-1.5">
             <button
-              onClick={() => onEdit(slot)}
-              className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition"
+              onClick={() => onDelete(slot.id)}
+              className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+              title="Delete slot"
             >
-              <IconEdit className="h-3.5 w-3.5" /> Edit
+              <IconTrash className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
 
-        {slot.status === "active" && !isBookingOpenNow && (
-          <div className="flex justify-end gap-1.5">
-            <button
-              onClick={() => onEdit(slot)}
-              className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition"
-            >
-              <IconEdit className="h-3.5 w-3.5" /> Edit
-            </button>
-            <button
-              onClick={() => onCancel(slot.id)}
-              className="flex items-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-200 transition"
-            >
-              <IconBan className="h-3.5 w-3.5" /> Cancel Slot
-            </button>
+        {!isCompleted && !isCancelled && !isRejected && !isPending && (
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+              ✓ Doctor Approved
+            </span>
           </div>
         )}
       </div>
@@ -676,7 +657,8 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
     let filtered: ChannelingSlot[];
     if (activeTab === "") filtered = slots;
     else if (activeTab === "booking_open") filtered = slots.filter((s) => s.status === "active" && isBookingOpen(s));
-    else filtered = slots.filter((s) => s.status === activeTab);
+    else if (activeTab === "completed") filtered = slots.filter((s) => s.status === "completed" || isSlotPassed(s));
+    else filtered = slots.filter((s) => s.status === activeTab && !isSlotPassed(s));
     return [...filtered].sort((a, b) => {
       if (b.date !== a.date) return b.date.localeCompare(a.date);
       return b.startTime.localeCompare(a.startTime);
@@ -710,10 +692,10 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
 
   // Calculates the summary numbers for the top boxes
   const stats = useMemo(() => {
-    const upcomingActive = slots.filter((s) => s.status === "active");
+    const upcomingActive = slots.filter((s) => s.status === "active" && !isSlotPassed(s));
     const bookingOpen = upcomingActive.filter(isBookingOpen);
-    const completedSlots = slots.filter((s) => s.status === "completed").length;
-    const pending = slots.filter((s) => s.status === "pending").length;
+    const completedSlots = slots.filter((s) => s.status === "completed" || isSlotPassed(s)).length;
+    const pending = slots.filter((s) => s.status === "pending" && !isSlotPassed(s)).length;
     return { total: slots.length, upcomingActive: upcomingActive.length, bookingOpen: bookingOpen.length, completedSlots, pending };
   }, [slots]);
 
@@ -763,7 +745,8 @@ const ChannelingSlotManagement: React.FC<Props> = ({ addToast }) => {
             const count =
               tab.value === "" ? slots.length :
                 tab.value === "booking_open" ? slots.filter((s) => s.status === "active" && isBookingOpen(s)).length :
-                  slots.filter((s) => s.status === tab.value).length;
+                  tab.value === "completed" ? slots.filter((s) => s.status === "completed" || isSlotPassed(s)).length :
+                    slots.filter((s) => s.status === tab.value && !isSlotPassed(s)).length;
             const isActive = activeTab === tab.value;
             return (
               <button
