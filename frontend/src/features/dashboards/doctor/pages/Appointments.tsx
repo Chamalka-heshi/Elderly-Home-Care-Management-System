@@ -241,12 +241,32 @@ const DoctorAppointments: React.FC = () => {
     );
   }, [appointments]);
 
-  // Splits slots into upcoming and past categories
+  // Splits slots into upcoming and past categories.
+  // A past slot is hidden when:
+  //   - The channeling slot itself is marked "completed" (already handled), OR
+  //   - Every appointment in the slot is effectively cancelled — meaning the slot
+  //     time has passed and no prescription was ever issued (nothing left to action).
   const { upcomingGroups, pastGroups } = useMemo(() => {
     const now = new Date();
     return {
       upcomingGroups: slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) >= now),
-      pastGroups: slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) < now),
+      pastGroups: slotGroups.filter((g) => {
+        if (new Date(`${g.date}T${g.endTime}:00`) >= now) return false;
+
+        // Hide if slot is completed in the backend
+        if (g.appointments.some((a) => a.slot?.status === "completed")) return false;
+
+        // Hide if every appointment is effectively cancelled
+        // (past time + no prescription = nothing the doctor can do)
+        const allEffectivelyCancelled = g.appointments.every(
+          (a) =>
+            a.status === "cancelled" ||
+            (a.status === "prescription_pending" && !a.prescriptionId),
+        );
+        if (allEffectivelyCancelled) return false;
+
+        return true;
+      }),
     };
   }, [slotGroups]);
 
@@ -295,12 +315,12 @@ const DoctorAppointments: React.FC = () => {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-center">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Slots</p>
-          <p className="text-2xl font-extrabold text-slate-700">{slotGroups.length}</p>
+          <p className="text-2xl font-extrabold text-slate-700">{upcomingGroups.length}</p>
         </div>
       </div>
 
-      {/* Empty state */}
-      {slotGroups.length === 0 && (
+      {/* Empty state — shown only when there are no upcoming slots */}
+      {upcomingGroups.length === 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white py-20 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
             <IconActivity className="h-7 w-7 text-slate-400" />
