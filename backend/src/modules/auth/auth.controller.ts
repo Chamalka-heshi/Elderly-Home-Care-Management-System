@@ -48,7 +48,8 @@ export class AuthController {
   }
 
   private cookieOptions(httpOnly: boolean) {
-    const isProd = process.env.NODE_ENV === 'production';
+    const isProd =
+      process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
     return {
       httpOnly,
       // SameSite=None + Secure is required for cross-origin cookie delivery
@@ -200,7 +201,8 @@ export class AuthController {
 
     this.setNoCacheHeaders(res);
 
-    const isProd = process.env.NODE_ENV === 'production';
+    const isProd =
+      process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
     const clearOpts = {
       path: '/',
       secure: isProd,
