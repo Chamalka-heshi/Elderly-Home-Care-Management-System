@@ -48,13 +48,26 @@ export class AuthController {
   }
 
   private cookieOptions(httpOnly: boolean) {
+    const isProd = process.env.NODE_ENV === 'production';
     return {
       httpOnly,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      // SameSite=None + Secure is required for cross-origin cookie delivery
+      // (frontend on localhost:5173 or a different domain → Render backend).
+      // SameSite=Strict would silently drop the cookie on every cross-site request.
+      // SameSite=Lax would drop it on cross-site subresource fetches (fetch/XHR).
+      // In development (same-origin) Lax is sufficient and does not require HTTPS.
+      secure: isProd,
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
       maxAge: this.cookieMaxAge,
       path: '/',
     };
+  }
+
+  // Sets no-store cache headers on the response to prevent auth data from being
+  // stored in browser history, shared caches, or CDN edge nodes.
+  private setNoCacheHeaders(res: any): void {
+    res.set('Cache-Control', 'no-store');
+    res.set('Pragma', 'no-cache');
   }
 
   // Session Management
@@ -65,6 +78,8 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async familySignup(@Body() dto: FamilySignupDto, @Response() res: any) {
     const result = await this.authService.familySignup(dto);
+
+    this.setNoCacheHeaders(res);
 
     // Set secure, HttpOnly cookie with JWT token
     res.cookie('auth_token', result.token, this.cookieOptions(true));
@@ -87,6 +102,8 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Response() res: any) {
     const result = await this.authService.login(dto);
 
+    this.setNoCacheHeaders(res);
+
     // Set secure, HttpOnly cookie with JWT token
     res.cookie('auth_token', result.token, this.cookieOptions(true));
 
@@ -107,6 +124,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async firebaseAuth(@Body() dto: FirebaseAuthDto, @Response() res: any) {
     const result = await this.authService.firebaseAuth(dto.idToken);
+
+    this.setNoCacheHeaders(res);
 
     // Set secure, HttpOnly cookie with JWT token
     res.cookie('auth_token', result.token, this.cookieOptions(true));
@@ -158,6 +177,8 @@ export class AuthController {
       dto.confirmPassword,
     );
 
+    this.setNoCacheHeaders(res);
+
     // Set secure, HttpOnly cookie with JWT token
     res.cookie('auth_token', result.token, this.cookieOptions(true));
 
@@ -177,19 +198,18 @@ export class AuthController {
   async logout(@GetUser('sub') userId: string, @Response() res: any) {
     await this.authService.logout(userId);
 
-    // Clear secure cookies (match attributes used when setting them)
-    res.clearCookie('auth_token', {
+    this.setNoCacheHeaders(res);
+
+    const isProd = process.env.NODE_ENV === 'production';
+    const clearOpts = {
       path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
-    res.clearCookie('csrf_token', {
-      path: '/',
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+      secure: isProd,
+      // Attributes must exactly match those used in Set-Cookie or the browser ignores the clear.
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+    };
+
+    res.clearCookie('auth_token', { ...clearOpts, httpOnly: true });
+    res.clearCookie('csrf_token', { ...clearOpts, httpOnly: false });
 
     return res.json({ message: 'Logged out successfully' });
   }

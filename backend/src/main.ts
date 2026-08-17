@@ -13,7 +13,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Security Headers Middleware
-  // Applies HTTP security headers to protect against common web vulnerabilities (XSS, CSRF, Clickjacking, etc)
+  // Applies standard security headers: XSS protection, no-sniff, no-clickjacking, HSTS, etc.
   app.use(helmet());
 
   // Cookie Parser Middleware
@@ -21,18 +21,32 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Cross-Origin Resource Sharing
+  // Build an explicit whitelist from CORS_ORIGIN env var (comma-separated for multiple origins).
+  // Never use a wildcard with credentials=true.
   const rawOrigin = configService.get<string>('app.cors.origin') ?? '';
   const allowedOrigins = rawOrigin
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
-  const corsOrigin =
-    allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
+
+  // Explicit origin validator: only allow origins in the whitelist.
+  // Requests with no Origin header (e.g. same-origin, curl) are permitted.
+  // Requests with an Origin not in the whitelist receive a CORS error.
+  const originValidator = (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void,
+  ): void => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin '${origin}' is not permitted by CORS policy`));
+    }
+  };
 
   // Configures CORS to permit secure communication between the frontend client and the clinical backend API.
-  // Credentials enabled for secure cookie transmission
+  // credentials: true is required for cross-origin HttpOnly cookie authentication.
   app.enableCors({
-    origin: corsOrigin,
+    origin: originValidator,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
@@ -59,8 +73,10 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   const env = configService.get<string>('app.nodeEnv');
 
-  await app.listen(port);
-  console.log(`Backend running on http://localhost:${port}/api [${env}]`);
+  // Bind to 0.0.0.0 so Render's port scanner can detect the open port.
+  // Without the explicit host, Node defaults to 127.0.0.1 (loopback only).
+  await app.listen(port, '0.0.0.0');
+  console.log(`Backend running on port ${port} [${env}]`);
 }
 
 bootstrap();
