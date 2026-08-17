@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 // Auth components and modals
 import LoginCard from "../../features/auth/Login/LoginCard";
@@ -12,51 +12,8 @@ import { IconX, IconMenu } from "../../features/dashboards/common/icons";
 import iconImg from "../../assets/landing/icon.png";
 import "./navbar.css";
 
-// Reusable navigation link that handles both internal routing and section scrolling
-interface NavLinkProps {
-  href?: string;
-  sectionId?: string;
-  fallbackPath?: string;
-  children: React.ReactNode;
-  className?: string;
-  handleScrollOrNavigate?: (
-    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-    sectionId: string,
-    fallbackPath: string
-  ) => void;
-}
-
-const NavLinkComponent: React.FC<NavLinkProps> = ({
-  href,
-  sectionId,
-  fallbackPath,
-  children,
-  className,
-  handleScrollOrNavigate,
-}) => {
-  if (href && !sectionId) {
-    return (
-      <Link to={href} className={className} onClick={() => {}}>
-        {children}
-      </Link>
-    );
-  }
-  return (
-    <a
-      href={`#${sectionId}`}
-      onClick={(e) => handleScrollOrNavigate?.(e, sectionId!, fallbackPath!)}
-      className={className}
-    >
-      {children}
-    </a>
-  );
-};
-
 // Global navigation bar with responsive mobile menu and auth modal triggers
 const Navbar: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -77,24 +34,7 @@ const Navbar: React.FC = () => {
 
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
-  // Logic to either scroll on the home page or navigate to a dedicated page
-  const handleScrollOrNavigate = (
-    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-    sectionId: string,
-    fallbackPath: string
-  ) => {
-    e.preventDefault();
-    setMobileMenuOpen(false);
-
-    if (location.pathname === "/") {
-      const section = document.getElementById(sectionId);
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth" });
-        return;
-      }
-    }
-    navigate(fallbackPath);
-  };
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <>
@@ -111,31 +51,18 @@ const Navbar: React.FC = () => {
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium">
-            <NavLinkComponent
-              href="/"
-              className="hp-navLink link-underline hp-navLink--active"
-            >
+            <Link to="/" className="hp-navLink link-underline hp-navLink--active">
               Home
-            </NavLinkComponent>
-            <NavLinkComponent
-              sectionId="about"
-              fallbackPath="/about"
-              className="hp-navLink link-underline"
-              handleScrollOrNavigate={handleScrollOrNavigate}
-            >
+            </Link>
+            <Link to="/about" className="hp-navLink link-underline">
               About Us
-            </NavLinkComponent>
-            <NavLinkComponent
-              sectionId="services"
-              fallbackPath="/services"
-              className="hp-navLink link-underline"
-              handleScrollOrNavigate={handleScrollOrNavigate}
-            >
+            </Link>
+            <Link to="/services" className="hp-navLink link-underline">
               Services
-            </NavLinkComponent>
-            <NavLinkComponent href="/payments" className="hp-navLink link-underline">
+            </Link>
+            <Link to="/payments" className="hp-navLink link-underline">
               Cost &amp; Payments
-            </NavLinkComponent>
+            </Link>
           </nav>
 
           {/* Desktop Call-to-Actions */}
@@ -176,40 +103,41 @@ const Navbar: React.FC = () => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-lg">
             <nav className="px-4 py-4 space-y-3">
-              <NavLinkComponent
-                href="/"
+              <Link
+                to="/"
+                onClick={closeMobileMenu}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50"
               >
                 Home
-              </NavLinkComponent>
-              <NavLinkComponent
-                sectionId="about"
-                fallbackPath="/about"
+              </Link>
+              <Link
+                to="/about"
+                onClick={closeMobileMenu}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
-                handleScrollOrNavigate={handleScrollOrNavigate}
               >
                 About Us
-              </NavLinkComponent>
-              <NavLinkComponent
-                sectionId="services"
-                fallbackPath="/services"
+              </Link>
+              <Link
+                to="/services"
+                onClick={closeMobileMenu}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
-                handleScrollOrNavigate={handleScrollOrNavigate}
               >
                 Services
-              </NavLinkComponent>
-              <NavLinkComponent
-                href="/payments"
+              </Link>
+              <Link
+                to="/payments"
+                onClick={closeMobileMenu}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
               >
                 Cost &amp; Payments
-              </NavLinkComponent>
-              <NavLinkComponent
-                href="/contact"
+              </Link>
+              <Link
+                to="/contact"
+                onClick={closeMobileMenu}
                 className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
               >
                 Contact
-              </NavLinkComponent>
+              </Link>
 
               <div className="pt-4 border-t border-slate-200 space-y-2">
                 <button
@@ -239,12 +167,14 @@ const Navbar: React.FC = () => {
             onForgotPassword={() => setAuthMode("forgot")}
           />
         ) : authMode === "forgot" ? (
-          <ForgotPasswordCard 
-          onGoLogin={() => setAuthMode("login")} />
+          <ForgotPasswordCard
+            onGoLogin={() => setAuthMode("login")}
+          />
         ) : authMode === "signup" ? (
-          <SignupCard 
-          onGoLogin={() => setAuthMode("login")} 
-          onSuccessClose={closeAuth} />
+          <SignupCard
+            onGoLogin={() => setAuthMode("login")}
+            onSuccessClose={closeAuth}
+          />
         ) : null}
       </AuthModal>
     </>
