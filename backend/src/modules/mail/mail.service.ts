@@ -73,6 +73,141 @@ interface ReceiptEmailOpts {
   carePlanDuration?: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared HTML primitives
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the opening wrapper, header, and body-start common to every email.
+ * `title`   – displayed inside the header banner (e.g. "Account Created")
+ * `pretext` – short preview text for email clients (hidden in body)
+ */
+function emailOpen(systemName: string, title: string, pretext: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>${title} — ${systemName}</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f4f7;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+  <!-- Preview text (hidden) -->
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${pretext}</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f7;padding:36px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:10px;overflow:hidden;
+                    box-shadow:0 2px 16px rgba(0,0,0,.08);max-width:600px;">
+
+        <!-- ── Header ── -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0d6b6b 0%,#084f4f 100%);
+                     padding:30px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:11px;font-weight:700;
+                      letter-spacing:2px;text-transform:uppercase;
+                      color:rgba(255,255,255,.65);">${systemName}</p>
+            <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;
+                       letter-spacing:-.3px;">${title}</h1>
+          </td>
+        </tr>
+
+        <!-- ── Body ── -->
+        <tr>
+          <td style="padding:36px 40px;">`;
+}
+
+/** Closing: footer + closing tags */
+function emailClose(systemName: string, year: number): string {
+  return `
+          </td>
+        </tr>
+
+        <!-- ── Footer ── -->
+        <tr>
+          <td style="background:#f5f7f9;padding:20px 40px;text-align:center;
+                     border-top:1px solid #e4e9ee;">
+            <p style="margin:0;font-size:12px;color:#8a97a8;line-height:1.6;">
+              &copy; ${year} ${systemName} &nbsp;&middot;&nbsp; Elderly Care Management System<br/>
+              This is an automated message. Please do not reply to this email.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+/** Standard paragraph style */
+const P  = 'margin:0 0 18px;font-size:15px;color:#3a4a5c;line-height:1.75;';
+/** Section-label above a detail card */
+const SL = 'margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#8a97a8;';
+/** Detail card wrapper */
+const CARD = 'background:#f5f7f9;border:1px solid #e4e9ee;border-radius:8px;padding:20px 24px;margin-bottom:20px;';
+/** Table used inside detail cards */
+const DT = 'width:100%;border-collapse:collapse;';
+/** Label cell inside a detail table */
+const DL = 'padding:9px 12px 9px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#8a97a8;width:140px;white-space:nowrap;vertical-align:top;border-bottom:1px solid #eaeef2;';
+/** Value cell inside a detail table */
+const DV = 'padding:9px 0;font-size:14px;color:#1a2332;font-weight:500;vertical-align:top;border-bottom:1px solid #eaeef2;';
+/** Last row — no bottom border */
+const DL_LAST = 'padding:9px 12px 9px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#8a97a8;width:140px;white-space:nowrap;vertical-align:top;';
+const DV_LAST = 'padding:9px 0;font-size:14px;color:#1a2332;font-weight:500;vertical-align:top;';
+
+/** Standard "Kind regards" sign-off block */
+function signOff(systemName: string): string {
+  return `<p style="margin:28px 0 0;font-size:14px;color:#3a4a5c;line-height:1.6;">
+    Kind regards,<br/>
+    <strong style="color:#0d6b6b;">${systemName} Team</strong><br/>
+    <span style="font-size:12px;color:#8a97a8;">Elderly Care Management System</span>
+  </p>`;
+}
+
+/** Monospaced password box */
+function pwBox(password: string): string {
+  return `<div style="display:inline-block;background:#eaf6f6;border:1px solid #a3d4d4;
+                      border-radius:6px;padding:10px 20px;font-family:monospace;
+                      font-size:20px;font-weight:700;letter-spacing:3px;color:#084f4f;">
+    ${password}
+  </div>`;
+}
+
+/** Warning / security notice box */
+function warningBox(html: string): string {
+  return `<div style="background:#fff8ed;border:1px solid #f5c97a;border-radius:8px;
+                      padding:16px 20px;margin:20px 0;font-size:13px;
+                      color:#7a4f00;line-height:1.65;">
+    <strong>Please note:</strong> ${html}
+  </div>`;
+}
+
+/** Info / tip box */
+function infoBox(html: string): string {
+  return `<div style="background:#eaf6f6;border:1px solid #a3d4d4;border-radius:8px;
+                      padding:16px 20px;margin:20px 0;font-size:13px;
+                      color:#084f4f;line-height:1.65;">
+    ${html}
+  </div>`;
+}
+
+/** Primary call-to-action button */
+function ctaButton(label: string, href: string): string {
+  return `<table cellpadding="0" cellspacing="0" style="margin:8px 0 20px;">
+    <tr>
+      <td style="background:#0d6b6b;border-radius:7px;">
+        <a href="${href}"
+           style="display:inline-block;padding:13px 28px;font-size:14px;
+                  font-weight:600;color:#ffffff;text-decoration:none;
+                  letter-spacing:.3px;">
+          ${label}
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
+
 @Injectable()
 export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
@@ -145,7 +280,7 @@ export class MailService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.defaultFromAddress,
         to: `"${fullName}" <${email}>`,
-        subject: `Welcome to ${this.systemName} — Your ${role} Account is Ready`,
+        subject: `Your ${role} Account — ${this.systemName}`,
         html,
       });
       this.logger.log(`Credentials email sent → ${email} (${role})`);
@@ -168,7 +303,7 @@ export class MailService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.defaultFromAddress,
         to: `"${fullName}" <${email}>`,
-        subject: `${this.systemName} — Your Temporary Password`,
+        subject: `Temporary Password — ${this.systemName}`,
         html,
       });
       this.logger.log(`Password-reset email sent → ${email}`);
@@ -222,7 +357,7 @@ export class MailService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.defaultFromAddress,
         to: `"${opts.familyMemberName}" <${opts.to}>`,
-        subject: `New Prescription for ${opts.patientName} — ${this.systemName}`,
+        subject: `Prescription Update for ${opts.patientName} — ${this.systemName}`,
         html,
       });
       this.logger.log(`Prescription notification sent → ${opts.to}`);
@@ -245,7 +380,7 @@ export class MailService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.defaultFromAddress,
         to: `"${fullName}" <${email}>`,
-        subject: `🔐 New Login Detected — ${this.systemName}`,
+        subject: `Security Notice — New Login to Your Account`,
         html,
       });
       this.logger.log(`Login notification sent → ${email} (${opts.role})`);
@@ -267,7 +402,7 @@ export class MailService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.defaultFromAddress,
         to: `"${opts.familyMemberName}" <${opts.to}>`,
-        subject: `Payment Receipt — ${serviceLabel} | ${this.systemName}`,
+        subject: `Payment Confirmation — ${serviceLabel} | ${this.systemName}`,
         html,
       });
       this.logger.log(`Payment receipt email sent → ${opts.to}`);
@@ -278,130 +413,73 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  // Generates a branded HTML layout for delivering temporary recovery credentials
-  private buildPasswordResetHtml(opts: PasswordResetEmailOpts): string {
-    const { fullName, email, tempPassword } = opts;
-    const year = new Date().getFullYear();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Password Reset – ${this.systemName}</title>
-  <style>
-    body        { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f1f5f9; margin:0; padding:0; }
-    .wrapper    { max-width:560px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); }
-    .header     { background:linear-gradient(135deg,#059669 0%,#047857 100%); padding:32px 40px; text-align:center; }
-    .header h1  { color:#fff; margin:0; font-size:22px; font-weight:800; letter-spacing:-.5px; }
-    .header p   { color:rgba(255,255,255,.85); margin:6px 0 0; font-size:14px; }
-    .body       { padding:36px 40px; }
-    .body p     { color:#475569; font-size:15px; line-height:1.7; margin:0 0 16px; }
-    .cred-box   { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px 24px; margin:24px 0; }
-    .cred-table { width:100%; border-collapse:collapse; }
-    .cred-table tr + tr td { padding-top:12px; }
-    .cred-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:90px; white-space:nowrap; vertical-align:middle; padding-right:10px; }
-    .cred-value { font-size:14px; font-weight:600; color:#0f172a; word-break:break-all; vertical-align:middle; }
-    .pw-value   { font-family:monospace; font-size:18px; font-weight:800; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:8px 16px; letter-spacing:2px; display:inline-block; }
-    .warning    { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:14px 18px; color:#9a3412; font-size:13px; line-height:1.6; }
-    .footer     { background:#f8fafc; padding:20px 40px; text-align:center; color:#94a3b8; font-size:12px; border-top:1px solid #e2e8f0; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>🏥 ${this.systemName}</h1>
-      <p>Password Reset Request</p>
-    </div>
-    <div class="body">
-      <p>Hello <strong>${fullName}</strong>,</p>
-      <p>We received a password reset request for your account. Use the temporary password below to set a new password. It will expire once used.</p>
-      <div class="cred-box">
-        <table class="cred-table">
-          <tr>
-            <td class="cred-label">Email</td>
-            <td class="cred-value">${email}</td>
-          </tr>
-          <tr>
-            <td class="cred-label">Temp Password</td>
-            <td class="cred-value"><span class="pw-value">${tempPassword}</span></td>
-          </tr>
-        </table>
-      </div>
-      <div class="warning">
-        ⚠️ <strong>Security notice:</strong> This temporary password is valid for a single use only. After entering it, you will be prompted to choose a new personal password. If you did not request a password reset, please contact support immediately — someone may have access to your account.
-      </div>
-    </div>
-    <div class="footer">
-      ©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
-    </div>
-  </div>
-</body>
-</html>`;
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Template builders
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Constructs a welcoming template with initial login credentials for new accounts
   private buildCredentialsHtml(opts: CredentialsEmailOpts): string {
     const { fullName, email, role, temporaryPassword } = opts;
     const year = new Date().getFullYear();
+    const roleLabel = role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Account Created – ${this.systemName}</title>
-  <style>
-    body        { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f1f5f9; margin:0; padding:0; }
-    .wrapper    { max-width:560px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); }
-    .header     { background:linear-gradient(135deg,#059669 0%,#047857 100%); padding:32px 40px; text-align:center; }
-    .header h1  { color:#fff; margin:0; font-size:22px; font-weight:800; letter-spacing:-.5px; }
-    .header p   { color:rgba(255,255,255,.85); margin:6px 0 0; font-size:14px; }
-    .body       { padding:36px 40px; }
-    .body p     { color:#475569; font-size:15px; line-height:1.7; margin:0 0 16px; }
-    .cred-box   { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px 24px; margin:24px 0; }
-    .cred-table { width:100%; border-collapse:collapse; }
-    .cred-table tr + tr td { padding-top:12px; }
-    .cred-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:90px; white-space:nowrap; vertical-align:middle; padding-right:10px; }
-    .cred-value { font-size:14px; font-weight:600; color:#0f172a; word-break:break-all; vertical-align:middle; }
-    .pw-value   { font-family:monospace; font-size:16px; font-weight:800; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:6px 12px; letter-spacing:.5px; }
-    .btn        { display:inline-block; background:linear-gradient(135deg,#059669,#047857); color:#fff !important; padding:13px 28px; border-radius:10px; text-decoration:none; font-weight:700; font-size:14px; margin:8px 0 20px; }
-    .warning    { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:14px 18px; color:#9a3412; font-size:13px; }
-    .footer     { background:#f8fafc; padding:20px 40px; text-align:center; color:#94a3b8; font-size:12px; border-top:1px solid #e2e8f0; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>🏥 ${this.systemName}</h1>
-      <p>Your ${role} account is ready</p>
-    </div>
-    <div class="body">
-      <p>Hello <strong>${fullName}</strong>,</p>
-      <p>An administrator has created a <strong>${role}</strong> account for you on the ${this.systemName}. Your one-time login credentials are below.</p>
-      <div class="cred-box">
-        <table class="cred-table">
+    return (
+      emailOpen(this.systemName, 'Account Created', `Your ${roleLabel} account on ${this.systemName} is ready.`) +
+      `<p style="${P}">Dear <strong>${fullName}</strong>,</p>
+      <p style="${P}">An administrator has created a <strong>${roleLabel}</strong> account for you on the ${this.systemName}. You can use the credentials below to sign in for the first time.</p>
+
+      <p style="${SL}">Your Login Credentials</p>
+      <div style="${CARD}">
+        <table style="${DT}">
           <tr>
-            <td class="cred-label">Email</td>
-            <td class="cred-value">${email}</td>
+            <td style="${DL}">Email Address</td>
+            <td style="${DV}">${email}</td>
           </tr>
           <tr>
-            <td class="cred-label">Password</td>
-            <td class="cred-value"><span class="pw-value">${temporaryPassword}</span></td>
+            <td style="${DL_LAST}">Temporary Password</td>
+            <td style="${DV_LAST}">${pwBox(temporaryPassword)}</td>
           </tr>
         </table>
       </div>
-      <a href="${this.appUrl}/login" class="btn">Login to ${this.systemName} →</a>
-      <div class="warning">
-        ⚠️ <strong>Action required:</strong> You will be asked to set a new personal password immediately after your first login. This temporary password will stop working once you change it. Do <strong>not</strong> share these credentials with anyone.
+
+      ${ctaButton('Sign In to Your Account', this.appUrl + '/login')}
+
+      ${warningBox(`This is a one-time temporary password. You will be prompted to create a new personal password immediately after your first login. Please do not share these credentials with anyone.`)}
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
+  }
+
+  // Generates a branded HTML layout for delivering temporary recovery credentials
+  private buildPasswordResetHtml(opts: PasswordResetEmailOpts): string {
+    const { fullName, email, tempPassword } = opts;
+    const year = new Date().getFullYear();
+
+    return (
+      emailOpen(this.systemName, 'Password Reset', `A temporary password has been issued for your account.`) +
+      `<p style="${P}">Dear <strong>${fullName}</strong>,</p>
+      <p style="${P}">We received a request to reset the password for your account. A temporary password has been generated for you. Please use it to sign in and then set a new personal password.</p>
+
+      <p style="${SL}">Your Temporary Access</p>
+      <div style="${CARD}">
+        <table style="${DT}">
+          <tr>
+            <td style="${DL}">Email Address</td>
+            <td style="${DV}">${email}</td>
+          </tr>
+          <tr>
+            <td style="${DL_LAST}">Temporary Password</td>
+            <td style="${DV_LAST}">${pwBox(tempPassword)}</td>
+          </tr>
+        </table>
       </div>
-    </div>
-    <div class="footer">
-      ©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
-    </div>
-  </div>
-</body>
-</html>`;
+
+      ${warningBox(`This temporary password is valid for a single use only. Once you log in, you will be required to create a new password. If you did not request a password reset, please contact the ECMS team immediately, as someone else may have attempted to access your account.`)}
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
   }
 
   // Formats a detailed clinical instruction layout for clear presentation to family members
@@ -414,135 +492,97 @@ export class MailService implements OnModuleInit {
         const medicineRows = p.medicines
           .map(
             (m) => `
-        <tr>
-          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;font-weight:600;">${m.medicineName}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.dosage}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.frequency}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#64748b;">${m.instructions ?? '—'}</td>
-        </tr>`,
+            <tr>
+              <td style="padding:10px 12px;font-size:14px;color:#1a2332;font-weight:500;border-bottom:1px solid #eaeef2;">${m.medicineName}</td>
+              <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.dosage}</td>
+              <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.frequency}</td>
+              <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
+              <td style="padding:10px 12px;font-size:13px;color:#5a6a7a;border-bottom:1px solid #eaeef2;">${m.instructions ?? '—'}</td>
+            </tr>`,
           )
           .join('');
 
-        const diagnosisBlock = p.diagnosis
-          ? `
-        <tr>
-          <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Diagnosis</td>
-          <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.diagnosis}</td>
-        </tr>`
-          : '';
+        const metaRows: string[] = [];
+        metaRows.push(`<tr>
+          <td style="${DL}">Date Issued</td>
+          <td style="${DV}">${p.issuedDate}</td>
+        </tr>`);
+        if (p.validUntil) {
+          metaRows.push(`<tr>
+            <td style="${DL}">Valid Until</td>
+            <td style="${DV}">${p.validUntil}</td>
+          </tr>`);
+        }
+        if (p.diagnosis) {
+          metaRows.push(`<tr>
+            <td style="${DL}">Diagnosis</td>
+            <td style="${DV}">${p.diagnosis}</td>
+          </tr>`);
+        }
+        if (p.notes) {
+          metaRows.push(`<tr>
+            <td style="${DL_LAST}">Doctor's Notes</td>
+            <td style="${DV_LAST}">${p.notes.replace(/\n/g, '<br/>')}</td>
+          </tr>`);
+        }
 
-        const notesBlock = p.notes
-          ? `
-        <tr>
-          <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;vertical-align:top;">Notes</td>
-          <td style="padding:10px 0;font-size:15px;color:#0f172a;line-height:1.6;">${p.notes.replace(/\n/g, '<br>')}</td>
-        </tr>`
-          : '';
-
-        const validUntilBlock = p.validUntil
-          ? `
-        <tr>
-          <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Valid Until</td>
-          <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.validUntil}</td>
-        </tr>`
-          : '';
+        const heading = prescriptions.length > 1
+          ? `Prescription ${index + 1} of ${prescriptions.length}`
+          : 'Prescription Details';
 
         return `
-        <tr>
-          <td style="padding:24px 40px 0;">
-            <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">📝 Prescription ${prescriptions.length > 1 ? `#${index + 1}` : ''}</p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:16px;">
-              <tr>
-                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Issued Date</td>
-                <td style="padding:10px 0;font-size:15px;color:#0f172a;">${p.issuedDate}</td>
+          <p style="${SL}">${heading}</p>
+          <div style="${CARD}">
+            <table style="${DT}">${metaRows.join('')}</table>
+          </div>
+
+          <p style="${SL}">Prescribed Medicines</p>
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="border:1px solid #e4e9ee;border-radius:8px;overflow:hidden;
+                        border-collapse:collapse;margin-bottom:24px;">
+            <thead>
+              <tr style="background:#f5f7f9;">
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Medicine</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Dosage</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Frequency</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Duration</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Instructions</th>
               </tr>
-              ${validUntilBlock}
-              ${diagnosisBlock}
-              ${notesBlock}
-            </table>
-            
-            <p style="margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;">💊 Prescribed Medicines</p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;border-collapse:collapse;margin-bottom:16px;">
-              <thead>
-                <tr style="background:#f1f5f9;">
-                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Medicine</th>
-                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Dosage</th>
-                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Frequency</th>
-                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Duration</th>
-                  <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">Instructions</th>
-                </tr>
-              </thead>
-              <tbody>${medicineRows}</tbody>
-            </table>
-          </td>
-        </tr>
-      `;
+            </thead>
+            <tbody>${medicineRows}</tbody>
+          </table>`;
       })
       .join('');
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Active Prescriptions Update — ${this.systemName}</title>
-</head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:600px;">
-        <tr>
-          <td style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-.5px;">🏥 ${this.systemName}</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,.85);font-size:14px;">Active Prescriptions Update</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px 40px 0;">
-            <p style="margin:0 0 8px;font-size:16px;color:#0f172a;">Dear <strong>${familyMemberName}</strong>,</p>
-            <p style="margin:0;font-size:15px;color:#475569;line-height:1.7;">Dr. <strong>${doctorName}</strong> has updated the prescriptions for <strong>${patientName}</strong>. Please find the full details of all active prescriptions below.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px 40px 0;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
-              <tr>
-                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;width:130px;">Patient</td>
-                <td style="padding:10px 0;font-size:15px;color:#0f172a;font-weight:600;">${patientName}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Doctor</td>
-                <td style="padding:10px 0;font-size:15px;color:#0f172a;">Dr. ${doctorName}</td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        ${prescriptionBlocks}
-        <tr>
-          <td style="padding:24px 40px 0;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;">
-              <tr>
-                <td style="padding:14px 18px;font-size:13px;color:#065f46;line-height:1.6;">
-                  ℹ️ You can view these prescriptions at any time by logging into your <a href="${this.appUrl}" style="color:#059669;font-weight:600;">family member dashboard</a>. If you have any questions, please contact the clinic directly.
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px 40px;text-align:center;border-top:1px solid #e2e8f0;margin-top:28px;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+    return (
+      emailOpen(this.systemName, 'Prescription Update', `A prescription has been updated for ${patientName}.`) +
+      `<p style="${P}">Dear <strong>${familyMemberName}</strong>,</p>
+      <p style="${P}">Dr. <strong>${doctorName}</strong> has issued or updated a prescription for <strong>${patientName}</strong>. Please find the full details below.</p>
+
+      <p style="${SL}">Patient Information</p>
+      <div style="${CARD}">
+        <table style="${DT}">
+          <tr>
+            <td style="${DL}">Patient</td>
+            <td style="${DV}">${patientName}</td>
+          </tr>
+          <tr>
+            <td style="${DL_LAST}">Attending Doctor</td>
+            <td style="${DV_LAST}">Dr. ${doctorName}</td>
+          </tr>
+        </table>
+      </div>
+
+      ${prescriptionBlocks}
+
+      ${infoBox(`You can view all prescriptions for ${patientName} at any time by signing in to your <a href="${this.appUrl}" style="color:#0d6b6b;font-weight:600;text-decoration:none;">family member dashboard</a>. If you have any questions, please contact the care home team directly.`)}
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
   }
 
-  // Renders a premium security-alert email with login metadata for privileged-role accounts
+  // Renders a professional security-alert email with login metadata for privileged-role accounts
   private buildLoginNotificationHtml(opts: LoginNotificationOpts): string {
     const { fullName, role, loginTime, phone, contactEmail } = opts;
     const year = new Date().getFullYear();
@@ -552,161 +592,103 @@ export class MailService implements OnModuleInit {
       '';
     const displayEmail = contactEmail || fallbackEmail;
     const displayPhone = phone || '';
-
     const roleLabel =
       role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>New Login Detected – ${this.systemName}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    body        { font-family:'Inter','Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; margin:0; padding:0; }
-    .wrapper    { max-width:580px; margin:40px auto; background:#1e293b; border-radius:20px; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,.5); border:1px solid #334155; }
-    .header     { background:linear-gradient(135deg,#1d4ed8 0%,#4f46e5 50%,#7c3aed 100%); padding:40px; text-align:center; position:relative; }
-    .header::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
-    .shield     { width:64px; height:64px; background:rgba(255,255,255,.12); border-radius:50%; display:block; text-align:center; line-height:64px; margin:0 auto 16px; font-size:28px; border:2px solid rgba(255,255,255,.2); }
-    .header h1  { color:#fff; margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-.5px; position:relative; }
-    .header p   { color:rgba(255,255,255,.7); margin:0; font-size:14px; position:relative; }
-    .badge      { display:inline-block; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:999px; padding:4px 14px; font-size:12px; font-weight:600; color:#fff; margin-top:12px; text-transform:uppercase; letter-spacing:.8px; position:relative; }
-    .body       { padding:36px 40px; }
-    .greeting   { font-size:17px; color:#e2e8f0; font-weight:600; margin:0 0 8px; }
-    .subtext    { font-size:14px; color:#94a3b8; line-height:1.7; margin:0 0 28px; }
-    .info-card  { background:#0f172a; border:1px solid #334155; border-radius:14px; overflow:hidden; margin-bottom:24px; }
-    .info-row   { display:flex; align-items:center; padding:16px 20px; border-bottom:1px solid #1e293b; }
-    .info-row:last-child { border-bottom:none; }
-    .info-icon  { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; margin-right:14px; flex-shrink:0; }
-    .icon-time  { background:rgba(99,102,241,.15); }
-    .info-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin:0 0 3px; }
-    .info-value { font-size:14px; font-weight:600; color:#e2e8f0; margin:0; }
-    .alert-box  { background:linear-gradient(135deg,rgba(220,38,38,.1),rgba(153,27,27,.1)); border:1px solid rgba(220,38,38,.3); border-radius:14px; padding:20px 24px; margin-bottom:24px; }
-    .alert-box p { margin:0; font-size:13px; color:#fca5a5; line-height:1.7; }
-    .alert-box strong { color:#f87171; }
-    .contact-card  { background:#0f172a; border:1px solid #334155; border-radius:14px; padding:20px 24px; margin-bottom:24px; }
-    .contact-title { margin:0 0 14px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:#94a3b8; }
-    .contact-row   { display:block; text-decoration:none; padding:10px 0; border-bottom:1px solid #1e293b; }
-    .contact-row:last-of-type { border-bottom:none; }
-    .contact-icon  { display:inline-block; width:24px; }
-    .contact-val   { font-size:14px; font-weight:600; color:#a5b4fc; }
-    .divider    { border:none; border-top:1px solid #334155; margin:0 0 24px; }
-    .footer-txt { font-size:12px; color:#475569; text-align:center; line-height:1.6; margin:0; }
-    .footer-txt a { color:#6366f1; text-decoration:none; }
-    .footer     { background:#0f172a; padding:20px 40px; border-top:1px solid #334155; text-align:center; }
-    .footer p   { margin:0; font-size:11px; color:#475569; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <div class="shield">🛡️</div>
-      <h1>New Login Detected</h1>
-      <p>${this.systemName}</p>
-      <span class="badge">${roleLabel}</span>
-    </div>
-    <div class="body">
-      <p class="greeting">Hello ${fullName},</p>
-      <p class="subtext">A new login to your <strong style="color:#a5b4fc">${roleLabel}</strong> account was just detected. Here are the details:</p>
+    const contactRows: string[] = [];
+    if (displayPhone) {
+      contactRows.push(`<tr>
+        <td style="${DL}">Phone</td>
+        <td style="${DV}"><a href="tel:${displayPhone}" style="color:#0d6b6b;text-decoration:none;">${displayPhone}</a></td>
+      </tr>`);
+    }
+    if (displayEmail) {
+      contactRows.push(`<tr>
+        <td style="${DL_LAST}">Email</td>
+        <td style="${DV_LAST}"><a href="mailto:${displayEmail}" style="color:#0d6b6b;text-decoration:none;">${displayEmail}</a></td>
+      </tr>`);
+    }
 
-      <div class="info-card">
-        <div class="info-row">
-          <div class="info-icon icon-time">🕐</div>
-          <div>
-            <p class="info-label">Login Time</p>
-            <p class="info-value">${loginTime}</p>
-          </div>
-        </div>
+    return (
+      emailOpen(this.systemName, 'New Login Detected', `A new login to your ${roleLabel} account was just detected.`) +
+      `<p style="${P}">Dear <strong>${fullName}</strong>,</p>
+      <p style="${P}">We are writing to inform you that a new login was recorded for your <strong>${roleLabel}</strong> account on the ${this.systemName}. The details are provided below.</p>
+
+      <p style="${SL}">Login Details</p>
+      <div style="${CARD}">
+        <table style="${DT}">
+          <tr>
+            <td style="${DL}">Account Role</td>
+            <td style="${DV}">${roleLabel}</td>
+          </tr>
+          <tr>
+            <td style="${DL_LAST}">Login Time</td>
+            <td style="${DV_LAST}">${loginTime}</td>
+          </tr>
+        </table>
       </div>
 
-      <div class="alert-box">
-        <p>⚠️ <strong>Wasn't you?</strong> If you did not initiate this login, your account may be compromised. Please contact your system administrator immediately and change your password.</p>
-      </div>
+      ${warningBox(`If you did not initiate this login, your account may be at risk. Please contact the system administrator immediately and request that your account be secured.`)}
 
-      <div class="contact-card">
-        <p class="contact-title">📞 Contact System Administrator</p>
-        ${displayPhone ? `<a href="tel:${displayPhone}" class="contact-row"><span class="contact-icon">📱</span><span class="contact-val">${displayPhone}</span></a>` : ''}
-        ${displayEmail ? `<a href="mailto:${displayEmail}" class="contact-row"><span class="contact-icon">✉️</span><span class="contact-val">${displayEmail}</span></a>` : ''}
-      </div>
+      ${contactRows.length > 0 ? `
+      <p style="${SL}">Contact System Administrator</p>
+      <div style="${CARD}">
+        <table style="${DT}">${contactRows.join('')}</table>
+      </div>` : ''}
 
-      <hr class="divider"/>
-      <p class="footer-txt">If this login was initiated by you, no further action is required.<br/>For security questions, contact the admin team above.</p>
-    </div>
-    <div class="footer">
-      <p>©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated security alert — please do not reply directly.</p>
-    </div>
-  </div>
-</body>
-</html>`;
+      <p style="margin:0;font-size:14px;color:#5a6a7a;line-height:1.7;">If this login was made by you, no further action is required.</p>
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
   }
 
   // Generates a professional reply template that quotes the user's original inquiry for context
   private buildReplyHtml(opts: ReplyEmailOpts): string {
     const { recipientName, reply, originalMsg, phonePrimary, systemEmail } =
       opts;
-    const safeReply = reply.replace(/\n/g, '<br>');
-    const safeMsg = originalMsg.replace(/\n/g, '<br>');
+    const safeReply = reply.replace(/\n/g, '<br/>');
+    const safeMsg = originalMsg.replace(/\n/g, '<br/>');
     const year = new Date().getFullYear();
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Re: Your Enquiry – ${this.systemName}</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:600px;">
-        <tr>
-          <td style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:28px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:.5px;">🏥 ${this.systemName}</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:36px 40px;">
-            <p style="margin:0 0 8px;font-size:16px;color:#111827;">Dear <strong>${recipientName}</strong>,</p>
-            <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">Thank you for contacting us. Our team has reviewed your enquiry and provided the following response:</p>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="background:#ecfdf5;border-left:4px solid #059669;border-radius:6px;padding:20px 24px;">
-                  <p style="margin:0;font-size:15px;line-height:1.6;color:#065f46;">${safeReply}</p>
-                </td>
-              </tr>
-            </table>
-            <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
-            <p style="margin:0 0 6px;font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;">Your original message</p>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="background:#f9fafb;border-left:3px solid #d1d5db;border-radius:4px;padding:14px 18px;">
-                  <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">${safeMsg}</p>
-                </td>
-              </tr>
-            </table>
-            <p style="margin:28px 0 8px;font-size:14px;color:#374151;">If you have any further questions, please don't hesitate to reach out:</p>
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding:4px 0;font-size:14px;color:#374151;">📞 <strong>${phonePrimary}</strong></td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:14px;color:#374151;">✉️ <a href="mailto:${systemEmail}" style="color:#059669;text-decoration:none;">${systemEmail}</a></td>
-              </tr>
-            </table>
-            <p style="margin:32px 0 0;font-size:14px;color:#374151;">Warm regards,<br><strong>${this.systemName} Team</strong></p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#f9fafb;padding:18px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;">©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+    return (
+      emailOpen(this.systemName, 'Response to Your Enquiry', `The ECMS team has responded to your recent enquiry.`) +
+      `<p style="${P}">Dear <strong>${recipientName}</strong>,</p>
+      <p style="${P}">Thank you for reaching out to us. Our team has reviewed your enquiry and prepared the following response.</p>
+
+      <p style="${SL}">Our Response</p>
+      <div style="background:#eaf6f6;border:1px solid #a3d4d4;border-left:4px solid #0d6b6b;
+                  border-radius:0 8px 8px 0;padding:18px 22px;margin-bottom:20px;
+                  font-size:15px;color:#1a2332;line-height:1.75;">
+        ${safeReply}
+      </div>
+
+      <p style="${SL}">Your Original Message</p>
+      <div style="background:#f5f7f9;border:1px solid #e4e9ee;border-left:4px solid #c8d0da;
+                  border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;
+                  font-size:14px;color:#5a6a7a;line-height:1.7;font-style:italic;">
+        ${safeMsg}
+      </div>
+
+      <p style="${P}">If you have any further questions, please do not hesitate to contact us.</p>
+
+      <p style="${SL}">Contact Details</p>
+      <div style="${CARD}">
+        <table style="${DT}">
+          ${phonePrimary ? `<tr>
+            <td style="${DL}">Telephone</td>
+            <td style="${DV}"><a href="tel:${phonePrimary}" style="color:#0d6b6b;text-decoration:none;">${phonePrimary}</a></td>
+          </tr>` : ''}
+          <tr>
+            <td style="${DL_LAST}">Email</td>
+            <td style="${DV_LAST}"><a href="mailto:${systemEmail}" style="color:#0d6b6b;text-decoration:none;">${systemEmail}</a></td>
+          </tr>
+        </table>
+      </div>
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
   }
 
   // Builds a professional, itemised HTML receipt for appointment or care-plan payments
@@ -722,7 +704,7 @@ export class MailService implements OnModuleInit {
     } = opts;
     const year = new Date().getFullYear();
     const receiptNumber = `RCP-${paymentId.substring(0, 8).toUpperCase()}`;
-    const formattedDate = new Date(paidAt).toLocaleString('en-US', {
+    const formattedDate = new Date(paidAt).toLocaleString('en-GB', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -734,167 +716,135 @@ export class MailService implements OnModuleInit {
       maximumFractionDigits: 2,
     });
     const methodLabel =
-      paymentMethod === 'card' ? '💳 Card Payment' : '🏦 Bank Transfer';
+      paymentMethod === 'card' ? 'Card Payment' : 'Bank Transfer';
     const serviceLabel =
       serviceType === 'appointment' ? 'Doctor Appointment' : 'Care Plan Booking';
 
     // ── Service-specific rows ─────────────────────────────────────────────
-    let serviceRows = '';
+    const serviceDetailRows: string[] = [];
+    serviceDetailRows.push(`<tr>
+      <td style="${DL}">Patient</td>
+      <td style="${DV}">${patientName}</td>
+    </tr>`);
+
     if (serviceType === 'appointment') {
       if (opts.doctorName) {
-        serviceRows += `
-          <tr>
-            <td class="rcpt-label">Doctor</td>
-            <td class="rcpt-value">Dr. ${opts.doctorName}</td>
-          </tr>`;
+        serviceDetailRows.push(`<tr>
+          <td style="${DL}">Doctor</td>
+          <td style="${DV}">Dr. ${opts.doctorName}</td>
+        </tr>`);
       }
       if (opts.appointmentDate) {
-        serviceRows += `
-          <tr>
-            <td class="rcpt-label">Date</td>
-            <td class="rcpt-value">${opts.appointmentDate}</td>
-          </tr>`;
+        serviceDetailRows.push(`<tr>
+          <td style="${DL}">Appointment Date</td>
+          <td style="${DV}">${opts.appointmentDate}</td>
+        </tr>`);
       }
       if (opts.appointmentStartTime && opts.appointmentEndTime) {
-        serviceRows += `
-          <tr>
-            <td class="rcpt-label">Time</td>
-            <td class="rcpt-value">${opts.appointmentStartTime} – ${opts.appointmentEndTime}</td>
-          </tr>`;
+        serviceDetailRows.push(`<tr>
+          <td style="${DL_LAST}">Appointment Time</td>
+          <td style="${DV_LAST}">${opts.appointmentStartTime} &ndash; ${opts.appointmentEndTime}</td>
+        </tr>`);
       }
     } else {
       if (opts.carePlanName) {
-        serviceRows += `
-          <tr>
-            <td class="rcpt-label">Care Plan</td>
-            <td class="rcpt-value">${opts.carePlanName}</td>
-          </tr>`;
+        serviceDetailRows.push(`<tr>
+          <td style="${DL}">Care Plan</td>
+          <td style="${DV}">${opts.carePlanName}</td>
+        </tr>`);
       }
       if (opts.carePlanDuration) {
-        serviceRows += `
-          <tr>
-            <td class="rcpt-label">Duration</td>
-            <td class="rcpt-value">${opts.carePlanDuration}</td>
-          </tr>`;
+        serviceDetailRows.push(`<tr>
+          <td style="${DL_LAST}">Duration</td>
+          <td style="${DV_LAST}">${opts.carePlanDuration}</td>
+        </tr>`);
+      }
+    }
+
+    // Ensure last row has no bottom border
+    if (serviceDetailRows.length > 0) {
+      const last = serviceDetailRows[serviceDetailRows.length - 1];
+      if (!last.includes(DL_LAST)) {
+        serviceDetailRows[serviceDetailRows.length - 1] = last
+          .replace(DL, DL_LAST)
+          .replace(DV, DV_LAST);
       }
     }
 
     // ── Fee breakdown (appointment only) ─────────────────────────────────
-    let feeBreakdown = '';
+    let feeBreakdownHtml = '';
     if (
       serviceType === 'appointment' &&
       opts.consultationFee !== undefined &&
       opts.careHomeFee !== undefined
     ) {
-      feeBreakdown = `
+      feeBreakdownHtml = `
+      <p style="${SL}">Fee Breakdown</p>
+      <table width="100%" cellpadding="0" cellspacing="0"
+             style="border:1px solid #e4e9ee;border-radius:8px;overflow:hidden;
+                    border-collapse:collapse;margin-bottom:20px;">
         <tr>
-          <td style="padding:20px 40px 0;">
-            <p style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;">Fee Breakdown</p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;border-collapse:collapse;">
-              <tr style="background:#f8fafc;">
-                <td style="padding:10px 16px;font-size:14px;color:#475569;">Consultation Fee</td>
-                <td style="padding:10px 16px;font-size:14px;color:#0f172a;font-weight:600;text-align:right;">LKR ${Number(opts.consultationFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 16px;font-size:14px;color:#475569;border-top:1px solid #e2e8f0;">Care Home Fee</td>
-                <td style="padding:10px 16px;font-size:14px;color:#0f172a;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">LKR ${Number(opts.careHomeFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              </tr>
-            </table>
-          </td>
-        </tr>`;
+          <td style="padding:11px 16px;font-size:14px;color:#3a4a5c;background:#f5f7f9;border-bottom:1px solid #e4e9ee;">Consultation Fee</td>
+          <td style="padding:11px 16px;font-size:14px;color:#1a2332;font-weight:600;text-align:right;background:#f5f7f9;border-bottom:1px solid #e4e9ee;">LKR ${Number(opts.consultationFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 16px;font-size:14px;color:#3a4a5c;">Care Home Fee</td>
+          <td style="padding:11px 16px;font-size:14px;color:#1a2332;font-weight:600;text-align:right;">LKR ${Number(opts.careHomeFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      </table>`;
     }
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Payment Receipt – ${this.systemName}</title>
-  <style>
-    body        { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f1f5f9; margin:0; padding:0; }
-    .wrapper    { max-width:600px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); }
-    .header     { background:linear-gradient(135deg,#059669 0%,#047857 100%); padding:32px 40px; text-align:center; }
-    .header h1  { color:#fff; margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:-.5px; }
-    .header p   { color:rgba(255,255,255,.85); margin:0; font-size:14px; }
-    .rcpt-badge { display:inline-block; background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); border-radius:999px; padding:4px 16px; font-size:12px; font-weight:700; color:#fff; margin-top:12px; letter-spacing:.8px; text-transform:uppercase; }
-    .body       { padding:32px 40px 0; }
-    .body p     { color:#475569; font-size:15px; line-height:1.7; margin:0 0 20px; }
-    .rcpt-box   { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px 24px; margin-bottom:20px; }
-    .rcpt-table { width:100%; border-collapse:collapse; }
-    .rcpt-table tr + tr td { border-top:1px solid #e2e8f0; }
-    .rcpt-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:140px; white-space:nowrap; padding:10px 10px 10px 0; vertical-align:middle; }
-    .rcpt-value { font-size:14px; font-weight:600; color:#0f172a; padding:10px 0; vertical-align:middle; }
-    .total-box  { background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #a7f3d0; border-radius:12px; padding:20px 24px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; }
-    .total-lbl  { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#065f46; }
-    .total-amt  { font-size:28px; font-weight:800; color:#047857; }
-    .info-box   { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px 18px; color:#1d4ed8; font-size:13px; line-height:1.6; margin-bottom:28px; }
-    .footer     { background:#f8fafc; padding:20px 40px; text-align:center; color:#94a3b8; font-size:12px; border-top:1px solid #e2e8f0; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>🏥 ${this.systemName}</h1>
-      <p>Payment Receipt</p>
-      <span class="rcpt-badge">${receiptNumber}</span>
-    </div>
-    <div class="body">
-      <p>Dear <strong>${familyMemberName}</strong>,</p>
-      <p>Thank you for your payment. Please find your official receipt below for your records.</p>
+    return (
+      emailOpen(this.systemName, 'Payment Confirmation', `Your payment of LKR ${formattedAmount} has been received.`) +
+      `<p style="${P}">Dear <strong>${familyMemberName}</strong>,</p>
+      <p style="${P}">Thank you for your payment. This email serves as your official receipt. Please retain it for your records.</p>
 
-      <div class="rcpt-box">
-        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">📋 Receipt Details</p>
-        <table class="rcpt-table">
+      <p style="${SL}">Receipt Summary</p>
+      <div style="${CARD}">
+        <table style="${DT}">
           <tr>
-            <td class="rcpt-label">Receipt No.</td>
-            <td class="rcpt-value">${receiptNumber}</td>
+            <td style="${DL}">Receipt Number</td>
+            <td style="${DV}"><strong>${receiptNumber}</strong></td>
           </tr>
           <tr>
-            <td class="rcpt-label">Date &amp; Time</td>
-            <td class="rcpt-value">${formattedDate}</td>
+            <td style="${DL}">Date and Time</td>
+            <td style="${DV}">${formattedDate}</td>
           </tr>
           <tr>
-            <td class="rcpt-label">Payment Method</td>
-            <td class="rcpt-value">${methodLabel}</td>
+            <td style="${DL}">Payment Method</td>
+            <td style="${DV}">${methodLabel}</td>
           </tr>
           <tr>
-            <td class="rcpt-label">Service</td>
-            <td class="rcpt-value">${serviceLabel}</td>
+            <td style="${DL_LAST}">Service</td>
+            <td style="${DV_LAST}">${serviceLabel}</td>
           </tr>
         </table>
       </div>
 
-      <div class="rcpt-box">
-        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">🩺 Service Details</p>
-        <table class="rcpt-table">
-          <tr>
-            <td class="rcpt-label">Patient</td>
-            <td class="rcpt-value">${patientName}</td>
-          </tr>
-          ${serviceRows}
-        </table>
+      <p style="${SL}">Service Details</p>
+      <div style="${CARD}">
+        <table style="${DT}">${serviceDetailRows.join('')}</table>
       </div>
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #a7f3d0;border-radius:12px;margin-bottom:24px;">
+      ${feeBreakdownHtml}
+
+      <!-- Total amount -->
+      <table width="100%" cellpadding="0" cellspacing="0"
+             style="background:#0d6b6b;border-radius:8px;margin-bottom:20px;">
         <tr>
           <td style="padding:20px 24px;">
-            <p style="margin:0 0 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#065f46;">Total Amount Paid</p>
-            <p style="margin:0;font-size:30px;font-weight:800;color:#047857;">LKR ${formattedAmount}</p>
+            <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:1.2px;
+                      text-transform:uppercase;color:rgba(255,255,255,.7);">Total Amount Paid</p>
+            <p style="margin:0;font-size:28px;font-weight:700;color:#ffffff;">LKR ${formattedAmount}</p>
           </td>
         </tr>
       </table>
 
-      <div class="info-box">
-        ℹ️ You can view all your payment history anytime by logging into your <a href="${this.appUrl}" style="color:#1d4ed8;font-weight:600;">family member dashboard</a>. If you have any questions, please contact the care home directly.
-      </div>
-    </div>
-    ${feeBreakdown ? `<table width="100%" cellpadding="0" cellspacing="0"><${feeBreakdown}</table>` : ''}
-    <div class="footer">
-      ©️ ${year} ${this.systemName} &nbsp;·&nbsp; This is an automated receipt — please do not reply.
-    </div>
-  </div>
-</body>
-</html>`;
+      ${infoBox(`You can view your full payment history at any time by signing in to your <a href="${this.appUrl}" style="color:#0d6b6b;font-weight:600;text-decoration:none;">family member dashboard</a>. If you have any questions regarding this payment, please contact the care home team directly.`)}
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
   }
 
   async sendBackupNotification(
@@ -912,8 +862,8 @@ export class MailService implements OnModuleInit {
     const systemName = this.systemName;
     const isSuccess = opts.status === 'success';
     const subject = isSuccess
-      ? `[${systemName}] Backup Completed Successfully - ${opts.backupName}`
-      : `[${systemName}] Backup Creation Failed - ${opts.backupName}`;
+      ? `Database Backup Completed — ${opts.backupName}`
+      : `Database Backup Failed — ${opts.backupName}`;
 
     try {
       await this.transporter.sendMail({
@@ -949,82 +899,90 @@ export class MailService implements OnModuleInit {
       return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
     };
 
-    const formattedSize = opts.fileSizeBytes ? formatBytes(opts.fileSizeBytes) : '—';
+    const formattedSize = opts.fileSizeBytes
+      ? formatBytes(opts.fileSizeBytes)
+      : '—';
     const dateStr = opts.completedAt
-      ? new Date(opts.completedAt).toLocaleString('en-US', { timeZone: 'Asia/Colombo' }) + ' (Colombo time)'
+      ? new Date(opts.completedAt).toLocaleString('en-GB', {
+          timeZone: 'Asia/Colombo',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }) + ' (Colombo time)'
       : '—';
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Database Backup Notification</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:600px;">
-        <tr>
-          <td style="background:${isSuccess ? 'linear-gradient(135deg,#059669 0%,#047857 100%)' : 'linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)'};padding:28px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:.5px;">🏥 ${this.systemName}</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:36px 40px;">
-            <h2 style="margin:0 0 16px;font-size:18px;color:${isSuccess ? '#059669' : '#dc2626'};">
-              ${isSuccess ? '✔ Database Backup Succeeded' : '✕ Database Backup Failed'}
-            </h2>
-            <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
-              ${isSuccess
-        ? 'A new database backup snapshot has been created successfully. Below are the details:'
-        : 'An error occurred while creating the scheduled or manual database backup. Below are the details:'}
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:20px 0;">
-              <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;width:150px;">Backup Name:</td>
-                <td style="padding:10px 0;font-size:14px;color:#1f2937;font-family:monospace;">${opts.backupName}</td>
-              </tr>
-              <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">Status:</td>
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:${isSuccess ? '#059669' : '#dc2626'};text-transform:capitalize;">${opts.status}</td>
-              </tr>
-              ${isSuccess ? `
-              <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">File Size:</td>
-                <td style="padding:10px 0;font-size:14px;color:#1f2937;">${formattedSize}</td>
-              </tr>
-              ` : ''}
-              ${!isSuccess && opts.errorMessage ? `
-              <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#dc2626;">Error Message:</td>
-                <td style="padding:10px 0;font-size:14px;color:#dc2626;">${opts.errorMessage}</td>
-              </tr>
-              ` : ''}
-              <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">Completed At:</td>
-                <td style="padding:10px 0;font-size:14px;color:#1f2937;">${dateStr}</td>
-              </tr>
-              ${opts.notes ? `
-              <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 0;font-size:14px;font-weight:bold;color:#4b5563;">Notes:</td>
-                <td style="padding:10px 0;font-size:14px;color:#4b5563;font-style:italic;">${opts.notes}</td>
-              </tr>
-              ` : ''}
-            </table>
-            
-            <p style="margin:32px 0 0;font-size:14px;color:#374151;line-height:1.6;">Warm regards,<br><strong>${this.systemName} System</strong></p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #edf2f7;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated system alert — please do not reply directly.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+    const statusLabel = isSuccess ? 'Completed Successfully' : 'Failed';
+
+    const detailRows: string[] = [];
+    detailRows.push(`<tr>
+      <td style="${DL}">Backup Name</td>
+      <td style="${DV}" >${opts.backupName}</td>
+    </tr>`);
+    detailRows.push(`<tr>
+      <td style="${DL}">Status</td>
+      <td style="${DV}">
+        <span style="font-weight:600;color:${isSuccess ? '#0d6b6b' : '#c0392b'};">${statusLabel}</span>
+      </td>
+    </tr>`);
+    detailRows.push(`<tr>
+      <td style="${DL}">Completed At</td>
+      <td style="${DV}">${dateStr}</td>
+    </tr>`);
+    if (isSuccess && opts.fileSizeBytes) {
+      detailRows.push(`<tr>
+        <td style="${DL}">File Size</td>
+        <td style="${DV}">${formattedSize}</td>
+      </tr>`);
+    }
+    if (!isSuccess && opts.errorMessage) {
+      detailRows.push(`<tr>
+        <td style="${DL}">Error Detail</td>
+        <td style="${DV}" style="color:#c0392b;">${opts.errorMessage}</td>
+      </tr>`);
+    }
+    if (opts.notes) {
+      detailRows.push(`<tr>
+        <td style="${DL}">Notes</td>
+        <td style="${DV}">${opts.notes}</td>
+      </tr>`);
+    }
+
+    // Fix last row border
+    if (detailRows.length > 0) {
+      const last = detailRows[detailRows.length - 1];
+      detailRows[detailRows.length - 1] = last
+        .replace(DL, DL_LAST)
+        .replace(DV, DV_LAST);
+    }
+
+    const title = isSuccess
+      ? 'Database Backup Completed'
+      : 'Database Backup Failed';
+
+    const statusBox = isSuccess
+      ? infoBox(`The scheduled database backup has completed successfully. No action is required. The backup file is stored securely and is available for restoration if needed.`)
+      : `<div style="background:#fdf2f2;border:1px solid #e8c4c4;border-radius:8px;
+                    padding:16px 20px;margin:20px 0;font-size:13px;
+                    color:#7a2020;line-height:1.65;">
+          <strong>Action Required:</strong> The database backup process encountered an error and did not complete successfully. Please review the error details above and investigate the cause. If the issue persists, contact your system administrator.
+        </div>`;
+
+    return (
+      emailOpen(this.systemName, title, `Database backup ${opts.backupName} ${isSuccess ? 'completed successfully' : 'failed'}.`) +
+      `<p style="${P}">Dear Administrator,</p>
+      <p style="${P}">This is an automated notification regarding the ${isSuccess ? 'successful completion' : 'failure'} of a database backup on the ${this.systemName}.</p>
+
+      <p style="${SL}">Backup Details</p>
+      <div style="${CARD}">
+        <table style="${DT}">${detailRows.join('')}</table>
+      </div>
+
+      ${statusBox}
+
+      ${signOff(this.systemName)}` +
+      emailClose(this.systemName, year)
+    );
   }
 }
