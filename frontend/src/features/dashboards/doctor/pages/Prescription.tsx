@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import Pagination from '../../common/Pagination';
 
 import Badge from '../../common/widgets/Badge';
 
@@ -269,6 +270,8 @@ const PrescriptionPage: React.FC = () => {
   const [printRx, setPrintRx] = useState<Prescription | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirm, setConfirm] = useState<ConfirmState>(CONFIRM_CLOSED);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const toast = useCallback((kind: Toast['kind'], message: string) => {
     const id = Date.now();
@@ -297,6 +300,12 @@ const PrescriptionPage: React.FC = () => {
     if (filter !== 'all' && rx.status !== filter) return false;
     return true;
   }), [prescriptions, filter]);
+
+  // Reset to first page whenever the status tab changes
+  useEffect(() => { setCurrentPage(1); }, [filter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // All four tab counts derive from the same local array so they stay consistent.
   // `total` (from the server) is kept only for the page-header "X on record" text.
@@ -409,7 +418,7 @@ const PrescriptionPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((rx: Prescription) => (
+                  paginated.map((rx: Prescription) => (
                     <RxRow
                       key={rx.id}
                       rx={rx}
@@ -423,8 +432,15 @@ const PrescriptionPage: React.FC = () => {
           </div>
 
           {!loading && filtered.length > 0 && (
-            <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-400">
-              Showing {filtered.length} of {total} prescription{total !== 1 ? 's' : ''}
+            <div className="border-t border-slate-100 px-4 py-3">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                pageSize={PAGE_SIZE}
+                itemLabel="prescriptions"
+                onPageChange={setCurrentPage}
+              />
             </div>
           )}
         </div>
