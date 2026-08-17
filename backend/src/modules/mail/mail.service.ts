@@ -47,6 +47,32 @@ interface LoginNotificationOpts {
   contactEmail: string;
 }
 
+interface ReceiptEmailOpts {
+  /** Family member's full name and email address */
+  familyMemberName: string;
+  to: string;
+  /** Unique payment id used to build receipt number */
+  paymentId: string;
+  paymentMethod: 'card' | 'bank_transfer';
+  /** ISO date string when the payment was created / approved */
+  paidAt: string;
+  amount: number;
+  /** 'appointment' | 'care_plan' */
+  serviceType: 'appointment' | 'care_plan';
+  /** Patient the service is for */
+  patientName: string;
+  // ── appointment-specific (optional) ──────────────────────────────────────
+  doctorName?: string;
+  appointmentDate?: string;
+  appointmentStartTime?: string;
+  appointmentEndTime?: string;
+  consultationFee?: number;
+  careHomeFee?: number;
+  // ── care-plan-specific (optional) ────────────────────────────────────────
+  carePlanName?: string;
+  carePlanDuration?: string;
+}
+
 @Injectable()
 export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
@@ -231,6 +257,27 @@ export class MailService implements OnModuleInit {
     }
   }
 
+  // Sends an itemised payment receipt to the family member after a successful payment
+  async sendPaymentReceiptEmail(opts: ReceiptEmailOpts): Promise<void> {
+    const html = this.buildReceiptHtml(opts);
+    const serviceLabel =
+      opts.serviceType === 'appointment' ? 'Doctor Appointment' : 'Care Plan';
+
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFromAddress,
+        to: `"${opts.familyMemberName}" <${opts.to}>`,
+        subject: `Payment Receipt — ${serviceLabel} | ${this.systemName}`,
+        html,
+      });
+      this.logger.log(`Payment receipt email sent → ${opts.to}`);
+    } catch (err) {
+      this.logger.error(
+        `Failed to send payment receipt email → ${opts.to}: ${this.errMsg(err)}`,
+      );
+    }
+  }
+
   // Generates a branded HTML layout for delivering temporary recovery credentials
   private buildPasswordResetHtml(opts: PasswordResetEmailOpts): string {
     const { fullName, email, tempPassword } = opts;
@@ -286,7 +333,7 @@ export class MailService implements OnModuleInit {
       </div>
     </div>
     <div class="footer">
-      © ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
+      ©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
     </div>
   </div>
 </body>
@@ -350,7 +397,7 @@ export class MailService implements OnModuleInit {
       </div>
     </div>
     <div class="footer">
-      © ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
+      ©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.
     </div>
   </div>
 </body>
@@ -485,7 +532,7 @@ export class MailService implements OnModuleInit {
         </tr>
         <tr>
           <td style="padding:28px 40px;text-align:center;border-top:1px solid #e2e8f0;margin-top:28px;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">© ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.</p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.</p>
           </td>
         </tr>
       </table>
@@ -587,7 +634,7 @@ export class MailService implements OnModuleInit {
       <p class="footer-txt">If this login was initiated by you, no further action is required.<br/>For security questions, contact the admin team above.</p>
     </div>
     <div class="footer">
-      <p>© ${year} ${this.systemName} &nbsp;·&nbsp; Automated security alert — please do not reply directly.</p>
+      <p>©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated security alert — please do not reply directly.</p>
     </div>
   </div>
 </body>
@@ -652,12 +699,200 @@ export class MailService implements OnModuleInit {
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:18px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;">© ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.</p>
+            <p style="margin:0;font-size:12px;color:#9ca3af;">©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated message — please do not reply.</p>
           </td>
         </tr>
       </table>
     </td></tr>
   </table>
+</body>
+</html>`;
+  }
+
+  // Builds a professional, itemised HTML receipt for appointment or care-plan payments
+  private buildReceiptHtml(opts: ReceiptEmailOpts): string {
+    const {
+      familyMemberName,
+      paymentId,
+      paymentMethod,
+      paidAt,
+      amount,
+      serviceType,
+      patientName,
+    } = opts;
+    const year = new Date().getFullYear();
+    const receiptNumber = `RCP-${paymentId.substring(0, 8).toUpperCase()}`;
+    const formattedDate = new Date(paidAt).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const formattedAmount = Number(amount).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    const methodLabel =
+      paymentMethod === 'card' ? '💳 Card Payment' : '🏦 Bank Transfer';
+    const serviceLabel =
+      serviceType === 'appointment' ? 'Doctor Appointment' : 'Care Plan Booking';
+
+    // ── Service-specific rows ─────────────────────────────────────────────
+    let serviceRows = '';
+    if (serviceType === 'appointment') {
+      if (opts.doctorName) {
+        serviceRows += `
+          <tr>
+            <td class="rcpt-label">Doctor</td>
+            <td class="rcpt-value">Dr. ${opts.doctorName}</td>
+          </tr>`;
+      }
+      if (opts.appointmentDate) {
+        serviceRows += `
+          <tr>
+            <td class="rcpt-label">Date</td>
+            <td class="rcpt-value">${opts.appointmentDate}</td>
+          </tr>`;
+      }
+      if (opts.appointmentStartTime && opts.appointmentEndTime) {
+        serviceRows += `
+          <tr>
+            <td class="rcpt-label">Time</td>
+            <td class="rcpt-value">${opts.appointmentStartTime} – ${opts.appointmentEndTime}</td>
+          </tr>`;
+      }
+    } else {
+      if (opts.carePlanName) {
+        serviceRows += `
+          <tr>
+            <td class="rcpt-label">Care Plan</td>
+            <td class="rcpt-value">${opts.carePlanName}</td>
+          </tr>`;
+      }
+      if (opts.carePlanDuration) {
+        serviceRows += `
+          <tr>
+            <td class="rcpt-label">Duration</td>
+            <td class="rcpt-value">${opts.carePlanDuration}</td>
+          </tr>`;
+      }
+    }
+
+    // ── Fee breakdown (appointment only) ─────────────────────────────────
+    let feeBreakdown = '';
+    if (
+      serviceType === 'appointment' &&
+      opts.consultationFee !== undefined &&
+      opts.careHomeFee !== undefined
+    ) {
+      feeBreakdown = `
+        <tr>
+          <td style="padding:20px 40px 0;">
+            <p style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;">Fee Breakdown</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;border-collapse:collapse;">
+              <tr style="background:#f8fafc;">
+                <td style="padding:10px 16px;font-size:14px;color:#475569;">Consultation Fee</td>
+                <td style="padding:10px 16px;font-size:14px;color:#0f172a;font-weight:600;text-align:right;">LKR ${Number(opts.consultationFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;font-size:14px;color:#475569;border-top:1px solid #e2e8f0;">Care Home Fee</td>
+                <td style="padding:10px 16px;font-size:14px;color:#0f172a;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">LKR ${Number(opts.careHomeFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>`;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Payment Receipt – ${this.systemName}</title>
+  <style>
+    body        { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f1f5f9; margin:0; padding:0; }
+    .wrapper    { max-width:600px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); }
+    .header     { background:linear-gradient(135deg,#059669 0%,#047857 100%); padding:32px 40px; text-align:center; }
+    .header h1  { color:#fff; margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:-.5px; }
+    .header p   { color:rgba(255,255,255,.85); margin:0; font-size:14px; }
+    .rcpt-badge { display:inline-block; background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); border-radius:999px; padding:4px 16px; font-size:12px; font-weight:700; color:#fff; margin-top:12px; letter-spacing:.8px; text-transform:uppercase; }
+    .body       { padding:32px 40px 0; }
+    .body p     { color:#475569; font-size:15px; line-height:1.7; margin:0 0 20px; }
+    .rcpt-box   { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px 24px; margin-bottom:20px; }
+    .rcpt-table { width:100%; border-collapse:collapse; }
+    .rcpt-table tr + tr td { border-top:1px solid #e2e8f0; }
+    .rcpt-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94a3b8; width:140px; white-space:nowrap; padding:10px 10px 10px 0; vertical-align:middle; }
+    .rcpt-value { font-size:14px; font-weight:600; color:#0f172a; padding:10px 0; vertical-align:middle; }
+    .total-box  { background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #a7f3d0; border-radius:12px; padding:20px 24px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; }
+    .total-lbl  { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#065f46; }
+    .total-amt  { font-size:28px; font-weight:800; color:#047857; }
+    .info-box   { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px 18px; color:#1d4ed8; font-size:13px; line-height:1.6; margin-bottom:28px; }
+    .footer     { background:#f8fafc; padding:20px 40px; text-align:center; color:#94a3b8; font-size:12px; border-top:1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🏥 ${this.systemName}</h1>
+      <p>Payment Receipt</p>
+      <span class="rcpt-badge">${receiptNumber}</span>
+    </div>
+    <div class="body">
+      <p>Dear <strong>${familyMemberName}</strong>,</p>
+      <p>Thank you for your payment. Please find your official receipt below for your records.</p>
+
+      <div class="rcpt-box">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">📋 Receipt Details</p>
+        <table class="rcpt-table">
+          <tr>
+            <td class="rcpt-label">Receipt No.</td>
+            <td class="rcpt-value">${receiptNumber}</td>
+          </tr>
+          <tr>
+            <td class="rcpt-label">Date &amp; Time</td>
+            <td class="rcpt-value">${formattedDate}</td>
+          </tr>
+          <tr>
+            <td class="rcpt-label">Payment Method</td>
+            <td class="rcpt-value">${methodLabel}</td>
+          </tr>
+          <tr>
+            <td class="rcpt-label">Service</td>
+            <td class="rcpt-value">${serviceLabel}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="rcpt-box">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#059669;">🩺 Service Details</p>
+        <table class="rcpt-table">
+          <tr>
+            <td class="rcpt-label">Patient</td>
+            <td class="rcpt-value">${patientName}</td>
+          </tr>
+          ${serviceRows}
+        </table>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #a7f3d0;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;">
+            <p style="margin:0 0 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#065f46;">Total Amount Paid</p>
+            <p style="margin:0;font-size:30px;font-weight:800;color:#047857;">LKR ${formattedAmount}</p>
+          </td>
+        </tr>
+      </table>
+
+      <div class="info-box">
+        ℹ️ You can view all your payment history anytime by logging into your <a href="${this.appUrl}" style="color:#1d4ed8;font-weight:600;">family member dashboard</a>. If you have any questions, please contact the care home directly.
+      </div>
+    </div>
+    ${feeBreakdown ? `<table width="100%" cellpadding="0" cellspacing="0"><${feeBreakdown}</table>` : ''}
+    <div class="footer">
+      ©️ ${year} ${this.systemName} &nbsp;·&nbsp; This is an automated receipt — please do not reply.
+    </div>
+  </div>
 </body>
 </html>`;
   }
@@ -705,7 +940,7 @@ export class MailService implements OnModuleInit {
   }): string {
     const isSuccess = opts.status === 'success';
     const year = new Date().getFullYear();
-    
+
     const formatBytes = (bytes?: number): string => {
       if (!bytes || bytes === 0) return '0 B';
       const k = 1024;
@@ -741,9 +976,9 @@ export class MailService implements OnModuleInit {
               ${isSuccess ? '✔ Database Backup Succeeded' : '✕ Database Backup Failed'}
             </h2>
             <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
-              ${isSuccess 
-                ? 'A new database backup snapshot has been created successfully. Below are the details:'
-                : 'An error occurred while creating the scheduled or manual database backup. Below are the details:'}
+              ${isSuccess
+        ? 'A new database backup snapshot has been created successfully. Below are the details:'
+        : 'An error occurred while creating the scheduled or manual database backup. Below are the details:'}
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:20px 0;">
               <tr style="border-bottom:1px solid #e5e7eb;">
@@ -783,7 +1018,7 @@ export class MailService implements OnModuleInit {
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #edf2f7;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">© ${year} ${this.systemName} &nbsp;·&nbsp; Automated system alert — please do not reply directly.</p>
+            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">©️ ${year} ${this.systemName} &nbsp;·&nbsp; Automated system alert — please do not reply directly.</p>
           </td>
         </tr>
       </table>
