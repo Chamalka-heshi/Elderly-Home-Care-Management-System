@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Pagination from "../../common/Pagination";
 import { fmtDateTime } from '../../../../utils/dateTime';
 import { getAllAppointmentsAdmin } from "../../../../api/appointment/admin-appointment.api";
 import type { Appointment, AppointmentStatus } from "../../../../api/appointment/appointment.types";
@@ -143,6 +144,8 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
   const [filterStatus, setFilterStatus] = useState<"" | AppointmentStatus>("");
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Loads appointments from the server based on the selected filter
   const load = useCallback(async () => {
@@ -159,6 +162,9 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
 
   useEffect(() => { load(); }, [load]);
 
+  // Reset to first page whenever the filter changes
+  useEffect(() => { setCurrentPage(1); }, [filterStatus]);
+
   // Counts how many appointments are in each status for the summary boxes
   const stats = useMemo(() => ({
     total: appointments.length,
@@ -167,6 +173,10 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
     completed: appointments.filter((a) => a.status === "completed").length,
     cancelled: appointments.filter((a) => a.status === "cancelled").length,
   }), [appointments]);
+
+  // Reset to page 1 whenever the filter changes
+  const totalPages = Math.ceil(appointments.length / PAGE_SIZE);
+  const paginated = appointments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -269,7 +279,7 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {appointments.map((appt) => (
+                {paginated.map((appt) => (
                   <tr
                     key={appt.id}
                     onClick={() => setSelected(appt)}
@@ -339,6 +349,20 @@ const AppointmentManagement: React.FC<Props> = ({ addToast }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="border-t border-slate-100 px-6 py-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={appointments.length}
+              pageSize={PAGE_SIZE}
+              itemLabel="appointments"
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

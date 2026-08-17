@@ -337,6 +337,7 @@ const ContactMessages: React.FC<Props> = ({ addToast }) => {
               totalPages={totalPages}
               totalItems={total}
               pageSize={PAGE_SIZE}
+              itemLabel="messages"
               onPageChange={(p) => setCurrentPage(p)}
             />
           </div>

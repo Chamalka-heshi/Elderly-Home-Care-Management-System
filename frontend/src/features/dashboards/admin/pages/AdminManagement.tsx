@@ -3,7 +3,10 @@ import { fmtDate } from '../../../../utils/dateTime';
 import type { Admin } from "../../../../api/users/user.types";
 import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
+import Pagination from "../../common/Pagination";
 import { IconShield } from "../../common/icons";
+
+const PAGE_SIZE = 10;
 
 interface Props {
   admins: Admin[];
@@ -23,6 +26,10 @@ const AdminManagement: React.FC<Props> = ({
   onDeleteAdmin,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(admins.length / PAGE_SIZE);
+  const paginated = admins.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Asks for confirmation before deleting an admin account
   const handleDelete = async (id: string, fullName: string) => {
@@ -59,22 +66,21 @@ const AdminManagement: React.FC<Props> = ({
           <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-emerald-500" />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Created</th>
-                {onDeleteAdmin && <th className="px-4 py-3">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {admins.map((a) => {
-
-                return (
+        <div className="space-y-4">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
+                <tr>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Contact</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Created</th>
+                  {onDeleteAdmin && <th className="px-4 py-3">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginated.map((a) => (
                   <tr key={a.id} className="transition hover:bg-slate-50/60">
                     <td className="px-4 py-3 font-semibold text-slate-800">{a.fullName}</td>
                     <td className="px-4 py-3 text-slate-600">{a.email}</td>
@@ -84,9 +90,7 @@ const AdminManagement: React.FC<Props> = ({
                         {a.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {fmtDate(a.createdAt)}
-                    </td>
+                    <td className="px-4 py-3 text-slate-600">{fmtDate(a.createdAt)}</td>
                     {onDeleteAdmin && (
                       <td className="px-4 py-3">
                         <button
@@ -99,20 +103,34 @@ const AdminManagement: React.FC<Props> = ({
                       </td>
                     )}
                   </tr>
-                );
-              })}
-              {admins.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={onDeleteAdmin ? 6 : 5}
-                    className="px-4 py-10 text-center text-sm text-slate-400"
-                  >
-                    No admin accounts found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+                {admins.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={onDeleteAdmin ? 6 : 5}
+                      className="px-4 py-10 text-center text-sm text-slate-400"
+                    >
+                      No admin accounts found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={admins.length}
+                pageSize={PAGE_SIZE}
+                itemLabel="admins"
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </div>
       )}
     </TableShell>

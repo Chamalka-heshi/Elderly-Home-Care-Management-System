@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Pagination from '../../common/Pagination';
 import { fmtDateTime as fmtDT, fmtDateShort, fmtTime } from '../../../../utils/dateTime';
 import {
   getAllPayments,
@@ -211,6 +212,8 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
   const [confirmAction, setConfirmAction] = useState<{
     id: string; action: 'approve' | 'reject'; payerName: string; amount: number;
   } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 15;
 
   const canManage = user?.role === 'admin' || user?.role === 'super_admin';
 
@@ -255,6 +258,12 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
       return true;
     });
   }, [payments, filterStatus, filterMethod]);
+
+  // Reset to first page whenever filters change
+  useEffect(() => { setCurrentPage(1); }, [filterStatus, filterMethod]);
+
+  const totalPages = Math.ceil(displayed.length / PAGE_SIZE);
+  const paginatedPayments = displayed.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Processes the approval or rejection of a payment
   const handleConfirm = async () => {
@@ -452,7 +461,7 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {displayed.map(payment => {
+                {paginatedPayments.map(payment => {
                   const isPendingApproval = payment.status === 'pending_approval';
                   const isProcessing = processingId === payment.id;
 
@@ -555,6 +564,20 @@ const PaymentsManagement: React.FC<Props> = ({ addToast }) => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="border-t border-slate-100 px-6 py-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={displayed.length}
+              pageSize={PAGE_SIZE}
+              itemLabel="payments"
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

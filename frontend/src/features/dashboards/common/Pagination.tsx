@@ -38,6 +38,8 @@ export interface PaginationProps {
   totalItems:   number;
   pageSize:     number;
   onPageChange: (page: number) => void;
+  /** Plural noun displayed in the summary label — defaults to "records" */
+  itemLabel?:   string;
   className?:   string;
 }
 
@@ -47,6 +49,7 @@ const Pagination: React.FC<PaginationProps> = ({
   totalItems,
   pageSize,
   onPageChange,
+  itemLabel = 'records',
   className = '',
 }) => {
   if (totalPages <= 1) return null;
@@ -69,7 +72,7 @@ const Pagination: React.FC<PaginationProps> = ({
         <span className="font-semibold text-slate-700">{from}–{to}</span>
         {' '}of{' '}
         <span className="font-semibold text-slate-700">{totalItems}</span>
-        {' '}messages
+        {' '}{itemLabel}
       </p>
 
       {/* Page controls */}

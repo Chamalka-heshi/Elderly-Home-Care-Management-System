@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import Pagination from "../../common/Pagination";
 
 import {
   getBackupStats,
@@ -763,21 +764,15 @@ const HistoryTab: React.FC<{
 
     {/* Pagination */}
     {pages > 1 && (
-      <div className="flex items-center justify-center gap-2">
-        {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-          <button
-            key={p}
-            onClick={() => onPage(p)}
-            className={[
-              "h-9 w-9 rounded-xl text-sm font-semibold transition",
-              p === page
-                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25"
-                : "border border-slate-200 text-slate-600 hover:bg-slate-50",
-            ].join(" ")}
-          >
-            {p}
-          </button>
-        ))}
+      <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+        <Pagination
+          currentPage={page}
+          totalPages={pages}
+          totalItems={total}
+          pageSize={10}
+          itemLabel="backups"
+          onPageChange={onPage}
+        />
       </div>
     )}
   </div>
