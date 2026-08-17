@@ -8,9 +8,9 @@ export interface DashboardRecentPatient {
   age: number;
   bloodGroup: string | null;
   diagnosis: string | null;
-  /** 'Prescription Pending' — payment confirmed, waiting for doctor to prescribe */
   status: 'Prescription Pending';
   slotDate: string;
+  slotEndTime?: string;
   /** @deprecated use slotDate */
   prescriptionDate: string;
 }
