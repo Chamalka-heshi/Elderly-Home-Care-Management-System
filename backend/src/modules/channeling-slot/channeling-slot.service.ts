@@ -174,6 +174,20 @@ export class ChannelingSlotService {
   //Marks active slots as completed once their start time is reached to maintain system accuracy
   async autoCompletePassedSlots(): Promise<void> {
     await this.slotRepo.query(`
+      UPDATE appointments
+      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'prescription_pending'
+      AND slot_id IN (
+        SELECT id FROM channeling_slots
+        WHERE "date" < CURRENT_DATE
+        OR (
+          "date" = CURRENT_DATE
+          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+        )
+      )
+    `);
+
+    await this.slotRepo.query(`
       UPDATE channeling_slots
       SET    status = 'completed'
       WHERE  status = 'active'
@@ -181,7 +195,7 @@ export class ChannelingSlotService {
         "date" < CURRENT_DATE
         OR (
           "date" = CURRENT_DATE
-          AND start_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
         )
       )
     `);

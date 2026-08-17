@@ -187,8 +187,26 @@ export class AppointmentService {
     return { message: 'Appointment cancelled successfully' };
   }
 
+  private async autoCancelPassedAppointments(): Promise<void> {
+    await this.appointmentRepo.query(`
+      UPDATE appointments
+      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'prescription_pending'
+      AND slot_id IN (
+        SELECT id FROM channeling_slots
+        WHERE "date" < CURRENT_DATE
+        OR (
+          "date" = CURRENT_DATE
+          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+        )
+      )
+    `);
+  }
+
   //Provides doctors with a consolidated view of their clinical schedule
   async getDoctorAppointments(userId: string): Promise<any[]> {
+    await this.autoCancelPassedAppointments();
+
     const doctor = await this.doctorRepo.findOne({
       where: { user: { id: userId } },
     });
