@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getDoctorAppointments,
-  updateAppointmentStatusDoctor,
   type Appointment,
 } from "../../../../api/appointment/doctor-appointment.api";
 
@@ -56,8 +55,6 @@ interface SlotCardProps {
   group: SlotGroup;
   onPrescribe: (appt: Appointment) => void;
   onViewHistory: (appt: Appointment) => void;
-  onCancelAppt: (appt: Appointment) => void;
-  cancellingId: string | null;
 }
 
 // SlotCard
@@ -66,8 +63,6 @@ const SlotCard: React.FC<SlotCardProps> = ({
   group,
   onPrescribe,
   onViewHistory,
-  onCancelAppt,
-  cancellingId,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const total = group.appointments.length;
@@ -115,8 +110,10 @@ const SlotCard: React.FC<SlotCardProps> = ({
       {expanded && (
         <div className="border-t border-slate-100">
           {group.appointments.map((appt, idx) => {
-            const prescribed = !!appt.prescriptionId;
+            const prescribed = !!appt.prescriptionId || appt.status === "completed";
+            const isCancelled = appt.status === "cancelled";
             const slotExpired = appt.slot?.status === "completed" || isPast;
+
             return (
               <div
                 key={appt.id}
@@ -169,36 +166,23 @@ const SlotCard: React.FC<SlotCardProps> = ({
                     Medical History
                   </button>
 
-                  {slotExpired && !prescribed ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
-                      <IconClock className="h-3.5 w-3.5" /> Slot Expired
-                    </span>
-                  ) : prescribed ? (
+                  {prescribed ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
                       <IconCheckCircle className="h-3.5 w-3.5" /> Completed
                     </span>
+                  ) : isCancelled || slotExpired ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+                      <IconBan className="h-3.5 w-3.5" /> Cancelled
+                    </span>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => onPrescribe(appt)}
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
-                      >
-                        <IconFileText className="h-3.5 w-3.5" />
-                        Prescribe
-                      </button>
-                      <button
-                        type="button"
-                        disabled={cancellingId === appt.id}
-                        onClick={() => onCancelAppt(appt)}
-                        className="flex items-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-200 disabled:opacity-50 active:scale-95 transition"
-                      >
-                        {cancellingId === appt.id
-                          ? <IconSpinner className="h-3.5 w-3.5 animate-spin" />
-                          : <IconBan className="h-3.5 w-3.5" />}
-                        Cancel
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => onPrescribe(appt)}
+                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
+                    >
+                      <IconFileText className="h-3.5 w-3.5" />
+                      Prescribe
+                    </button>
                   )}
                 </div>
               </div>
@@ -218,7 +202,6 @@ const DoctorAppointments: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [prescribeAppt, setPrescribeAppt] = useState<Appointment | null>(null);
   const [historyAppt, setHistoryAppt] = useState<Appointment | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const { toasts, add: addToast } = useToast();
 
@@ -239,11 +222,8 @@ const DoctorAppointments: React.FC = () => {
 
   // Groups appointments by their time slot and sorts them by date
   const slotGroups = useMemo<SlotGroup[]>(() => {
-    const active = appointments.filter(
-      (a) => a.status === "prescription_pending",
-    );
     const map = new Map<string, SlotGroup>();
-    for (const appt of active) {
+    for (const appt of appointments) {
       const sid = appt.slotId;
       if (!map.has(sid)) {
         map.set(sid, {
@@ -281,26 +261,6 @@ const DoctorAppointments: React.FC = () => {
         ),
       );
       addToast("Prescription saved. Appointment marked as completed.", "success");
-    },
-    [addToast],
-  );
-
-  // Cancels an appointment after confirmation
-  const handleCancelAppointment = useCallback(
-    async (appt: Appointment) => {
-      if (!window.confirm(`Cancel appointment for ${appt.patient?.fullName ?? "this patient"}?`)) return;
-      setCancellingId(appt.id);
-      try {
-        await updateAppointmentStatusDoctor(appt.id, "cancelled");
-        setAppointments((prev) =>
-          prev.map((a) => a.id === appt.id ? { ...a, status: "cancelled" as const } : a),
-        );
-        addToast("Appointment cancelled.", "success");
-      } catch (e: any) {
-        addToast(e.message ?? "Failed to cancel appointment.", "error");
-      } finally {
-        setCancellingId(null);
-      }
     },
     [addToast],
   );
@@ -365,8 +325,6 @@ const DoctorAppointments: React.FC = () => {
               group={group}
               onPrescribe={setPrescribeAppt}
               onViewHistory={setHistoryAppt}
-              onCancelAppt={handleCancelAppointment}
-              cancellingId={cancellingId}
             />
           ))}
         </section>
@@ -387,8 +345,6 @@ const DoctorAppointments: React.FC = () => {
               group={group}
               onPrescribe={setPrescribeAppt}
               onViewHistory={setHistoryAppt}
-              onCancelAppt={handleCancelAppointment}
-              cancellingId={cancellingId}
             />
           ))}
         </section>
