@@ -41,17 +41,18 @@ import { BackupModule } from './modules/backup/backup.module';
     }),
 
     // Rate Limiting
-    // Protects auth endpoints and APIs from brute-force attacks by limiting requests per IP address
+    // Global defaults are permissive enough for authenticated dashboard usage.
+    // Auth endpoints override these with stricter limits via @Throttle() decorator.
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 60000, // 1 minute
-        limit: 10, // 10 requests per minute
+        ttl: 60000,   // 1 minute window
+        limit: 200,   // 200 requests per minute (covers rapid dashboard navigation)
       },
       {
         name: 'long',
-        ttl: 3600000, // 1 hour
-        limit: 100, // 100 requests per hour
+        ttl: 3600000, // 1 hour window
+        limit: 2000,  // 2000 requests per hour
       },
     ]),
 
