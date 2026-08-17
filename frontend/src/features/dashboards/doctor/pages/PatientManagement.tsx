@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Pagination from "../../common/Pagination";
 
 import { getDoctorAppointments } from "../../../../api/appointment/doctor-appointment.api";
 
@@ -141,6 +142,8 @@ const PatientManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>(""); // Helps filter the list by status
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null); // Controls the details popup
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Loads all doctor appointments from the server
   const load = useCallback(async () => {
@@ -152,6 +155,12 @@ const PatientManagement: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => filter ? appointments.filter((a) => a.status === filter) : appointments, [appointments, filter]);
+
+  // Reset to first page whenever the filter changes
+  useEffect(() => { setCurrentPage(1); }, [filter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Counts total, pending, and completed appointments
   const stats = useMemo(() => ({
@@ -231,7 +240,7 @@ const PatientManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((appt) => {
+                {paginated.map((appt) => {
                   const hasPrescription = !!appt.prescriptionId;
                   return (
                     <tr key={appt.id} className={`transition hover:bg-slate-50/60 ${appt.status === "prescription_pending" ? "bg-amber-50/30" : ""}`}>
@@ -276,6 +285,20 @@ const PatientManagement: React.FC = () => {
             </table>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="border-t border-slate-100 px-4 py-3">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={PAGE_SIZE}
+              itemLabel="appointments"
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </TableShell>
 
       {viewAppt && <MedModal patient={viewAppt.patient} appointment={viewAppt} onClose={() => setViewAppt(null)} />}
