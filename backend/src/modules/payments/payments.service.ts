@@ -18,6 +18,7 @@ import {
   AppointmentStatus,
 } from '../appointments/entities/appointment.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class PaymentsService {
@@ -31,7 +32,8 @@ export class PaymentsService {
     @InjectRepository(FamilyMember)
     private readonly familyRepo: Repository<FamilyMember>,
     private readonly dataSource: DataSource,
-  ) {}
+    private readonly mailService: MailService,
+  ) { }
 
   //Handles payment processing and immediate booking activation for seamless user experience
   async createPayment(userId: string, dto: CreatePaymentDto): Promise<Payment> {
@@ -112,6 +114,29 @@ export class PaymentsService {
           await patRepo.update(booking.patientId, {
             paymentPlan: booking.carePlanSnapshot.name,
           });
+
+          // Fetch patient name for the receipt
+          const patient = await patRepo.findOne({
+            where: { id: booking.patientId },
+          });
+          const snapshot = booking.carePlanSnapshot;
+          // Fire receipt email — non-blocking
+          this.mailService
+            .sendPaymentReceiptEmail({
+              familyMemberName: familyMember.user.fullName,
+              to: familyMember.user.email,
+              paymentId: saved.id,
+              paymentMethod: dto.paymentMethod,
+              paidAt: saved.createdAt.toISOString(),
+              amount,
+              serviceType: 'care_plan',
+              patientName: patient?.fullName ?? 'Unknown',
+              carePlanName: snapshot?.name,
+              carePlanDuration: snapshot
+                ? `${snapshot.duration} ${snapshot.durationUnit}`
+                : undefined,
+            })
+            .catch(() => undefined);
         }
 
         return saved;
@@ -131,7 +156,7 @@ export class PaymentsService {
     if (appointment.status !== AppointmentStatus.PAYMENT_PENDING) {
       throw new BadRequestException(
         'This appointment is not awaiting payment. Status: ' +
-          appointment.status,
+        appointment.status,
       );
     }
 
@@ -179,6 +204,30 @@ export class PaymentsService {
       if (dto.paymentMethod === PaymentMethod.CARD) {
         appointment.status = AppointmentStatus.PRESCRIPTION_PENDING;
         await apptRepo.save(appointment);
+
+        // Eagerly loaded: appointment.slot, appointment.slot.doctor, appointment.patient
+        const slot = (appointment as any).slot;
+        const doctor = slot?.doctor;
+        const patient = (appointment as any).patient;
+        // Fire receipt email — non-blocking
+        this.mailService
+          .sendPaymentReceiptEmail({
+            familyMemberName: familyMember.user.fullName,
+            to: familyMember.user.email,
+            paymentId: saved.id,
+            paymentMethod: dto.paymentMethod,
+            paidAt: saved.createdAt.toISOString(),
+            amount: appointmentAmount,
+            serviceType: 'appointment',
+            patientName: patient?.fullName ?? 'Unknown',
+            doctorName: doctor?.user?.fullName ?? undefined,
+            appointmentDate: slot?.date ?? undefined,
+            appointmentStartTime: slot?.startTime ?? undefined,
+            appointmentEndTime: slot?.endTime ?? undefined,
+            consultationFee: consultationFee,
+            careHomeFee: careHomeFee,
+          })
+          .catch(() => undefined);
       }
 
       return saved;
@@ -270,7 +319,11 @@ export class PaymentsService {
   async approvePayment(
     id: string,
   ): Promise<{ message: string; payment: Payment }> {
-    return this.dataSource.transaction(async (manager) => {
+    // Collect email payload outside the transaction so the email is only sent
+    // after the DB commit succeeds — prevents receipt emails on rolled-back txns.
+    let emailPayload: Parameters<MailService['sendPaymentReceiptEmail']>[0] | null = null;
+
+    const result = await this.dataSource.transaction(async (manager) => {
       const payRepo = manager.getRepository(Payment);
       const bookRepo = manager.getRepository(Booking);
       const apptRepo = manager.getRepository(Appointment);
@@ -294,6 +347,7 @@ export class PaymentsService {
       if (payment.bookingId) {
         const booking = await bookRepo.findOne({
           where: { id: payment.bookingId },
+          relations: ['user', 'user.user', 'patient'],
         });
         if (!booking) throw new NotFoundException('Linked booking not found');
         if (booking.status === BookingStatus.CANCELLED) {
@@ -305,22 +359,77 @@ export class PaymentsService {
         await bookRepo.save(booking);
 
         const patRepo = manager.getRepository(Patient);
-        await patRepo.update(booking.patientId, {
-          paymentPlan: booking.carePlanSnapshot.name,
-        });
+        // Guard against missing carePlanSnapshot to prevent transaction rollback
+        if (booking.carePlanSnapshot?.name) {
+          await patRepo.update(booking.patientId, {
+            paymentPlan: booking.carePlanSnapshot.name,
+          });
+        }
+
+        // Build email payload — will be sent after successful commit
+        const fm = (booking as any).user as FamilyMember & { user: { fullName: string; email: string } };
+        const snapshot = booking.carePlanSnapshot;
+        const patient = (booking as any).patient;
+        emailPayload = {
+          familyMemberName: fm?.user?.fullName ?? 'Customer',
+          to: fm?.user?.email ?? '',
+          paymentId: updated.id,
+          paymentMethod: updated.paymentMethod,
+          paidAt: updated.updatedAt.toISOString(),
+          amount: Number(updated.amount),
+          serviceType: 'care_plan',
+          patientName: patient?.fullName ?? 'Unknown',
+          carePlanName: snapshot?.name,
+          carePlanDuration: snapshot
+            ? `${snapshot.duration} ${snapshot.durationUnit}`
+            : undefined,
+        };
       } else if (payment.appointmentId) {
         const appt = await apptRepo.findOne({
           where: { id: payment.appointmentId },
+          relations: ['familyMember', 'familyMember.user', 'patient', 'slot', 'slot.doctor', 'slot.doctor.user'],
         });
         if (!appt) throw new NotFoundException('Linked appointment not found');
         if (appt.status === AppointmentStatus.PAYMENT_PENDING) {
           appt.status = AppointmentStatus.PRESCRIPTION_PENDING;
           await apptRepo.save(appt);
         }
+
+        // Build email payload — will be sent after successful commit
+        const fm = (appt as any).familyMember as FamilyMember & { user: { fullName: string; email: string } };
+        const slot = (appt as any).slot;
+        const patient = (appt as any).patient;
+        const consultationFee = Number(slot?.consultationFee ?? 0);
+        const careHomeFee = Number(slot?.careHomeFee ?? 0);
+        emailPayload = {
+          familyMemberName: fm?.user?.fullName ?? 'Customer',
+          to: fm?.user?.email ?? '',
+          paymentId: updated.id,
+          paymentMethod: updated.paymentMethod,
+          paidAt: updated.updatedAt.toISOString(),
+          amount: Number(updated.amount),
+          serviceType: 'appointment',
+          patientName: patient?.fullName ?? 'Unknown',
+          doctorName: slot?.doctor?.user?.fullName ?? undefined,
+          appointmentDate: slot?.date ?? undefined,
+          appointmentStartTime: slot?.startTime ?? undefined,
+          appointmentEndTime: slot?.endTime ?? undefined,
+          consultationFee,
+          careHomeFee,
+        };
       }
 
       return { message: 'Payment approved successfully', payment: updated };
     });
+
+    // Send receipt email only after the transaction has committed successfully
+    if (emailPayload) {
+      this.mailService
+        .sendPaymentReceiptEmail(emailPayload)
+        .catch(() => undefined);
+    }
+
+    return result;
   }
 
   //Voids a payment attempt and cancels the linked service to ensure financial integrity

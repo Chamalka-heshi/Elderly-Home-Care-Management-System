@@ -6,6 +6,7 @@ import { FamilyMember } from '../family/entities/family-member.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -15,9 +16,10 @@ import { PaymentsController } from './payments.controller';
       FamilyMember,
       Appointment, // ← was AppointmentBooking (wrong entity); fixed to Appointment
     ]),
+    MailModule,
   ],
   providers: [PaymentsService],
   controllers: [PaymentsController],
   exports: [PaymentsService],
 })
-export class PaymentsModule {}
+export class PaymentsModule { }
