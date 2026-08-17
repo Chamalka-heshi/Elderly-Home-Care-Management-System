@@ -66,10 +66,16 @@ export interface ResetPasswordRequest {
   confirmPassword: string;
 }
 
-// Reads the csrf_token cookie set by the backend and saves it to sessionStorage.
-const storeCsrfTokenFromCookie = (): void => {
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
-  if (match) setCsrfToken(decodeURIComponent(match[1]));
+// Stores the CSRF token from the auth response body into sessionStorage.
+// Reading from document.cookie is unreliable cross-origin (SameSite=None cookies are not
+// accessible via JS on a different frontend domain), so we use the response body instead.
+const storeCsrfTokenFromResponse = (res: AuthResponse): void => {
+  if (res.csrfToken) setCsrfToken(res.csrfToken);
+  else {
+    // Fallback: try the cookie (works in same-origin / dev environments).
+    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+    if (match) setCsrfToken(decodeURIComponent(match[1]));
+  }
 };
 
 // Checks whether an email address exists before initiating a password reset.
@@ -88,11 +94,11 @@ export const forgotPasswordApi = async (data: ForgotPasswordRequest): Promise<{ 
 
 // Resets the user's password using a temporary credential and stores the new CSRF token.
 export const resetPasswordApi = async (data: ResetPasswordRequest): Promise<{ message: string }> => {
-  const res = await apiFetch<{ message: string }>('/auth/reset-password', {
+  const res = await apiFetch<AuthResponse & { message: string }>('/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  storeCsrfTokenFromCookie();
+  storeCsrfTokenFromResponse(res);
   return res;
 };
 
@@ -102,7 +108,7 @@ export const signin = async (data: SigninRequest): Promise<AuthResponse> => {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  storeCsrfTokenFromCookie();
+  storeCsrfTokenFromResponse(res);
   return res;
 };
 
@@ -115,7 +121,7 @@ export const googleAuth = async (): Promise<AuthResponse> => {
     method: 'POST',
     body: JSON.stringify({ idToken }),
   });
-  storeCsrfTokenFromCookie();
+  storeCsrfTokenFromResponse(res);
   return res;
 };
 

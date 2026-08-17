@@ -92,6 +92,7 @@ export class AuthController {
     res.json({
       message: result.message,
       user: result.user,
+      csrfToken,
     });
   }
 
@@ -115,6 +116,7 @@ export class AuthController {
     res.json({
       message: result.message,
       user: result.user,
+      csrfToken,
     });
   }
 
@@ -141,6 +143,7 @@ export class AuthController {
         ? 'Account created successfully'
         : 'Signed in successfully',
       isNewUser: result.isNewUser,
+      csrfToken,
     });
   }
 
@@ -189,6 +192,7 @@ export class AuthController {
 
     return res.json({
       user: result.user,
+      csrfToken,
     });
   }
 
