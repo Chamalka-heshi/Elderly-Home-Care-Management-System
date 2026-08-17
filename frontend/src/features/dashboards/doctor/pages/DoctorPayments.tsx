@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Pagination from "../../common/Pagination";
 
 import {
   getDoctorPayments,
@@ -56,6 +57,8 @@ const DoctorPayments: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 15;
 
   // Loads all payment records from the server
   const load = async () => {
@@ -86,6 +89,12 @@ const DoctorPayments: React.FC = () => {
         (p.slot?.date ?? "").includes(q)
     );
   }, [payments, search]);
+
+  // Reset to first page whenever the search changes
+  useEffect(() => { setCurrentPage(1); }, [search]);
+
+  const totalPages = Math.ceil(visible.length / PAGE_SIZE);
+  const paginated = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const totalPaid = payments.length;
 
@@ -198,7 +207,7 @@ const DoctorPayments: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {visible.map((p) => {
+              {paginated.map((p) => {
                 const methodCfg = METHOD_CONFIG[p.paymentMethod] ?? { label: p.paymentMethod, tone: "slate" as BadgeTone };
 
                 return (
@@ -265,6 +274,20 @@ const DoctorPayments: React.FC = () => {
               })}
             </tbody>
           </table>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={visible.length}
+              pageSize={PAGE_SIZE}
+              itemLabel="payments"
+              onPageChange={setCurrentPage}
+            />
+          </div>
         )}
 
         {/* Total calculation at the bottom */}
