@@ -25,6 +25,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { CreatePatientDto } from '../patients/dto/create-patient.dto';
 import { UpdateFamilyProfileDto } from './dto/update-family-profile.dto';
 import { CreateAppointmentDto } from '../appointments/dto/appointment.dto';
+import { toColomboDateKey } from '../../common/utils/colombo-time';
 
 /**
  * FamilyController — all family-member operations live here.
@@ -92,7 +93,7 @@ export class FamilyController {
       (p) => p.status === 'pending' || p.status === 'pending_approval',
     ).length;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = toColomboDateKey();
     const upcomingAppointmentsCount = (appointments as any[]).filter(
       (a: any) =>
         a.status !== 'cancelled' &&

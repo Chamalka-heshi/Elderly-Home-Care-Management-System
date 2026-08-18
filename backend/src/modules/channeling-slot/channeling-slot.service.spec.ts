@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChannelingSlotService } from './channeling-slot.service';
 import { ChannelingSlot, SlotStatus } from './entities/channeling-slot.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
+import { toColomboDateKey } from '../../common/utils/colombo-time';
 import {
   NotFoundException,
   BadRequestException,
@@ -56,6 +57,12 @@ describe('ChannelingSlotService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('should return the Sri Lanka date instead of the server UTC date', () => {
+    expect(toColomboDateKey(new Date('2026-08-18T23:30:00Z'))).toBe(
+      '2026-08-19',
+    );
   });
 
   describe('create', () => {

@@ -20,6 +20,7 @@ import {
   UpdateAppointmentStatusDto,
   QueryAppointmentsDto,
 } from './dto/appointment.dto';
+import { toColomboDateKey } from '../../common/utils/colombo-time';
 
 const MEDICAL_SENSITIVE_FIELDS = [
   'medicalHistory',
@@ -94,7 +95,7 @@ export class AppointmentService {
         'This slot is not active / available for booking',
       );
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = toColomboDateKey();
     if (slot.date < today)
       throw new BadRequestException('Cannot book a past slot');
 

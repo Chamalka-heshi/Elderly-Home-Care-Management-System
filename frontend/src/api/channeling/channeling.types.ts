@@ -34,23 +34,27 @@ export interface ChannelingSlot {
 }
 
 // Helpers for channeling slots
+const buildColomboDate = (date: string, time: string): Date => {
+  const [h, m] = time.split(':').map(Number);
+  return new Date(
+    `${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+05:30`,
+  );
+};
+
 // Calculate booking cutoff time
 export function bookingCutoffDate(date: string, startTime: string, cutoffMinutes: number): Date {
-  const [h, m] = startTime.split(':').map(Number);
-  const slotStart = new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
+  const slotStart = buildColomboDate(date, startTime);
   return new Date(slotStart.getTime() - cutoffMinutes * 60_000);
 }
 
 // Get exact slot start Date
 export function slotStartDate(date: string, startTime: string): Date {
-  const [h, m] = startTime.split(':').map(Number);
-  return new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
+  return buildColomboDate(date, startTime);
 }
 
 // Get exact slot end Date
 export function slotEndDate(date: string, endTime: string): Date {
-  const [h, m] = endTime.split(':').map(Number);
-  return new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
+  return buildColomboDate(date, endTime);
 }
 
 // Check if a slot is open for booking (now < cutoffDate and now < slotStartDate)
@@ -79,7 +83,7 @@ export const fmt12 = (hhmm: string): string => {
 
 // Format date string
 export const fmtDate = (dateStr: string): string =>
-  new Date(dateStr + 'T00:00:00').toLocaleDateString('en-LK', {
+  new Date(dateStr + 'T00:00:00+05:30').toLocaleDateString('en-LK', {
     weekday: 'short',
     day: '2-digit',
     month: 'short',

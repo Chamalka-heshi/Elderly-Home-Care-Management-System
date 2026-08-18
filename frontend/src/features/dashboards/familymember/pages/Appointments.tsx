@@ -343,8 +343,8 @@ const Appointments: React.FC = () => {
         // Slot date + startTime are in local time (Asia/Colombo / IST).
         const now = Date.now();
         const openSlots = (Array.isArray(slotsRes) ? slotsRes : []).filter((s) => {
-          // Parse "YYYY-MM-DD" + "HH:MM" as a local Date
-          const slotStart = new Date(`${s.date}T${s.startTime}:00`);
+          // Parse "YYYY-MM-DD" + "HH:MM" as a Colombo-time Date.
+          const slotStart = new Date(`${s.date}T${s.startTime}:00+05:30`);
           const cutoffMs = slotStart.getTime() - s.bookingCutoffMinutes * 60_000;
           return now < cutoffMs;
         });

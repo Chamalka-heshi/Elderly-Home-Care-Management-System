@@ -14,6 +14,7 @@ import {
   UpdateChannelingSlotDto,
   UpdateDoctorSlotFeeDto,
 } from './dto/channeling-slot.dto';
+import { toColomboDateKey } from '../../common/utils/colombo-time';
 
 // Utility Helpers
 
@@ -51,7 +52,7 @@ export class ChannelingSlotService {
     if (doctor.user && doctor.user.isActive === false)
       throw new BadRequestException('Doctor is not active');
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = toColomboDateKey();
     if (dto.date < today)
       throw new BadRequestException('Slot date must be today or in the future');
 
@@ -62,8 +63,8 @@ export class ChannelingSlotService {
     const sun = new Date(mon);
     sun.setUTCDate(sun.getUTCDate() + 6);
 
-    const monStr = mon.toISOString().split('T')[0];
-    const sunStr = sun.toISOString().split('T')[0];
+    const monStr = toColomboDateKey(mon);
+    const sunStr = toColomboDateKey(sun);
 
     const slotsThisWeek = await this.slotRepo.find({
       where: {

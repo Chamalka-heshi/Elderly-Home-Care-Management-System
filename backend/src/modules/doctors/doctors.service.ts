@@ -20,6 +20,7 @@ import {
 } from '../appointments/entities/appointment.entity';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto';
+import { toColomboDateKey } from '../../common/utils/colombo-time';
 
 export interface DashboardRecentPatient {
   id: string;
@@ -193,7 +194,7 @@ export class DoctorsService {
 
     const doctorId = doctor.id;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = toColomboDateKey();
 
     const uniquePatientsResult = await this.appointmentRepository
       .createQueryBuilder('appt')
@@ -236,7 +237,7 @@ export class DoctorsService {
     const recentPatients: DashboardRecentPatient[] = recentAppointments.map(
       (appt) => {
         const slotDate =
-          appt.slot?.date ?? new Date().toISOString().split('T')[0];
+          appt.slot?.date ?? toColomboDateKey();
         return {
           id: appt.id,
           name: appt.patient.fullName,

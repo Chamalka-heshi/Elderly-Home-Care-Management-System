@@ -74,7 +74,7 @@ export const fmt12 = (hhmm: string): string => {
 // Format date string
 export const fmtDate = (dateStr: string): string => {
   if (!dateStr) return '—';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-LK', {
+  return new Date(dateStr + 'T00:00:00+05:30').toLocaleDateString('en-LK', {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
     timeZone: 'Asia/Colombo',
   });
@@ -103,7 +103,7 @@ export const isExpiredPrescriptionPending = (
   if (appointment.status !== 'prescription_pending' || appointment.prescriptionId) return false;
   if (!appointment.slot?.date || !appointment.slot?.endTime) return false;
 
-  const slotEnd = new Date(`${appointment.slot.date}T${appointment.slot.endTime}:00`);
+  const slotEnd = new Date(`${appointment.slot.date}T${appointment.slot.endTime}:00+05:30`);
   return Number.isFinite(slotEnd.getTime()) && slotEnd < new Date();
 };
 

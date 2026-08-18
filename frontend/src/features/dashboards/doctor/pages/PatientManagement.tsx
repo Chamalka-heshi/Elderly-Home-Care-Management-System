@@ -138,7 +138,7 @@ const getEffectiveStatus = (appt: Appointment): Appointment["status"] => {
     !appt.prescriptionId &&
     appt.slot
   ) {
-    const slotEnd = new Date(`${appt.slot.date}T${appt.slot.endTime}:00`);
+    const slotEnd = new Date(`${appt.slot.date}T${appt.slot.endTime}:00+05:30`);
     if (slotEnd < new Date()) return "cancelled";
   }
   return appt.status;

@@ -287,7 +287,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({ activityTitle, onClose, a
         // Filter to slots that are still open for booking
         const openSlots = slotsData.filter((s) => {
           const [h, m] = s.startTime.split(':').map(Number);
-          const slotStart = new Date(`${s.date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
+          const slotStart = new Date(`${s.date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+05:30`);
           const cutoff = new Date(slotStart.getTime() - s.bookingCutoffMinutes * 60_000);
           return now < cutoff && s.status === 'active';
         });

@@ -21,6 +21,7 @@ import {
 } from '../appointments/entities/appointment.entity';
 import { CreatePrescriptionDto } from './dto/prescription.dto';
 import { MailService } from '../mail/mail.service';
+import { toColomboDateKey } from '../../common/utils/colombo-time';
 
 export interface PrescriptionListResult {
   data: Prescription[];
@@ -130,7 +131,7 @@ export class PrescriptionService {
 
   //Auto-expires active prescriptions whose validUntil date has passed to maintain clinical record accuracy
   async autoExpireActive(): Promise<number> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toColomboDateKey();
     const result = await this.repo
       .createQueryBuilder()
       .update(Prescription)

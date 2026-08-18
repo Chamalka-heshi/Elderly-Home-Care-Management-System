@@ -66,7 +66,7 @@ const SlotCard: React.FC<SlotCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(true);
   const total = group.appointments.length;
-  const isPast = new Date(`${group.date}T${group.endTime}:00`) < new Date();
+  const isPast = new Date(`${group.date}T${group.endTime}:00+05:30`) < new Date();
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -81,7 +81,7 @@ const SlotCard: React.FC<SlotCardProps> = ({
               {fmtMonthShort(group.date + "T00:00:00")}
             </span>
             <span className="text-xl font-extrabold leading-tight">
-              {new Date(group.date + "T00:00:00").getDate()}
+              {new Date(group.date + "T00:00:00+05:30").getDate()}
             </span>
           </div>
           <div>
@@ -249,9 +249,9 @@ const DoctorAppointments: React.FC = () => {
   const { upcomingGroups, pastGroups } = useMemo(() => {
     const now = new Date();
     return {
-      upcomingGroups: slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00`) >= now),
+      upcomingGroups: slotGroups.filter((g) => new Date(`${g.date}T${g.endTime}:00+05:30`) >= now),
       pastGroups: slotGroups.filter((g) => {
-        if (new Date(`${g.date}T${g.endTime}:00`) >= now) return false;
+        if (new Date(`${g.date}T${g.endTime}:00+05:30`) >= now) return false;
 
         // Hide if slot is completed in the backend
         if (g.appointments.some((a) => a.slot?.status === "completed")) return false;
