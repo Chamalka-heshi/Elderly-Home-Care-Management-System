@@ -235,7 +235,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                       </td>
                     </tr>
                   ) : (
-                    (stats?.recentPatients ?? []).map((p) => {
+                    (stats?.recentPatients ?? []).slice(0, 5).map((p) => {
                       const effStatus = getEffectiveStatus(p);
                       return (
                         <tr key={p.id} className="transition hover:bg-slate-50/60">

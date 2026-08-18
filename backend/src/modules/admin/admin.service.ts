@@ -48,6 +48,12 @@ export class AdminService {
       throw new BadRequestException('Email already registered');
     }
 
+    if (!password) {
+      throw new BadRequestException(
+        'Password is required for account creation',
+      );
+    }
+
     // Prevent duplicate NIC registrations across admin accounts.
     const existingNic = await this.adminRepository.findOne({ where: { nic } });
     if (existingNic) {
