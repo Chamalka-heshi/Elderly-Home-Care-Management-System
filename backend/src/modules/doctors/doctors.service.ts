@@ -183,10 +183,10 @@ export class DoctorsService {
       WHERE status = 'prescription_pending'
       AND slot_id IN (
         SELECT id FROM channeling_slots
-        WHERE "date" < CURRENT_DATE
+        WHERE "date"::date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
         OR (
-          "date" = CURRENT_DATE
-          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI')
+          "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
         )
       )
     `);

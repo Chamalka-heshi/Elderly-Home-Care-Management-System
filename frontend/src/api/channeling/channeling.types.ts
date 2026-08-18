@@ -47,6 +47,12 @@ export function slotStartDate(date: string, startTime: string): Date {
   return new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
 }
 
+// Get exact slot end Date
+export function slotEndDate(date: string, endTime: string): Date {
+  const [h, m] = endTime.split(':').map(Number);
+  return new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
+}
+
 // Check if a slot is open for booking (now < cutoffDate and now < slotStartDate)
 export const isBookingOpen = (slot: ChannelingSlot): boolean => {
   if (slot.status !== 'active') return false;
@@ -56,13 +62,13 @@ export const isBookingOpen = (slot: ChannelingSlot): boolean => {
   return now < cutoff && now < start;
 };
 
-// Check if a slot's start time has arrived/passed
+// Check if a slot's end time has arrived/passed
 export const isSlotPassed = (slot: ChannelingSlot): boolean => {
   if (slot.status === 'completed') return true;
   if (slot.status === 'cancelled' || slot.status === 'rejected') return false;
   const now = new Date();
-  const start = slotStartDate(slot.date, slot.startTime);
-  return now >= start;
+  const end = slotEndDate(slot.date, slot.endTime);
+  return now >= end;
 };
 
 // Convert to 12-hour time

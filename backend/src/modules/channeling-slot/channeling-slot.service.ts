@@ -171,10 +171,45 @@ export class ChannelingSlotService {
     return this.slotRepo.save(slot);
   }
 
-  //Marks active slots as completed once their start time is reached to maintain system accuracy
+  //Marks active slots as completed once their end time is reached to maintain system accuracy
   async autoCompletePassedSlots(): Promise<void> {
     // Slot times are stored in Asia/Colombo (IST+5:30). We must compare them against
     // the current time expressed in that same timezone, not UTC.
+
+    // 1. Repair any slots prematurely marked as completed before their end_time has passed
+    await this.slotRepo.query(`
+      UPDATE channeling_slots
+      SET status = 'active', updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'completed'
+      AND (
+        "date"::date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+        OR (
+          "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+          AND end_time > TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
+        )
+      )
+    `);
+
+    // 2. Repair any appointments prematurely cancelled before their slot's end_time has passed
+    await this.slotRepo.query(`
+      UPDATE appointments
+      SET status = 'prescription_pending', updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'cancelled'
+      AND prescription_id IS NULL
+      AND slot_id IN (
+        SELECT id FROM channeling_slots
+        WHERE status = 'active'
+        AND (
+          "date"::date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+          OR (
+            "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
+            AND end_time > TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
+          )
+        )
+      )
+    `);
+
+    // 3. Cancel prescription_pending appointments whose slot end_time has passed
     await this.slotRepo.query(`
       UPDATE appointments
       SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
@@ -184,11 +219,12 @@ export class ChannelingSlotService {
         WHERE "date"::date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
         OR (
           "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
-          AND start_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
+          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
         )
       )
     `);
 
+    // 4. Mark active slots as completed once their end_time has passed
     await this.slotRepo.query(`
       UPDATE channeling_slots
       SET    status = 'completed'
@@ -197,7 +233,7 @@ export class ChannelingSlotService {
         "date"::date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
         OR (
           "date"::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')::date
-          AND start_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
+          AND end_time <= TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo', 'HH24:MI')
         )
       )
     `);

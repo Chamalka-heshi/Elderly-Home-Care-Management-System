@@ -36,6 +36,7 @@ describe('AppointmentService', () => {
     find: jest.fn(),
     count: jest.fn(),
     remove: jest.fn(),
+    query: jest.fn(),
     createQueryBuilder: jest.fn(),
   };
 

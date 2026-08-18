@@ -35,7 +35,7 @@ describe('DoctorsService', () => {
 
   const mockPrescriptionRepo = { count: jest.fn() };
   const mockSlotRepo = { count: jest.fn() };
-  const mockApptRepo = { createQueryBuilder: jest.fn() };
+  const mockApptRepo = { createQueryBuilder: jest.fn(), query: jest.fn() };
 
   const mockUsersService = {
     findByEmail: jest.fn(),

@@ -11,8 +11,18 @@ const CSRF_TOKEN_KEY = 'csrf-token';
   if (match) sessionStorage.setItem(CSRF_TOKEN_KEY, decodeURIComponent(match[1]));
 })();
 
-// Returns the stored CSRF token from sessionStorage.
-export const getCsrfToken = (): string | null => sessionStorage.getItem(CSRF_TOKEN_KEY);
+// Returns the stored CSRF token from sessionStorage, falling back to document.cookie if unavailable.
+export const getCsrfToken = (): string | null => {
+  const token = sessionStorage.getItem(CSRF_TOKEN_KEY);
+  if (token) return token;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  if (match) {
+    const cookieToken = decodeURIComponent(match[1]);
+    sessionStorage.setItem(CSRF_TOKEN_KEY, cookieToken);
+    return cookieToken;
+  }
+  return null;
+};
 
 // Saves the CSRF token to sessionStorage.
 export const setCsrfToken = (token: string): void => sessionStorage.setItem(CSRF_TOKEN_KEY, token);

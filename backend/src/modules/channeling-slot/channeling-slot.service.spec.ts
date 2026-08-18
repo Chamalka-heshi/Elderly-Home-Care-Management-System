@@ -29,8 +29,11 @@ describe('ChannelingSlotService', () => {
 
   const mockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     addOrderBy: jest.fn().mockReturnThis(),
+    getMany: jest.fn(),
     getManyAndCount: jest.fn(),
   };
 
@@ -263,7 +266,7 @@ describe('ChannelingSlotService', () => {
 
   describe('cancel', () => {
     it('should set slot status to CANCELLED', async () => {
-      const slot = { id: 'slot1', status: SlotStatus.ACTIVE };
+      const slot = { id: 'slot1', status: SlotStatus.PENDING };
       mockSlotRepo.findOne.mockResolvedValue(slot);
       mockSlotRepo.save.mockImplementation(async (s: ChannelingSlot) => s);
 
@@ -331,7 +334,7 @@ describe('ChannelingSlotService', () => {
   describe('getAvailableSlotsWithDoctors', () => {
     it('should return active upcoming slots', async () => {
       mockSlotRepo.query.mockResolvedValue(null); // autoCompletePassedSlots
-      mockSlotRepo.find.mockResolvedValue([
+      mockQueryBuilder.getMany.mockResolvedValue([
         { id: 's1', status: SlotStatus.ACTIVE, date: '2099-12-01' },
         { id: 's2', status: SlotStatus.ACTIVE, date: '2099-12-02' },
       ]);
@@ -343,7 +346,7 @@ describe('ChannelingSlotService', () => {
 
     it('should return empty array when no active slots exist', async () => {
       mockSlotRepo.query.mockResolvedValue(null);
-      mockSlotRepo.find.mockResolvedValue([]);
+      mockQueryBuilder.getMany.mockResolvedValue([]);
 
       const result = await service.getAvailableSlotsWithDoctors();
       expect(result).toHaveLength(0);

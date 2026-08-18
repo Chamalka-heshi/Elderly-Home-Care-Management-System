@@ -11,6 +11,7 @@ import { Appointment } from '../appointments/entities/appointment.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { DataSource } from 'typeorm';
+import { MailService } from '../mail/mail.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
@@ -59,6 +60,13 @@ describe('PaymentsService', () => {
         },
         { provide: getRepositoryToken(FamilyMember), useValue: mockFamilyRepo },
         { provide: DataSource, useValue: mockDataSource },
+        {
+          provide: MailService,
+          useValue: {
+            sendBookingConfirmation: jest.fn(),
+            sendPaymentReceipt: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

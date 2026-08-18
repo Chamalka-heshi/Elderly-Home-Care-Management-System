@@ -54,14 +54,16 @@ export class CsrfGuard implements CanActivate {
     }
 
     // Read the CSRF token from the request header and from the session cookie.
-    const csrfToken =
+    const rawCsrfHeader =
       request.headers['x-csrf-token'] || request.headers['x-xsrf-token'];
+    let csrfToken = Array.isArray(rawCsrfHeader) ? rawCsrfHeader[0] : rawCsrfHeader;
     const sessionToken = request.csrfToken || (request.cookies && request.cookies['csrf_token']);
 
     // Accept the token from the request body as a legacy fallback.
     if (!csrfToken && request.body && request.body.csrfToken) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      request.headers['x-csrf-token'] = request.body.csrfToken;
+      csrfToken = String(request.body.csrfToken);
+      request.headers['x-csrf-token'] = csrfToken;
     }
 
     if (!csrfToken || !sessionToken) {
