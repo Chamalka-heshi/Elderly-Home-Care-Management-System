@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import {
   Payment,
@@ -134,18 +134,6 @@ export class PaymentsService {
       .update(payload)
       .digest('hex')
       .toUpperCase();
-
-    // DEBUG: Remove after confirming PayHere integration works
-    console.log('[PayHere Hash Debug]', {
-      merchantId,
-      orderId,
-      formattedAmount,
-      currency,
-      secretLength: merchantSecret.length,
-      secretPreview: merchantSecret.slice(0, 6) + '...' + merchantSecret.slice(-4),
-      secretHash,
-      finalHash,
-    });
 
     return finalHash;
   }
@@ -359,6 +347,17 @@ export class PaymentsService {
         throw new BadRequestException('This booking has already been paid for');
       }
 
+      // Void any stale PENDING card payments for this booking so they don't
+      // pollute the history or summary totals after a failed/declined attempt.
+      await this.paymentRepo.update(
+        {
+          bookingId: booking.id,
+          status: In([PaymentStatus.PENDING]),
+          paymentMethod: PaymentMethod.CARD,
+        },
+        { status: PaymentStatus.REJECTED },
+      );
+
       amount = Number(booking.carePlanSnapshot.price);
       items = booking.carePlanSnapshot.name ?? 'Care plan';
       address = booking.patient?.address ?? address;
@@ -392,6 +391,16 @@ export class PaymentsService {
           'This appointment has already been paid for',
         );
       }
+
+      // Void any stale PENDING card payments for this appointment.
+      await this.paymentRepo.update(
+        {
+          appointmentId: appointment.id,
+          status: In([PaymentStatus.PENDING]),
+          paymentMethod: PaymentMethod.CARD,
+        },
+        { status: PaymentStatus.REJECTED },
+      );
 
       const consultationFee = Number(appointment.slot?.consultationFee ?? 0);
       const careHomeFee = Number(appointment.slot?.careHomeFee ?? 0);

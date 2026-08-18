@@ -47,7 +47,7 @@ export const appConfig = registerAs('app', () => {
 
     // Network Security Configuration
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174',
     },
 
     // Persistent Storage Configuration

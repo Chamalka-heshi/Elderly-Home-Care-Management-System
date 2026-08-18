@@ -53,6 +53,14 @@ async function bootstrap() {
     .map((o) => o.trim())
     .filter(Boolean);
 
+  // Always allow localhost in development (covers any Vite port)
+  if (configService.get<string>('app.nodeEnv') !== 'production') {
+    ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'].forEach((origin) => {
+      if (!allowedOrigins.includes(origin)) allowedOrigins.push(origin);
+    });
+  }
+
+
   // Explicit origin validator: only allow origins in the whitelist.
   // Requests with no Origin header (e.g. same-origin, curl) are permitted.
   // Requests with an Origin not in the whitelist receive a CORS error.

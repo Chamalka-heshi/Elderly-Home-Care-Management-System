@@ -183,11 +183,13 @@ const Payments: React.FC<Props> = ({ addToast }) => {
   };
 
   const summary = useMemo(() => {
-    const total = myPayments.reduce((s, p) => s + Number(p.amount), 0);
     const paid = myPayments.filter((p) => p.status === 'paid').reduce((s, p) => s + Number(p.amount), 0);
-    const pending = myPayments.filter((p) => p.status !== 'paid').reduce((s, p) => s + Number(p.amount), 0);
-    return { total, paid, pending };
+    const pending = myPayments
+      .filter((p) => p.status === 'pending' || p.status === 'pending_approval')
+      .reduce((s, p) => s + Number(p.amount), 0);
+    return { total: paid, paid, pending };
   }, [myPayments]);
+
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
