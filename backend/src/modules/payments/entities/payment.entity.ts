@@ -75,6 +75,21 @@ export class Payment {
   })
   status: PaymentStatus;
 
+  @Column({ name: 'payhere_payment_id', type: 'varchar', length: 64, nullable: true })
+  payherePaymentId: string | null;
+
+  @Column({ name: 'payhere_order_id', type: 'varchar', length: 64, nullable: true })
+  payhereOrderId: string | null;
+
+  @Column({ name: 'gateway_status_code', type: 'varchar', length: 16, nullable: true })
+  gatewayStatusCode: string | null;
+
+  @Column({ name: 'gateway_status_message', type: 'text', nullable: true })
+  gatewayStatusMessage: string | null;
+
+  @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
+  paidAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

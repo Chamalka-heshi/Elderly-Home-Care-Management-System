@@ -8,9 +8,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { GetUser } from '../../common/decorators/current-user.decorator';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { InitiatePayHerePaymentDto } from './dto/initiate-payhere-payment.dto';
 import { PaymentsService } from './payments.service';
 
 @Controller('payments')
@@ -25,6 +27,25 @@ export class PaymentsController {
   ) {
     const payment = await this.paymentsService.createPayment(userId, dto);
     return { message: 'Payment created successfully', payment };
+  }
+
+  @Post('payhere/initiate')
+  @Roles(UserRole.FAMILY)
+  async initiatePayHerePayment(
+    @GetUser('sub') userId: string,
+    @Body() dto: InitiatePayHerePaymentDto,
+  ) {
+    const checkout = await this.paymentsService.initiatePayHerePayment(
+      userId,
+      dto,
+    );
+    return { message: 'PayHere checkout prepared', checkout };
+  }
+
+  @Post('payhere/notify')
+  @Public()
+  async handlePayHereNotify(@Body() body: Record<string, string>) {
+    return this.paymentsService.handlePayHereNotify(body);
   }
 
   @Get('my')

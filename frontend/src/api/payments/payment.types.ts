@@ -74,3 +74,25 @@ export interface Payment {
   booking?: PaymentBooking | null;
   appointment?: PaymentAppointment | null;
 }
+
+// PayHere checkout payload returned by POST /payments/payhere/initiate
+export interface PayHereCheckoutResponse {
+  message: string;
+  checkout: {
+    merchant_id: string;
+    order_id: string;
+    amount: string;
+    currency: string;
+    hash: string;
+    notify_url: string;
+    return_url: string;
+    cancel_url: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    items: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+}
