@@ -78,9 +78,9 @@ export class ChannelingSlotService {
     const uniqueDays = new Set(slotsThisWeek.map((s) => s.date));
     uniqueDays.add(dto.date);
 
-    if (uniqueDays.size > 3)
+    if (uniqueDays.size > 5)
       throw new ConflictException(
-        'Doctor already has slots on 3 days this week (maximum allowed)',
+        'Doctor already has slots on 5 days this week (maximum allowed)',
       );
 
     const existing = await this.slotRepo.find({

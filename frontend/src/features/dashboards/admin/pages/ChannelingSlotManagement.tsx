@@ -266,7 +266,7 @@ const AddSlotModal: React.FC<AddSlotModalProps> = ({ doctors, onClose, onCreated
           </div>
 
           <p className="rounded-xl bg-blue-50/80 px-4 py-2.5 text-[11px] text-blue-700 ring-1 ring-blue-100">
-            ℹ️ Doctors can be assigned slots on a maximum of <strong>3 days per week</strong>. The doctor must approve before the slot goes live.
+            ℹ️ Doctors can be assigned slots on a maximum of <strong>5 days per week</strong>. The doctor must approve before the slot goes live.
           </p>
 
           <div className="flex justify-end gap-3 pt-1 pb-1">
