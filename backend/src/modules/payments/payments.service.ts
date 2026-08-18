@@ -66,15 +66,20 @@ export class PaymentsService {
   ) { }
 
   private getPayHereConfig() {
+    // Use the merchant secret exactly as set in environment – no transformation.
+    // Any Base64-decoding was removed because a numeric secret string is also
+    // valid Base64, which caused the secret to be corrupted before hashing.
     const merchantSecret = (
       this.configService.get<string>('app.payhere.merchantSecret') ?? ''
     ).trim();
 
+    const merchantId = (
+      this.configService.get<string>('app.payhere.merchantId') ?? ''
+    ).trim();
+
     return {
-      merchantId: (
-        this.configService.get<string>('app.payhere.merchantId') ?? ''
-      ).trim(),
-      merchantSecret: this.resolvePayHereMerchantSecret(merchantSecret),
+      merchantId,
+      merchantSecret,
       notifyUrl: (
         this.configService.get<string>('app.payhere.notifyUrl') ?? ''
       ).trim(),
@@ -85,21 +90,6 @@ export class PaymentsService {
         this.configService.get<string>('app.payhere.cancelUrl') ?? ''
       ).trim(),
     };
-  }
-
-  /** Accept plain numeric or Base64-encoded secret from PayHere dashboard. */
-  private resolvePayHereMerchantSecret(secret: string): string {
-    if (!secret) return secret;
-    if (/^\d+$/.test(secret)) return secret;
-    if (/^[A-Za-z0-9+/]+=*$/.test(secret)) {
-      try {
-        const decoded = Buffer.from(secret, 'base64').toString('utf8').trim();
-        if (/^\d+$/.test(decoded)) return decoded;
-      } catch {
-        return secret;
-      }
-    }
-    return secret;
   }
 
   private ensurePayHereConfigured(): void {
@@ -139,7 +129,25 @@ export class PaymentsService {
     const secretHash = this.hashMerchantSecret(merchantSecret);
     const payload =
       merchantId + orderId + formattedAmount + currency + secretHash;
-    return crypto.createHash('md5').update(payload).digest('hex').toUpperCase();
+    const finalHash = crypto
+      .createHash('md5')
+      .update(payload)
+      .digest('hex')
+      .toUpperCase();
+
+    // DEBUG: Remove after confirming PayHere integration works
+    console.log('[PayHere Hash Debug]', {
+      merchantId,
+      orderId,
+      formattedAmount,
+      currency,
+      secretLength: merchantSecret.length,
+      secretPreview: merchantSecret.slice(0, 6) + '...' + merchantSecret.slice(-4),
+      secretHash,
+      finalHash,
+    });
+
+    return finalHash;
   }
 
   private verifyPayHereNotifySignature(
