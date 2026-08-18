@@ -1,3 +1,27 @@
+import * as dns from 'dns';
+
+// Prefer IPv4 when resolving hostnames so platforms without IPv6 routing (Render) don't try
+// to connect via IPv6 and fail with ENETUNREACH. This runs very early (import order) so
+// it applies before network connections are attempted by providers like nodemailer.
+try {
+  if (typeof (dns as any).setDefaultResultOrder === 'function') {
+    (dns as any).setDefaultResultOrder('ipv4first');
+    /* eslint-disable no-console */
+    console.log('dns: setDefaultResultOrder -> ipv4first');
+    /* eslint-enable no-console */
+  } else {
+    /* eslint-disable no-console */
+    console.log('dns: setDefaultResultOrder not available on this Node version');
+    /* eslint-enable no-console */
+  }
+} catch (e) {
+  // Non-fatal: do not prevent the app from starting if this call fails
+  // but log so operators can investigate.
+  /* eslint-disable no-console */
+  console.warn('Failed to set dns default result order:', e);
+  /* eslint-enable no-console */
+}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

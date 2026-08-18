@@ -241,9 +241,15 @@ export class MailService implements OnModuleInit {
     }
 
     try {
-      await this.transporter.verify();
+      // Guard the verify() call with an explicit timeout to avoid long blocking startup
+      const verifyPromise = this.transporter.verify();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('SMTP verification timed out after 5s')), 5000),
+      );
+      await Promise.race([verifyPromise, timeoutPromise]);
       this.logger.log('SMTP transporter verified successfully');
     } catch (err) {
+      // Do not throw — verification failure should not prevent the app from starting.
       this.logger.warn(
         `SMTP verification failed — emails may not send: ${this.errMsg(err)}`,
       );
