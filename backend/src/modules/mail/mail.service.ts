@@ -214,19 +214,32 @@ export class MailService implements OnModuleInit {
   private transporter: nodemailer.Transporter;
 
   constructor(private readonly configService: ConfigService) {
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com',
-      port: this.configService.get<number>('SMTP_PORT') || 587,
+      port: Number(this.configService.get<number>('SMTP_PORT')) || 587,
       secure: this.configService.get<string>('SMTP_SECURE') === 'true',
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
+      auth: user && pass ? { user, pass } : undefined,
+      connectionTimeout: 5000, // 5s connection timeout
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
     });
   }
 
   // Verifies mail server connectivity at startup to ensure notification reliability
   async onModuleInit(): Promise<void> {
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+
+    if (!user || !pass) {
+      this.logger.warn(
+        'SMTP_USER or SMTP_PASS not set — outgoing email notifications are disabled.',
+      );
+      return;
+    }
+
     try {
       await this.transporter.verify();
       this.logger.log('SMTP transporter verified successfully');
