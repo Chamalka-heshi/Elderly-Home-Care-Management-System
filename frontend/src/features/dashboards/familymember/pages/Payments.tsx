@@ -19,8 +19,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getMyBookings } from '../../../../api/bookings/family-booking.api';
 import type { Booking } from '../../../../api/bookings/booking.types';
-import { createPayment, getMyPayments } from '../../../../api/payments/family-payment.api';
-import type { Payment, PaymentStatus } from '../../../../api/payments/payment.types';
+import { createPayment, getMyPayments, initiatePayHerePayment } from '../../../../api/payments/family-payment.api';
+import type { Payment, PaymentStatus, PayHereCheckoutResponse } from '../../../../api/payments/payment.types';
 import { getMyAppointments } from '../../../../api/appointment/appointment.api';
 import type { Appointment } from '../../../../api/appointment/appointment.types';
 import {
@@ -42,6 +42,27 @@ const toneForStatus = (status: PaymentStatus) => {
   return 'slate';
 };
 
+const submitPayHereCheckout = (
+  checkout: PayHereCheckoutResponse['checkout'],
+): void => {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action =
+    import.meta.env.VITE_PAYHERE_CHECKOUT_URL ||
+    'https://sandbox.payhere.lk/pay/checkout';
+
+  Object.entries(checkout).forEach(([key, value]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+};
+
 const Payments: React.FC<Props> = ({ addToast }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -50,13 +71,6 @@ const Payments: React.FC<Props> = ({ addToast }) => {
   const [payingMethod, setPayingMethod] = useState<'card' | 'bank_transfer' | null>(null);
   const [showBankTransferDetails, setShowBankTransferDetails] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
-  const [cardPaid, setCardPaid] = useState(false);
-  const [cardForm, setCardForm] = useState({
-    cardNumber: '', cardHolderName: '', expiryDate: '', cvv: '',
-  });
-  const [cardFormErrors, setCardFormErrors] = useState({
-    cardNumber: '', cardHolderName: '', expiryDate: '', cvv: '',
-  });
   const [checkoutNotice, setCheckoutNotice] = useState<
     | null
     | { kind: 'success'; title: string; message: string }
@@ -111,7 +125,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
   }, [loadData]);
 
   const handleCreatePayment = async (
-    paymentMethod: 'card' | 'bank_transfer',
+    paymentMethod: 'bank_transfer',
     e?: React.MouseEvent<HTMLButtonElement>,
   ) => {
     e?.preventDefault();
@@ -131,24 +145,11 @@ const Payments: React.FC<Props> = ({ addToast }) => {
       });
       addToast('success', res.message || 'Payment processed successfully');
 
-      if (paymentMethod === 'card') {
-        setShowBankTransferDetails(false);
-        setShowCardForm(false);
-        setCardPaid(true);
-        setCheckoutNotice({
-          kind: 'success',
-          title: 'Payment Completed',
-          message: appointmentId
-            ? 'Your appointment payment is confirmed. The doctor will issue a prescription at your slot.'
-            : 'Payment successful. Your care plan booking is now active.',
-        });
-      } else {
-        setCheckoutNotice({
-          kind: 'info',
-          title: 'Bank Transfer Submitted',
-          message: 'Your bank transfer is awaiting admin approval. You will be notified once approved.',
-        });
-      }
+      setCheckoutNotice({
+        kind: 'info',
+        title: 'Bank Transfer Submitted',
+        message: 'Your bank transfer is awaiting admin approval. You will be notified once approved.',
+      });
       await loadData();
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Payment failed');
@@ -157,44 +158,28 @@ const Payments: React.FC<Props> = ({ addToast }) => {
     }
   };
 
-  const handleCardInputChange = (
-    field: 'cardNumber' | 'cardHolderName' | 'expiryDate' | 'cvv',
-    value: string,
+  const handlePayHerePayment = async (
+    e?: React.MouseEvent<HTMLButtonElement>,
   ) => {
-    setCardForm((prev) => ({ ...prev, [field]: value }));
-    setCardFormErrors((prev) => ({ ...prev, [field]: '' }));
-  };
+    e?.preventDefault();
+    e?.stopPropagation();
 
-  const validateCardForm = () => {
-    const rawNum = cardForm.cardNumber.replace(/\s/g, '');
-    const errors = {
-      cardNumber:     !rawNum
-                        ? 'Card number is required.'
-                        : !/^\d{13,19}$/.test(rawNum)
-                        ? 'Enter a valid card number (13–19 digits).'
-                        : '',
-      cardHolderName: cardForm.cardHolderName.trim()
-                        ? ''
-                        : 'Card holder name is required.',
-      expiryDate:     !cardForm.expiryDate.trim()
-                        ? 'Expiry date is required.'
-                        : !/^\d{2}\/\d{2}$/.test(cardForm.expiryDate.trim())
-                        ? 'Use MM/YY format (e.g. 08/27).'
-                        : '',
-      cvv:            !cardForm.cvv.trim()
-                        ? 'CVV is required.'
-                        : !/^\d{3,4}$/.test(cardForm.cvv.trim())
-                        ? 'CVV must be 3 or 4 digits.'
-                        : '',
-    };
-    setCardFormErrors(errors);
-    return !Object.values(errors).some(Boolean);
-  };
+    if (!bookingId && !appointmentId) {
+      addToast('error', 'Missing checkout id.');
+      return;
+    }
 
-  const handleCardPayNow = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (validateCardForm()) await handleCreatePayment('card', e);
+    try {
+      setPayingMethod('card');
+      const res = await initiatePayHerePayment({
+        bookingId: bookingId ?? undefined,
+        appointmentId: appointmentId ?? undefined,
+      });
+      submitPayHereCheckout(res.checkout);
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to start PayHere checkout');
+      setPayingMethod(null);
+    }
   };
 
   const summary = useMemo(() => {
@@ -375,8 +360,7 @@ const Payments: React.FC<Props> = ({ addToast }) => {
           )}
 
           {/* ── Payment method buttons ── */}
-          {!cardPaid && (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => { setCheckoutNotice(null); setShowBankTransferDetails(false); setShowCardForm(true); }}
@@ -393,50 +377,27 @@ const Payments: React.FC<Props> = ({ addToast }) => {
               >
                 🏦 Bank Transfer
               </button>
-            </div>
-          )}
+          </div>
 
-          {/* ── Card form ── */}
-          {showCardForm && !cardPaid && (
+          {/* ── PayHere card checkout ── */}
+          {showCardForm && (
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-bold text-slate-900">Card payment details</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {([
-                  { field: 'cardNumber', label: 'Card Number', placeholder: '1234 5678 9012 3456', type: 'text' },
-                  { field: 'cardHolderName', label: 'Card Holder Name', placeholder: 'John Doe', type: 'text' },
-                  { field: 'expiryDate', label: 'Expiry Date', placeholder: 'MM/YY', type: 'text' },
-                  { field: 'cvv', label: 'CVV', placeholder: '123', type: 'password' },
-                ] as const).map(({ field, label, placeholder, type }) => (
-                  <div key={field}>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</label>
-                    <input
-                      type={type}
-                      value={cardForm[field]}
-                      onChange={(e) => handleCardInputChange(field, e.target.value)}
-                      className={`mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-800 outline-none transition ${cardFormErrors[field]
-                          ? 'border-red-300 focus:border-red-400'
-                          : 'border-slate-300 focus:border-emerald-400'
-                        }`}
-                      placeholder={placeholder}
-                    />
-                    {cardFormErrors[field] && (
-                      <p className="mt-1 text-xs text-red-600">{cardFormErrors[field]}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm font-bold text-slate-900">Card payment via PayHere</p>
+              <p className="mt-2 text-sm text-slate-600">
+                You will be redirected to PayHere to complete your card payment securely.
+              </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={handleCardPayNow}
+                  onClick={handlePayHerePayment}
                   disabled={!!payingMethod}
                   className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-700 disabled:opacity-60"
                 >
-                  {payingMethod === 'card' ? 'Processing…' : 'Pay Now'}
+                  {payingMethod === 'card' ? 'Redirecting…' : 'Pay Now'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowCardForm(false); setCardFormErrors({ cardNumber: '', cardHolderName: '', expiryDate: '', cvv: '' }); }}
+                  onClick={() => setShowCardForm(false)}
                   disabled={!!payingMethod}
                   className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-60"
                 >
