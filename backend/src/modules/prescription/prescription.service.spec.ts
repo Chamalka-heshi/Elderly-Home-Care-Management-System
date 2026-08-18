@@ -49,6 +49,40 @@ describe('PrescriptionService', () => {
   const mockMailService = { sendPrescriptionNotification: jest.fn() };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
+    Object.assign(mockQueryBuilder, {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      getMany: jest.fn().mockResolvedValue([]),
+      getOne: jest.fn(),
+    });
+
+    Object.assign(mockPrescriptionRepo, {
+      create: jest.fn(),
+      save: jest.fn(),
+      findOne: jest.fn(),
+      find: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    });
+
+    Object.assign(mockDoctorRepo, { findOne: jest.fn() });
+    Object.assign(mockFamilyMemberRepo, { findOne: jest.fn() });
+    Object.assign(mockPatientRepo, { findOne: jest.fn() });
+    Object.assign(mockAppointmentRepo, {
+      findOne: jest.fn(),
+      update: jest.fn(),
+    });
+    Object.assign(mockMailService, { sendPrescriptionNotification: jest.fn() });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PrescriptionService,
@@ -119,6 +153,43 @@ describe('PrescriptionService', () => {
         status: AppointmentStatus.COMPLETED,
         prescriptionId: 'rx1',
       });
+    });
+
+    it('should omit medicines already active for the patient when creating a follow-up prescription', async () => {
+      mockDoctorRepo.findOne.mockResolvedValue({ id: 'd1' });
+      mockPrescriptionRepo.find.mockResolvedValue([
+        {
+          status: 'active',
+          medicines: [{ medicineName: 'Metformin', dosage: '500mg' }],
+        },
+      ]);
+      mockPrescriptionRepo.create.mockImplementation((entity) => entity);
+      mockPrescriptionRepo.save.mockResolvedValue({ id: 'rx2' });
+      mockPatientRepo.findOne.mockResolvedValue({
+        familyMember: { user: { email: 'fam@test.com' } },
+      });
+      mockPrescriptionRepo.find.mockResolvedValueOnce([
+        {
+          status: 'active',
+          medicines: [{ medicineName: 'Metformin', dosage: '500mg' }],
+        },
+      ]);
+      mockPrescriptionRepo.find.mockResolvedValueOnce([]);
+
+      await service.create('u1', {
+        ...dto,
+        patientId: 'p1',
+        medicines: [
+          { medicineName: 'Metformin', dosage: '500mg', frequency: 'Once daily', durationDays: 7 },
+          { medicineName: 'Vitamin D', dosage: '1000IU', frequency: 'Once daily', durationDays: 30 },
+        ],
+      });
+
+      expect(mockPrescriptionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          medicines: [{ medicineName: 'Vitamin D', dosage: '1000IU', frequency: 'Once daily', durationDays: 30 }],
+        }),
+      );
     });
 
     it('should throw ForbiddenException when doctor profile not found', async () => {

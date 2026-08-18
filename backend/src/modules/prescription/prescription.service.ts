@@ -75,6 +75,35 @@ export class PrescriptionService {
     return doctor?.user?.fullName ?? 'Your Doctor';
   }
 
+  //When a patient already has an active prescription, clinicians can continue the same course without re-prescribing medicines that are already active.
+  private async filterContinuingMedicines(
+    patientId: string | null | undefined,
+    medicines: CreatePrescriptionDto['medicines'],
+  ): Promise<CreatePrescriptionDto['medicines']> {
+    if (!patientId || !medicines?.length) return medicines ?? [];
+
+    const activeRx = await this.repo.find({
+      where: { patientId, status: 'active' },
+    });
+
+    const activeKeys = new Set(
+      activeRx.flatMap((rx) =>
+        (rx.medicines ?? []).map((med) => {
+          const name = String(med.medicineName ?? '').trim().toLowerCase();
+          const dosage = String(med.dosage ?? '').trim().toLowerCase();
+          return `${name}::${dosage}`;
+        }),
+      ),
+    );
+
+    return medicines.filter((med) => {
+      const name = String(med.medicineName ?? '').trim().toLowerCase();
+      const dosage = String(med.dosage ?? '').trim().toLowerCase();
+      const key = `${name}::${dosage}`;
+      return !activeKeys.has(key) || !name || !dosage;
+    });
+  }
+
   //Orchestrates the creation of a medical instruction, verifying appointment validity and triggering family notifications
   async create(
     userId: string,
@@ -98,6 +127,11 @@ export class PrescriptionService {
         );
     }
 
+    const filteredMedicines = await this.filterContinuingMedicines(
+      dto.patientId?.trim() ?? null,
+      dto.medicines,
+    );
+
     const prescription = this.repo.create({
       doctorId,
       appointmentId: dto.appointmentId ?? null,
@@ -108,7 +142,7 @@ export class PrescriptionService {
       notes: dto.notes?.trim() ?? null,
       issuedDate: dto.issuedDate,
       validUntil: dto.validUntil?.trim() ?? null,
-      medicines: dto.medicines,
+      medicines: filteredMedicines,
       status: 'active',
     });
     const saved = await this.repo.save(prescription);
