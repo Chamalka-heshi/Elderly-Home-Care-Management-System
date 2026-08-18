@@ -76,5 +76,18 @@ export const appConfig = registerAs('app', () => {
       from: process.env.MAIL_FROM || 'Care Home <noreply@carehome.com>',
       appUrl: process.env.APP_URL || 'http://localhost:5173',
     },
+
+    // PayHere payment gateway (merchant secret stays server-side only)
+    payhere: {
+      merchantId: process.env.PAYHERE_MERCHANT_ID || '',
+      merchantSecret: process.env.PAYHERE_MERCHANT_SECRET || '',
+      mode: process.env.PAYHERE_MODE || 'sandbox',
+      checkoutUrl:
+        process.env.PAYHERE_CHECKOUT_URL ||
+        'https://sandbox.payhere.lk/pay/checkout',
+      notifyUrl: process.env.PAYHERE_NOTIFY_URL || '',
+      returnUrl: process.env.PAYHERE_RETURN_URL || '',
+      cancelUrl: process.env.PAYHERE_CANCEL_URL || '',
+    },
   };
 });

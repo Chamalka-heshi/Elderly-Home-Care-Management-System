@@ -46,6 +46,7 @@ export class CsrfGuard implements CanActivate {
       '/cost',
       '/payment',
       '/payments',
+      '/payments/payhere/notify',
     ];
 
     const path = request.path || request.url || '';
