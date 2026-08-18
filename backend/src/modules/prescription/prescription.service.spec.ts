@@ -5,6 +5,7 @@ import { Prescription } from './entities/prescription.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { Booking } from '../bookings/entities/booking.entity';
 import {
   Appointment,
   AppointmentStatus,
@@ -45,6 +46,7 @@ describe('PrescriptionService', () => {
   const mockDoctorRepo = { findOne: jest.fn() };
   const mockFamilyMemberRepo = { findOne: jest.fn() };
   const mockPatientRepo = { findOne: jest.fn() };
+  const mockBookingRepo = { find: jest.fn(), findOne: jest.fn() };
   const mockAppointmentRepo = { findOne: jest.fn(), update: jest.fn() };
   const mockMailService = { sendPrescriptionNotification: jest.fn() };
 
@@ -77,6 +79,7 @@ describe('PrescriptionService', () => {
     Object.assign(mockDoctorRepo, { findOne: jest.fn() });
     Object.assign(mockFamilyMemberRepo, { findOne: jest.fn() });
     Object.assign(mockPatientRepo, { findOne: jest.fn() });
+    Object.assign(mockBookingRepo, { find: jest.fn(), findOne: jest.fn() });
     Object.assign(mockAppointmentRepo, {
       findOne: jest.fn(),
       update: jest.fn(),
@@ -96,6 +99,7 @@ describe('PrescriptionService', () => {
           useValue: mockFamilyMemberRepo,
         },
         { provide: getRepositoryToken(Patient), useValue: mockPatientRepo },
+        { provide: getRepositoryToken(Booking), useValue: mockBookingRepo },
         {
           provide: getRepositoryToken(Appointment),
           useValue: mockAppointmentRepo,

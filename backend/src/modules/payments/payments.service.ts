@@ -85,7 +85,12 @@ export class PaymentsService {
 
       const amount = Number(booking.carePlanSnapshot.price);
 
-      // Both card and bank transfer are activated immediately — no admin approval needed.
+      // Determine initial payment status: bank transfers should remain pending approval
+      const initialStatus =
+        dto.paymentMethod === PaymentMethod.BANK_TRANSFER
+          ? PaymentStatus.PENDING_APPROVAL
+          : PaymentStatus.PAID;
+
       const saved = await this.dataSource.transaction(async (manager) => {
         const payRepo = manager.getRepository(Payment);
         const bookingRepo = manager.getRepository(Booking);
@@ -97,42 +102,46 @@ export class PaymentsService {
           userId: familyMember.id,
           amount,
           paymentMethod: dto.paymentMethod,
-          status: PaymentStatus.PAID,  // always mark as paid immediately
+          status: initialStatus,
         });
 
         const saved = await payRepo.save(payment);
 
-        // Activate the booking and update patient payment plan for both methods
-        booking.status = BookingStatus.ACTIVE;
-        await bookingRepo.save(booking);
-        await patRepo.update(booking.patientId, {
-          paymentPlan: booking.carePlanSnapshot.name,
-        });
+        // Only activate the booking immediately if the payment is considered paid
+        if (initialStatus === PaymentStatus.PAID) {
+          booking.status = BookingStatus.ACTIVE;
+          await bookingRepo.save(booking);
+          await patRepo.update(booking.patientId, {
+            paymentPlan: booking.carePlanSnapshot.name,
+          });
+        }
 
         return saved;
       });
 
-      // Send receipt email after successful transaction — non-blocking
-      const patient = await this.paymentRepo.manager
-        .getRepository(Patient)
-        .findOne({ where: { id: booking.patientId } });
-      const snapshot = booking.carePlanSnapshot;
-      this.mailService
-        .sendPaymentReceiptEmail({
-          familyMemberName: familyMember.user.fullName,
-          to: familyMember.user.email,
-          paymentId: saved.id,
-          paymentMethod: dto.paymentMethod,
-          paidAt: saved.createdAt.toISOString(),
-          amount,
-          serviceType: 'care_plan',
-          patientName: patient?.fullName ?? 'Unknown',
-          carePlanName: snapshot?.name,
-          carePlanDuration: snapshot
-            ? `${snapshot.duration} ${snapshot.durationUnit}`
-            : undefined,
-        })
-        .catch(() => undefined);
+      // Send receipt email only when the payment is already paid (i.e., card)
+      if (saved.status === PaymentStatus.PAID) {
+        const patient = await this.paymentRepo.manager
+          .getRepository(Patient)
+          .findOne({ where: { id: booking.patientId } });
+        const snapshot = booking.carePlanSnapshot;
+        this.mailService
+          .sendPaymentReceiptEmail({
+            familyMemberName: familyMember.user.fullName,
+            to: familyMember.user.email,
+            paymentId: saved.id,
+            paymentMethod: dto.paymentMethod,
+            paidAt: saved.createdAt.toISOString(),
+            amount,
+            serviceType: 'care_plan',
+            patientName: patient?.fullName ?? 'Unknown',
+            carePlanName: snapshot?.name,
+            carePlanDuration: snapshot
+              ? `${snapshot.duration} ${snapshot.durationUnit}`
+              : undefined,
+          })
+          .catch(() => undefined);
+      }
 
       return saved;
     }
@@ -173,7 +182,12 @@ export class PaymentsService {
       );
     }
 
-    // Both card and bank transfer are activated immediately — no admin approval needed.
+    // Determine initial payment status: bank transfers should remain pending approval
+    const initialStatus =
+      dto.paymentMethod === PaymentMethod.BANK_TRANSFER
+        ? PaymentStatus.PENDING_APPROVAL
+        : PaymentStatus.PAID;
+
     const saved = await this.dataSource.transaction(async (manager) => {
       const payRepo = manager.getRepository(Payment);
       const apptRepo = manager.getRepository(Appointment);
@@ -184,40 +198,44 @@ export class PaymentsService {
         userId: familyMember.id,
         amount: appointmentAmount,
         paymentMethod: dto.paymentMethod,
-        status: PaymentStatus.PAID,  // always mark as paid immediately
+        status: initialStatus,
       });
 
       const saved = await payRepo.save(payment);
 
-      // Activate the appointment for both payment methods
-      appointment.status = AppointmentStatus.PRESCRIPTION_PENDING;
-      await apptRepo.save(appointment);
+      // Only activate the appointment immediately if the payment is considered paid
+      if (initialStatus === PaymentStatus.PAID) {
+        appointment.status = AppointmentStatus.PRESCRIPTION_PENDING;
+        await apptRepo.save(appointment);
+      }
 
       return saved;
     });
 
-    // Send receipt email after successful transaction — non-blocking
-    const slot = (appointment as any).slot;
-    const doctor = slot?.doctor;
-    const patient = (appointment as any).patient;
-    this.mailService
-      .sendPaymentReceiptEmail({
-        familyMemberName: familyMember.user.fullName,
-        to: familyMember.user.email,
-        paymentId: saved.id,
-        paymentMethod: dto.paymentMethod,
-        paidAt: saved.createdAt.toISOString(),
-        amount: appointmentAmount,
-        serviceType: 'appointment',
-        patientName: patient?.fullName ?? 'Unknown',
-        doctorName: doctor?.user?.fullName ?? undefined,
-        appointmentDate: slot?.date ?? undefined,
-        appointmentStartTime: slot?.startTime ?? undefined,
-        appointmentEndTime: slot?.endTime ?? undefined,
-        consultationFee: consultationFee,
-        careHomeFee: careHomeFee,
-      })
-      .catch(() => undefined);
+    // Send receipt email only when the payment is already paid (i.e., card)
+    if (saved.status === PaymentStatus.PAID) {
+      const slot = (appointment as any).slot;
+      const doctor = slot?.doctor;
+      const patient = (appointment as any).patient;
+      this.mailService
+        .sendPaymentReceiptEmail({
+          familyMemberName: familyMember.user.fullName,
+          to: familyMember.user.email,
+          paymentId: saved.id,
+          paymentMethod: dto.paymentMethod,
+          paidAt: saved.createdAt.toISOString(),
+          amount: appointmentAmount,
+          serviceType: 'appointment',
+          patientName: patient?.fullName ?? 'Unknown',
+          doctorName: doctor?.user?.fullName ?? undefined,
+          appointmentDate: slot?.date ?? undefined,
+          appointmentStartTime: slot?.startTime ?? undefined,
+          appointmentEndTime: slot?.endTime ?? undefined,
+          consultationFee: consultationFee,
+          careHomeFee: careHomeFee,
+        })
+        .catch(() => undefined);
+    }
 
     return saved;
   }

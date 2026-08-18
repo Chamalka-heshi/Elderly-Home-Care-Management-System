@@ -15,6 +15,7 @@ import {
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import {
   Appointment,
   AppointmentStatus,
@@ -48,6 +49,8 @@ export class PrescriptionService {
     private readonly familyMemberRepo: Repository<FamilyMember>,
     @InjectRepository(Patient)
     private readonly patientRepo: Repository<Patient>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,
     private readonly mailService: MailService,
@@ -73,6 +76,40 @@ export class PrescriptionService {
       relations: ['user'],
     });
     return doctor?.user?.fullName ?? 'Your Doctor';
+  }
+
+  // Determine whether the patient currently has an active, valid care plan that grants access to clinical notes.
+  private async patientHasActiveCarePlan(patientId?: string | null): Promise<boolean> {
+    if (!patientId) return false;
+
+    // Find bookings for this patient that are marked ACTIVE
+    const activeBookings = await this.bookingRepo.find({
+      where: { patientId, status: BookingStatus.ACTIVE },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (!activeBookings?.length) return false;
+
+    const now = new Date();
+    for (const b of activeBookings) {
+      const snapshot: any = (b as any).carePlanSnapshot ?? null;
+      // Use updatedAt as the activation timestamp when booking status changed to ACTIVE
+      const activatedAt = b.updatedAt ?? b.createdAt ?? new Date();
+
+      // If care-plan snapshot does not include duration info, treat ACTIVE booking as valid
+      if (!snapshot || !snapshot.duration) return true;
+
+      const expiry = new Date(activatedAt);
+      if ((snapshot.durationUnit ?? 'days') === 'months') {
+        expiry.setMonth(expiry.getMonth() + Number(snapshot.duration));
+      } else {
+        expiry.setDate(expiry.getDate() + Number(snapshot.duration));
+      }
+
+      if (now <= expiry) return true;
+    }
+
+    return false;
   }
 
   //When a patient already has an active prescription, clinicians can continue the same course without re-prescribing medicines that are already active.
@@ -125,6 +162,16 @@ export class PrescriptionService {
         throw new ForbiddenException(
           'This appointment does not belong to your slots.',
         );
+    }
+
+    // Enforce Clinical Notes access: notes are only allowed for patients with an active, valid care plan.
+    if (dto.notes?.trim()) {
+      const hasPlan = await this.patientHasActiveCarePlan(dto.patientId?.trim() ?? null);
+      if (!hasPlan) {
+        throw new BadRequestException(
+          'Clinical notes are available only for patients with an active care plan.',
+        );
+      }
     }
 
     const filteredMedicines = await this.filterContinuingMedicines(

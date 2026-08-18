@@ -157,11 +157,16 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
 }) => {
   const { patient, id: appointmentId, familyMember } = appointment;
 
+  // Determine whether clinical notes field should be shown. Rely on patient's paymentPlan as a lightweight indicator;
+  // backend enforces the rule strictly so this is a UI convenience only.
+  const hasActiveCarePlan = Boolean(patient?.paymentPlan);
+
   const [diagnosis, setDiagnosis] = useState("");
   const [notes, setNotes] = useState("");
   const [issuedDate, setIssuedDate] = useState(today());
   const [validUntil, setValidUntil] = useState("");
-  const [meds, setMeds] = useState<Medicine[]>([{ ...EMPTY_MED }]);
+  // Start with no medicines by default. New prescriptions must be created empty — medicines are added manually.
+  const [meds, setMeds] = useState<Medicine[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -210,11 +215,12 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
     }
   };
 
-  // Copies medicines from the current prescription into the new form
-  const handleContinueAndAdd = (rx: RxRecord) => {
+  // Open a fresh new prescription form. Do NOT copy medicines from the existing prescription.
+  const handleContinueAndAdd = (_rx: RxRecord) => {
     setCarriedForward(true);
-    setDiagnosis(rx.diagnosis ?? "");
-    setMeds(rx.medicines.map((m) => ({ ...m })));
+    // Ensure the new prescription starts blank — doctor must add medicines manually.
+    setDiagnosis("");
+    setMeds([]);
     setDiscontinueErr(null);
   };
 
@@ -408,7 +414,7 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
                 <IconCheckCircle className="h-4 w-4 text-slate-300 shrink-0" />
                 <p className="text-xs text-slate-400 italic">
                   {carriedForward
-                    ? "Previous prescription discontinued. New prescription pre-filled below."
+                    ? "Previous prescription discontinued. New prescription is blank — add medicines below."
                     : "No active prescription — proceed to prescribe below."}
                 </p>
               </div>
@@ -435,8 +441,7 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
                     Existing prescription remains active
                   </p>
                   <p className="text-[11px] text-emerald-600 mt-0.5">
-                    New prescription below has been pre-filled with the current medicines.
-                    Adjust as needed before saving.
+                    New prescription below is blank. Add medicines manually before saving.
                   </p>
                 </div>
               </div>
@@ -511,17 +516,26 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
                       placeholder="e.g. Acute pharyngitis"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">
-                      Clinical Notes
-                    </label>
-                    <input
-                      className={inp}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Additional notes…"
-                    />
-                  </div>
+
+                  {hasActiveCarePlan ? (
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">
+                        Clinical Notes
+                      </label>
+                      <input
+                        className={inp}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Additional notes…"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-xs italic text-slate-400">
+                        Clinical notes are available for patients with an active care plan.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

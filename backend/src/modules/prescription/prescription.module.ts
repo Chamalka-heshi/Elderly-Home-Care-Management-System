@@ -7,6 +7,7 @@ import { PrescriptionsController } from './prescription.controller';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { Booking } from '../bookings/entities/booking.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { MailModule } from '../mail/mail.module';
 
@@ -18,6 +19,7 @@ import { MailModule } from '../mail/mail.module';
       Doctor,
       FamilyMember,
       Patient,
+      Booking,
       Appointment,
     ]),
     MailModule,
