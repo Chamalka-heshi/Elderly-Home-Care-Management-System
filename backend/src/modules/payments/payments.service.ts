@@ -42,6 +42,7 @@ export interface PayHereCheckoutResponse {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   items: string;
   address: string;
   city: string;
@@ -65,14 +66,40 @@ export class PaymentsService {
   ) { }
 
   private getPayHereConfig() {
+    const merchantSecret = (
+      this.configService.get<string>('app.payhere.merchantSecret') ?? ''
+    ).trim();
+
     return {
-      merchantId: this.configService.get<string>('app.payhere.merchantId') ?? '',
-      merchantSecret:
-        this.configService.get<string>('app.payhere.merchantSecret') ?? '',
-      notifyUrl: this.configService.get<string>('app.payhere.notifyUrl') ?? '',
-      returnUrl: this.configService.get<string>('app.payhere.returnUrl') ?? '',
-      cancelUrl: this.configService.get<string>('app.payhere.cancelUrl') ?? '',
+      merchantId: (
+        this.configService.get<string>('app.payhere.merchantId') ?? ''
+      ).trim(),
+      merchantSecret: this.resolvePayHereMerchantSecret(merchantSecret),
+      notifyUrl: (
+        this.configService.get<string>('app.payhere.notifyUrl') ?? ''
+      ).trim(),
+      returnUrl: (
+        this.configService.get<string>('app.payhere.returnUrl') ?? ''
+      ).trim(),
+      cancelUrl: (
+        this.configService.get<string>('app.payhere.cancelUrl') ?? ''
+      ).trim(),
     };
+  }
+
+  /** Accept plain numeric or Base64-encoded secret from PayHere dashboard. */
+  private resolvePayHereMerchantSecret(secret: string): string {
+    if (!secret) return secret;
+    if (/^\d+$/.test(secret)) return secret;
+    if (/^[A-Za-z0-9+/]+=*$/.test(secret)) {
+      try {
+        const decoded = Buffer.from(secret, 'base64').toString('utf8').trim();
+        if (/^\d+$/.test(decoded)) return decoded;
+      } catch {
+        return secret;
+      }
+    }
+    return secret;
   }
 
   private ensurePayHereConfigured(): void {
@@ -105,17 +132,13 @@ export class PaymentsService {
   private generatePayHereCheckoutHash(
     merchantId: string,
     orderId: string,
-    amount: number,
+    formattedAmount: string,
     currency: string,
     merchantSecret: string,
   ): string {
     const secretHash = this.hashMerchantSecret(merchantSecret);
     const payload =
-      merchantId +
-      orderId +
-      this.formatPayHereAmount(amount) +
-      currency +
-      secretHash;
+      merchantId + orderId + formattedAmount + currency + secretHash;
     return crypto.createHash('md5').update(payload).digest('hex').toUpperCase();
   }
 
@@ -392,7 +415,7 @@ export class PaymentsService {
     const hash = this.generatePayHereCheckoutHash(
       payhere.merchantId,
       saved.id,
-      amount,
+      formattedAmount,
       currency,
       payhere.merchantSecret,
     );
@@ -400,6 +423,9 @@ export class PaymentsService {
     const { firstName, lastName } = this.splitFullName(
       familyMember.user.fullName,
     );
+    const phone =
+      familyMember.user.contactNumber?.replace(/\D/g, '').slice(0, 15) ||
+      '0770000000';
 
     return {
       merchant_id: payhere.merchantId,
@@ -413,6 +439,7 @@ export class PaymentsService {
       first_name: firstName,
       last_name: lastName,
       email: familyMember.user.email,
+      phone,
       items,
       address,
       city,
