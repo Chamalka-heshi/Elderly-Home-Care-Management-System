@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
 
 import {
   Prescription,
@@ -273,12 +273,37 @@ export class PrescriptionService {
     return { data, total, page, limit };
   }
 
+  //Fetches all active prescriptions for patients registered to a care plan for caregiver administration
+  async findActiveForCaregiver(): Promise<Prescription[]> {
+    await this.autoExpireActive();
+
+    const patientsWithPlan = await this.patientRepo.find({
+      where: { paymentPlan: Not(IsNull()) },
+      select: ['id'],
+    });
+
+    if (!patientsWithPlan.length) return [];
+    const patientIds = patientsWithPlan.map((p) => p.id);
+
+    return this.repo
+      .createQueryBuilder('rx')
+      .leftJoinAndSelect('rx.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'doctorUser')
+      .where('rx.status = :status', { status: 'active' })
+      .andWhere('rx.patientId IN (:...patientIds)', { patientIds })
+      .orderBy('rx.createdAt', 'DESC')
+      .getMany();
+  }
+
   //Returns all prescriptions for a given patient to assist clinical professionals in treatment planning
   async findForPatient(
     patientId: string,
     userId: string,
+    role?: string,
   ): Promise<Prescription[]> {
-    await this.resolveDoctorId(userId);
+    if (!role || role === 'doctor') {
+      await this.resolveDoctorId(userId);
+    }
     await this.autoExpireActive();
     return this.repo.find({
       where: { patientId },

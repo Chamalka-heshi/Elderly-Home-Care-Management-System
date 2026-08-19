@@ -45,7 +45,7 @@ describe('PrescriptionService', () => {
 
   const mockDoctorRepo = { findOne: jest.fn() };
   const mockFamilyMemberRepo = { findOne: jest.fn() };
-  const mockPatientRepo = { findOne: jest.fn() };
+  const mockPatientRepo = { findOne: jest.fn(), find: jest.fn() };
   const mockBookingRepo = { find: jest.fn(), findOne: jest.fn() };
   const mockAppointmentRepo = { findOne: jest.fn(), update: jest.fn() };
   const mockMailService = { sendPrescriptionNotification: jest.fn() };
@@ -78,7 +78,7 @@ describe('PrescriptionService', () => {
 
     Object.assign(mockDoctorRepo, { findOne: jest.fn() });
     Object.assign(mockFamilyMemberRepo, { findOne: jest.fn() });
-    Object.assign(mockPatientRepo, { findOne: jest.fn() });
+    Object.assign(mockPatientRepo, { findOne: jest.fn(), find: jest.fn() });
     Object.assign(mockBookingRepo, { find: jest.fn(), findOne: jest.fn() });
     Object.assign(mockAppointmentRepo, {
       findOne: jest.fn(),
@@ -242,19 +242,45 @@ describe('PrescriptionService', () => {
     });
   });
 
+  // ─── findActiveForCaregiver ───────────────────────────────────────────────
+  describe('findActiveForCaregiver', () => {
+    it('should return active prescriptions for patients with active care plan', async () => {
+      mockPatientRepo.find = jest.fn().mockResolvedValue([{ id: 'p1' }]);
+      mockQueryBuilder.getMany.mockResolvedValue([{ id: 'rx1', status: 'active' }]);
+
+      const result = await service.findActiveForCaregiver();
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('rx1');
+    });
+
+    it('should return empty array when no patients have a care plan', async () => {
+      mockPatientRepo.find = jest.fn().mockResolvedValue([]);
+      const result = await service.findActiveForCaregiver();
+      expect(result).toEqual([]);
+    });
+  });
+
   // ─── findForPatient ───────────────────────────────────────────────────────
   describe('findForPatient', () => {
     it('should return prescriptions for a patient when doctor is authorized', async () => {
       mockDoctorRepo.findOne.mockResolvedValue({ id: 'd1' });
       mockPrescriptionRepo.find.mockResolvedValue([{ id: 'rx1' }]);
 
-      const result = await service.findForPatient('p1', 'u1');
+      const result = await service.findForPatient('p1', 'u1', 'doctor');
       expect(result).toHaveLength(1);
+    });
+
+    it('should return prescriptions for caregiver without doctor lookup', async () => {
+      mockPrescriptionRepo.find.mockResolvedValue([{ id: 'rx1' }]);
+
+      const result = await service.findForPatient('p1', 'u1', 'caregiver');
+      expect(result).toHaveLength(1);
+      expect(mockDoctorRepo.findOne).not.toHaveBeenCalled();
     });
 
     it('should throw when doctor is not found', async () => {
       mockDoctorRepo.findOne.mockResolvedValue(null);
-      await expect(service.findForPatient('p1', 'u1')).rejects.toThrow(
+      await expect(service.findForPatient('p1', 'u1', 'doctor')).rejects.toThrow(
         ForbiddenException,
       );
     });
