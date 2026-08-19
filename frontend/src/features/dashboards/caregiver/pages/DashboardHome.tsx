@@ -149,8 +149,11 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
 
   // ── Derived stats ──
   const today = todayLocal();
-  const pendingMeds   = medLogs.filter((m) => m.status === "Pending" && m.scheduledDate === today).length;
-  const administeredMeds = medLogs.filter((m) => m.status === "Administered" && m.scheduledDate === today).length;
+  const isTodayLog = (m: MedicationLog) =>
+    !m.scheduledDate || m.scheduledDate === today || (m.createdAt && m.createdAt.slice(0, 10) === today);
+
+  const pendingMeds   = medLogs.filter((m) => m.status === "Pending" && isTodayLog(m)).length;
+  const administeredMeds = medLogs.filter((m) => m.status === "Administered" && isTodayLog(m)).length;
   const criticalVitals = vitals.filter((v) => v.status === "Critical").length;
   const warningVitals  = vitals.filter((v) => v.status === "Warning").length;
 
@@ -389,7 +392,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
       </div>
 
       {/* ── Recent Medication Logs ────────────────────────────────────────── */}
-      {medLogs.filter(m => m.scheduledDate === today).length > 0 && (
+      {medLogs.filter(isTodayLog).length > 0 && (
         <div className="rounded-3xl border border-white/10 bg-white/70 shadow-[0_20px_60px_rgba(2,6,23,0.10)] backdrop-blur-xl overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
             <div>
@@ -402,7 +405,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
             </button>
           </div>
           <div className="divide-y divide-slate-100">
-            {medLogs.filter(m => m.scheduledDate === today).slice(0, 5).map((m) => (
+            {medLogs.filter(isTodayLog).slice(0, 5).map((m) => (
               <div key={m.id} className="flex items-center justify-between gap-4 px-6 py-4 transition hover:bg-slate-50/60">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -410,7 +413,7 @@ const DashboardHome: React.FC<Props> = ({ onNavigate }) => {
                     <span className="text-xs text-slate-500">{m.medicationName}</span>
                     {m.dosage && <span className="text-xs text-slate-400">· {m.dosage}</span>}
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-500">{m.scheduledTime ? `Scheduled: ${m.scheduledTime}` : "No time set"}{m.notes ? ` · ${m.notes}` : ""}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{m.scheduledTime ? `Scheduled: ${m.scheduledTime}` : (m.frequency ?? "Daily")}{m.notes ? ` · ${m.notes}` : ""}</p>
                 </div>
                 <Badge tone={m.status === "Administered" ? "emerald" : m.status === "Pending" ? "amber" : m.status === "Missed" ? "red" : "slate"}>
                   {m.status}
