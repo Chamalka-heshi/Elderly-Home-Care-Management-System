@@ -25,17 +25,31 @@ interface ReplyEmailOpts {
   systemEmail: string;
 }
 
+// Structured detail block for a single prescription, used by the email service.
+interface PrescriptionDetail {
+  id?: string;
+  issuedDate: string;
+  validUntil?: string;
+  diagnosis?: string;
+  notes?: string;
+  medicines: MedicineItem[];
+  status?: string;
+}
+
+// Action-aware prescription email options.
+// Each action renders a distinct email so the patient and family always understand what changed.
 interface PrescriptionEmailOpts {
   familyMemberName: string;
   patientName: string;
   doctorName: string;
-  prescriptions: {
-    issuedDate: string;
-    validUntil?: string;
-    diagnosis?: string;
-    notes?: string;
-    medicines: MedicineItem[];
-  }[];
+  /** The clinical action the doctor performed */
+  action: 'NEW' | 'CONTINUED' | 'CANCELLED_AND_REPLACED';
+  /** Present for NEW and CANCELLED_AND_REPLACED */
+  newPrescription?: PrescriptionDetail;
+  /** Present for CONTINUED */
+  continuedPrescription?: PrescriptionDetail;
+  /** Present for CANCELLED_AND_REPLACED */
+  cancelledPrescription?: PrescriptionDetail;
 }
 
 interface LoginNotificationOpts {
@@ -501,82 +515,133 @@ export class MailService implements OnModuleInit {
     );
   }
 
-  // Formats a detailed clinical instruction layout for clear presentation to family members
+  // Formats a detailed clinical instruction layout for clear presentation to family members.
+  // The layout varies based on the doctor's action (NEW / CONTINUED / CANCELLED_AND_REPLACED).
   private buildPrescriptionHtml(opts: PrescriptionEmailOpts): string {
-    const { familyMemberName, patientName, doctorName, prescriptions } = opts;
+    const { familyMemberName, patientName, doctorName, action } = opts;
     const year = new Date().getFullYear();
 
-    const prescriptionBlocks = prescriptions
-      .map((p, index) => {
-        const medicineRows = p.medicines
-          .map(
-            (m) => `
-            <tr>
-              <td style="padding:10px 12px;font-size:14px;color:#1a2332;font-weight:500;border-bottom:1px solid #eaeef2;">${m.medicineName}</td>
-              <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.dosage}</td>
-              <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.frequency}</td>
-              <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
-              <td style="padding:10px 12px;font-size:13px;color:#5a6a7a;border-bottom:1px solid #eaeef2;">${m.instructions ?? '—'}</td>
-            </tr>`,
-          )
-          .join('');
+    // ── Shared helper: render a single prescription's detail card ────────────────
+    const rxDetailCard = (rx: PrescriptionDetail, headerColor: string, headerLabel: string, statusBadge?: string): string => {
+      const medicineRows = rx.medicines
+        .map(
+          (m) => `
+          <tr>
+            <td style="padding:10px 12px;font-size:14px;color:#1a2332;font-weight:500;border-bottom:1px solid #eaeef2;">${m.medicineName}</td>
+            <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.dosage}</td>
+            <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.frequency}</td>
+            <td style="padding:10px 12px;font-size:14px;color:#3a4a5c;border-bottom:1px solid #eaeef2;">${m.durationDays} day${m.durationDays !== 1 ? 's' : ''}</td>
+            <td style="padding:10px 12px;font-size:13px;color:#5a6a7a;border-bottom:1px solid #eaeef2;">${m.instructions ?? '—'}</td>
+          </tr>`,
+        )
+        .join('');
 
-        const metaRows: string[] = [];
+      const metaRows: string[] = [];
+      if (rx.id) {
         metaRows.push(`<tr>
-          <td style="${DL}">Date Issued</td>
-          <td style="${DV}">${p.issuedDate}</td>
+          <td style="${DL}">Prescription ID</td>
+          <td style="${DV}">${rx.id.substring(0, 8).toUpperCase()}…</td>
         </tr>`);
-        if (p.validUntil) {
-          metaRows.push(`<tr>
-            <td style="${DL}">Valid Until</td>
-            <td style="${DV}">${p.validUntil}</td>
-          </tr>`);
-        }
-        if (p.diagnosis) {
-          metaRows.push(`<tr>
-            <td style="${DL}">Diagnosis</td>
-            <td style="${DV}">${p.diagnosis}</td>
-          </tr>`);
-        }
-        if (p.notes) {
-          metaRows.push(`<tr>
-            <td style="${DL_LAST}">Doctor's Notes</td>
-            <td style="${DV_LAST}">${p.notes.replace(/\n/g, '<br/>')}</td>
-          </tr>`);
-        }
+      }
+      metaRows.push(`<tr>
+        <td style="${DL}">Date Issued</td>
+        <td style="${DV}">${rx.issuedDate}</td>
+      </tr>`);
+      if (rx.validUntil) {
+        metaRows.push(`<tr>
+          <td style="${DL}">Valid Until</td>
+          <td style="${DV}">${rx.validUntil}</td>
+        </tr>`);
+      }
+      if (rx.diagnosis) {
+        metaRows.push(`<tr>
+          <td style="${DL}">Diagnosis</td>
+          <td style="${DV}">${rx.diagnosis}</td>
+        </tr>`);
+      }
+      if (statusBadge) {
+        metaRows.push(`<tr>
+          <td style="${DL_LAST}">Status</td>
+          <td style="${DV_LAST}"><span style="font-weight:700;color:${headerColor};">${statusBadge}</span></td>
+        </tr>`);
+      }
+      if (rx.notes) {
+        metaRows.push(`<tr>
+          <td style="${DL_LAST}">Doctor's Notes</td>
+          <td style="${DV_LAST}">${rx.notes.replace(/\n/g, '<br/>')}</td>
+        </tr>`);
+      }
 
-        const heading = prescriptions.length > 1
-          ? `Prescription ${index + 1} of ${prescriptions.length}`
-          : 'Prescription Details';
+      return `
+        <!-- Section header -->
+        <div style="background:${headerColor};border-radius:8px 8px 0 0;padding:12px 20px;margin-top:24px;">
+          <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+                    color:#ffffff;">${headerLabel}</p>
+        </div>
+        <div style="border:2px solid ${headerColor};border-top:none;border-radius:0 0 8px 8px;
+                    padding:18px 20px 12px;margin-bottom:8px;">
+          <table style="${DT}">${metaRows.join('')}</table>
+        </div>
 
-        return `
-          <p style="${SL}">${heading}</p>
-          <div style="${CARD}">
-            <table style="${DT}">${metaRows.join('')}</table>
-          </div>
+        <p style="${SL}">Prescribed Medicines</p>
+        <table width="100%" cellpadding="0" cellspacing="0"
+               style="border:1px solid #e4e9ee;border-radius:8px;overflow:hidden;
+                      border-collapse:collapse;margin-bottom:8px;">
+          <thead>
+            <tr style="background:#f5f7f9;">
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Medicine</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Dosage</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Frequency</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Duration</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Instructions</th>
+            </tr>
+          </thead>
+          <tbody>${medicineRows}</tbody>
+        </table>`;
+    };
 
-          <p style="${SL}">Prescribed Medicines</p>
-          <table width="100%" cellpadding="0" cellspacing="0"
-                 style="border:1px solid #e4e9ee;border-radius:8px;overflow:hidden;
-                        border-collapse:collapse;margin-bottom:24px;">
-            <thead>
-              <tr style="background:#f5f7f9;">
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Medicine</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Dosage</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Frequency</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Duration</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8a97a8;">Instructions</th>
-              </tr>
-            </thead>
-            <tbody>${medicineRows}</tbody>
-          </table>`;
-      })
-      .join('');
+    // ── Per-action body content ───────────────────────────────────────────────────
+    let introParagraph = '';
+    let bodyContent = '';
+
+    if (action === 'CONTINUED' && opts.continuedPrescription) {
+      introParagraph = `Dr. <strong>${doctorName}</strong> has reviewed the existing prescription for <strong>${patientName}</strong> and decided to <strong>continue it</strong>. No new prescription has been issued.`;
+      bodyContent = rxDetailCard(
+        opts.continuedPrescription,
+        '#0d6b6b',
+        '✔  Continued Prescription',
+        'CONTINUED',
+      );
+    } else if (action === 'CANCELLED_AND_REPLACED' && opts.cancelledPrescription && opts.newPrescription) {
+      introParagraph = `Dr. <strong>${doctorName}</strong> has made prescription changes for <strong>${patientName}</strong>. The previous prescription has been <strong>cancelled</strong> and a <strong>new prescription</strong> has been issued in its place.`;
+      bodyContent =
+        rxDetailCard(
+          opts.cancelledPrescription,
+          '#c0392b',
+          '✕  Cancelled Prescription',
+          'CANCELLED',
+        ) +
+        // Visual downward-arrow transition between the two prescriptions
+        `<div style="text-align:center;padding:16px 0;font-size:24px;color:#8a97a8;" aria-hidden="true">&#8595;</div>` +
+        rxDetailCard(
+          opts.newPrescription,
+          '#0d6b6b',
+          '✔  New Prescription',
+          'ACTIVE',
+        );
+    } else {
+      // Default: NEW (also fallback for edge cases)
+      const rx = opts.newPrescription;
+      introParagraph = `Dr. <strong>${doctorName}</strong> has issued a <strong>new prescription</strong> for <strong>${patientName}</strong>. Please find the full details below.`;
+      bodyContent = rx
+        ? rxDetailCard(rx, '#0d6b6b', '✔  New Prescription', 'ACTIVE')
+        : '';
+    }
 
     return (
-      emailOpen(this.systemName, 'Prescription Update', `A prescription has been updated for ${patientName}.`) +
+      emailOpen(this.systemName, 'Prescription Update', `A prescription update has been made for ${patientName}.`) +
       `<p style="${P}">Dear <strong>${familyMemberName}</strong>,</p>
-      <p style="${P}">Dr. <strong>${doctorName}</strong> has issued or updated a prescription for <strong>${patientName}</strong>. Please find the full details below.</p>
+      <p style="${P}">${introParagraph}</p>
 
       <p style="${SL}">Patient Information</p>
       <div style="${CARD}">
@@ -592,7 +657,7 @@ export class MailService implements OnModuleInit {
         </table>
       </div>
 
-      ${prescriptionBlocks}
+      ${bodyContent}
 
       ${infoBox(`You can view all prescriptions for ${patientName} at any time by signing in to your <a href="${this.appUrl}" style="color:#0d6b6b;font-weight:600;text-decoration:none;">family member dashboard</a>. If you have any questions, please contact the care home team directly.`)}
 

@@ -8,9 +8,13 @@ import {
   IsNotEmpty,
   IsIn,
   IsDateString,
+  IsUUID,
   Min,
   Max,
 } from 'class-validator';
+
+// Describes the clinical action the doctor performed so the email can reflect the true event.
+export type PrescriptionEmailAction = 'NEW' | 'CONTINUED' | 'CANCELLED_AND_REPLACED';
 import { Type } from 'class-transformer';
 
 // Medicine DTO
@@ -77,6 +81,16 @@ export class CreatePrescriptionDto {
   @ValidateNested({ each: true })
   @Type(() => CreateMedicineDto)
   medicines: CreateMedicineDto[];
+
+  // Indicates what clinical action the doctor performed, used exclusively for tailoring the email notification.
+  @IsIn(['NEW', 'CONTINUED', 'CANCELLED_AND_REPLACED'])
+  @IsOptional()
+  action?: PrescriptionEmailAction;
+
+  // The UUID of the prescription that was cancelled or continued, used to load it for the email.
+  @IsUUID()
+  @IsOptional()
+  previousPrescriptionId?: string;
 }
 
 // Update Prescription DTO

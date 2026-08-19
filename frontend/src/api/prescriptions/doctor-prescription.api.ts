@@ -1,6 +1,8 @@
 import { apiFetch } from '../core/apiClient';
 
 // Shared types
+export type PrescriptionEmailAction = 'NEW' | 'CONTINUED' | 'CANCELLED_AND_REPLACED';
+
 export interface Medicine {
   medicineName: string;
   dosage: string;
@@ -19,6 +21,10 @@ export interface CreatePrescriptionPayload {
   issuedDate: string;
   validUntil?: string;
   medicines: Medicine[];
+  /** Tells the backend which clinical action the doctor performed — used solely for email content. */
+  action?: PrescriptionEmailAction;
+  /** The ID of the previous prescription (continued or discontinued) for email context. */
+  previousPrescriptionId?: string;
 }
 
 export interface Prescription {

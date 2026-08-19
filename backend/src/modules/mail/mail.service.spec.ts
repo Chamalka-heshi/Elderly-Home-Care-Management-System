@@ -158,28 +158,28 @@ describe('MailService', () => {
 
   // ─── sendPrescriptionNotification ────────────────────────────────────────
   describe('sendPrescriptionNotification', () => {
-    const opts = {
+    // Base opts using the new action-aware shape (action: 'NEW')
+    const baseOpts = {
       to: 'family@test.com',
       familyMemberName: 'Jane Doe',
       patientName: 'John Patient',
       doctorName: 'Dr. Smith',
-      prescriptions: [
-        {
-          issuedDate: '2024-01-01',
-          medicines: [
-            {
-              medicineName: 'Panadol',
-              dosage: '2',
-              frequency: 'bd',
-              durationDays: 3,
-            },
-          ],
-        },
-      ],
+      action: 'NEW' as const,
+      newPrescription: {
+        issuedDate: '2024-01-01',
+        medicines: [
+          {
+            medicineName: 'Panadol',
+            dosage: '2',
+            frequency: 'bd',
+            durationDays: 3,
+          },
+        ],
+      },
     };
 
     it('should send prescription notification with medicine details', async () => {
-      await service.sendPrescriptionNotification(opts);
+      await service.sendPrescriptionNotification(baseOpts);
       expect(mockTransporter.sendMail).toHaveBeenCalled();
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.to).toContain('family@test.com');
@@ -188,43 +188,85 @@ describe('MailService', () => {
     });
 
     it('should include doctor name in notification body', async () => {
-      await service.sendPrescriptionNotification(opts);
+      await service.sendPrescriptionNotification(baseOpts);
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.html).toContain('Dr. Smith');
     });
 
     it('should include patient name in notification body', async () => {
-      await service.sendPrescriptionNotification(opts);
+      await service.sendPrescriptionNotification(baseOpts);
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.html).toContain('John Patient');
     });
 
     it('should handle multiple medicines in the notification', async () => {
-      const multiMed = {
-        ...opts,
-        prescriptions: [
-          {
-            issuedDate: '2024-01-01',
-            medicines: [
-              {
-                medicineName: 'Panadol',
-                dosage: '2',
-                frequency: 'bd',
-                durationDays: 3,
-              },
-              {
-                medicineName: 'Amoxicillin',
-                dosage: '1',
-                frequency: 'tds',
-                durationDays: 7,
-              },
-            ],
-          },
-        ],
+      const multiMedOpts = {
+        ...baseOpts,
+        newPrescription: {
+          issuedDate: '2024-01-01',
+          medicines: [
+            {
+              medicineName: 'Panadol',
+              dosage: '2',
+              frequency: 'bd',
+              durationDays: 3,
+            },
+            {
+              medicineName: 'Amoxicillin',
+              dosage: '1',
+              frequency: 'tds',
+              durationDays: 7,
+            },
+          ],
+        },
       };
-      await service.sendPrescriptionNotification(multiMed);
+      await service.sendPrescriptionNotification(multiMedOpts);
       const mail = mockTransporter.sendMail.mock.calls[0][0];
       expect(mail.html).toContain('Amoxicillin');
+    });
+
+    it('should render CONTINUED action email with continued prescription label', async () => {
+      const continuedOpts = {
+        to: 'family@test.com',
+        familyMemberName: 'Jane Doe',
+        patientName: 'John Patient',
+        doctorName: 'Dr. Smith',
+        action: 'CONTINUED' as const,
+        continuedPrescription: {
+          issuedDate: '2024-01-01',
+          medicines: [{ medicineName: 'Aspirin', dosage: '100mg', frequency: 'Once daily', durationDays: 30 }],
+          status: 'active',
+        },
+      };
+      await service.sendPrescriptionNotification(continuedOpts);
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.html).toContain('CONTINUED');
+      expect(mail.html).toContain('Aspirin');
+    });
+
+    it('should render CANCELLED_AND_REPLACED email with both cancelled and new labels', async () => {
+      const replacedOpts = {
+        to: 'family@test.com',
+        familyMemberName: 'Jane Doe',
+        patientName: 'John Patient',
+        doctorName: 'Dr. Smith',
+        action: 'CANCELLED_AND_REPLACED' as const,
+        cancelledPrescription: {
+          issuedDate: '2024-01-01',
+          medicines: [{ medicineName: 'OldDrug', dosage: '5mg', frequency: 'Once daily', durationDays: 14 }],
+          status: 'discontinued',
+        },
+        newPrescription: {
+          issuedDate: '2024-02-01',
+          medicines: [{ medicineName: 'NewDrug', dosage: '10mg', frequency: 'Twice daily', durationDays: 7 }],
+          status: 'active',
+        },
+      };
+      await service.sendPrescriptionNotification(replacedOpts);
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.html).toContain('CANCELLED');
+      expect(mail.html).toContain('OldDrug');
+      expect(mail.html).toContain('NewDrug');
     });
   });
 });

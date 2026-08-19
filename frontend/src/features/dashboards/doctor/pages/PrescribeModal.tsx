@@ -6,6 +6,7 @@ import {
   getPatientPrescriptions,
   type CreatePrescriptionPayload,
   type Medicine,
+  type PrescriptionEmailAction,
   type Prescription as RxRecord,
 } from "../../../../api/prescriptions/doctor-prescription.api";
 
@@ -180,6 +181,10 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
   const [discontinueErr, setDiscontinueErr] = useState<string | null>(null);
   const [carriedForward, setCarriedForward] = useState(false);
 
+  // Tracks what the doctor chose to do with the previous prescription for email context.
+  const [prescriptionAction, setPrescriptionAction] = useState<PrescriptionEmailAction>('NEW');
+  const [previousRxId, setPreviousRxId] = useState<string | null>(null);
+
   // Loads any active prescriptions the patient already has
   useEffect(() => {
     let cancelled = false;
@@ -206,6 +211,9 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
     setDiscontinueErr(null);
     try {
       await discontinuePrescription(rxId);
+      // Record: doctor cancelled the old Rx and will create a new one
+      setPrescriptionAction('CANCELLED_AND_REPLACED');
+      setPreviousRxId(rxId);
       setActiveRx(null);
       setCarriedForward(false);
     } catch (e: any) {
@@ -216,7 +224,10 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
   };
 
   // Open a fresh new prescription form. Do NOT copy medicines from the existing prescription.
-  const handleContinueAndAdd = (_rx: RxRecord) => {
+  const handleContinueAndAdd = (rx: RxRecord) => {
+    // Record: doctor kept the old Rx active and is adding a supplemental new one
+    setPrescriptionAction('CONTINUED');
+    setPreviousRxId(rx.id);
     setCarriedForward(true);
     // Ensure the new prescription starts blank — doctor must add medicines manually.
     setDiagnosis("");
@@ -319,6 +330,9 @@ export const PrescribeModal: React.FC<PrescribeModalProps> = ({
           ? { instructions: m.instructions.trim() }
           : { instructions: undefined }),
       })),
+      // Tell the backend which action the doctor performed so the email is accurate.
+      action: prescriptionAction,
+      ...(previousRxId && { previousPrescriptionId: previousRxId }),
     };
 
     try {

@@ -20,7 +20,7 @@ import {
   Appointment,
   AppointmentStatus,
 } from '../appointments/entities/appointment.entity';
-import { CreatePrescriptionDto } from './dto/prescription.dto';
+import { CreatePrescriptionDto, type PrescriptionEmailAction } from './dto/prescription.dto';
 import { MailService } from '../mail/mail.service';
 import { toColomboDateKey } from '../../common/utils/colombo-time';
 
@@ -201,11 +201,34 @@ export class PrescriptionService {
       });
     }
 
-    this.sendPrescriptionEmail(saved, userId).catch((err) => {
-      this.logger.error(
-        `Failed to send prescription email for prescription ${saved.id}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    });
+    // Determine the email action — default to 'NEW' when the frontend did not send one.
+    const emailAction: PrescriptionEmailAction = dto.action ?? 'NEW';
+
+    // For CANCELLED_AND_REPLACED we need the old (now-discontinued) prescription.
+    let cancelledRx: Prescription | null = null;
+    if (emailAction === 'CANCELLED_AND_REPLACED' && dto.previousPrescriptionId) {
+      cancelledRx = await this.repo.findOne({
+        where: { id: dto.previousPrescriptionId },
+      });
+    }
+
+    // For CONTINUED we need the still-active prescription that the doctor chose to keep.
+    let continuedRx: Prescription | null = null;
+    if (emailAction === 'CONTINUED' && dto.previousPrescriptionId) {
+      continuedRx = await this.repo.findOne({
+        where: { id: dto.previousPrescriptionId },
+      });
+    }
+
+    this.sendPrescriptionEmail(saved, userId, emailAction, cancelledRx, continuedRx).catch(
+      (err) => {
+        this.logger.error(
+          `Failed to send prescription email for prescription ${saved.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      },
+    );
 
     return saved;
   }
@@ -357,6 +380,9 @@ export class PrescriptionService {
   private async sendPrescriptionEmail(
     prescription: Prescription,
     doctorUserId: string,
+    action: PrescriptionEmailAction = 'NEW',
+    cancelledRx: Prescription | null = null,
+    continuedRx: Prescription | null = null,
   ): Promise<void> {
     if (!prescription.patientId) return;
 
@@ -375,27 +401,53 @@ export class PrescriptionService {
     const { fullName: familyMemberName, email } = patient.familyMember.user;
     const doctorName = await this.resolveDoctorName(doctorUserId);
 
-    const activePrescriptions = await this.repo.find({
-      where: { patientId: prescription.patientId, status: 'active' },
-      order: { createdAt: 'DESC' },
+    // Helper to map a Prescription entity to the plain DTO the mail service expects.
+    const toDetail = (rx: Prescription) => ({
+      id: rx.id,
+      issuedDate: rx.issuedDate,
+      validUntil: rx.validUntil ?? undefined,
+      diagnosis: rx.diagnosis ?? undefined,
+      notes: rx.notes ?? undefined,
+      medicines: rx.medicines,
+      status: rx.status ?? 'active',
     });
 
-    await this.mailService.sendPrescriptionNotification({
-      to: email,
-      familyMemberName,
-      patientName: prescription.patientName,
-      doctorName,
-      prescriptions: activePrescriptions.map((rx) => ({
-        issuedDate: rx.issuedDate,
-        validUntil: rx.validUntil ?? undefined,
-        diagnosis: rx.diagnosis ?? undefined,
-        notes: rx.notes ?? undefined,
-        medicines: rx.medicines,
-      })),
-    });
+    if (action === 'CONTINUED') {
+      // Email shows the kept/continued prescription (which may be the previousRx or the newly created one).
+      const rxForEmail = continuedRx ?? prescription;
+      await this.mailService.sendPrescriptionNotification({
+        to: email,
+        familyMemberName,
+        patientName: prescription.patientName,
+        doctorName,
+        action: 'CONTINUED',
+        continuedPrescription: toDetail(rxForEmail),
+      });
+    } else if (action === 'CANCELLED_AND_REPLACED' && cancelledRx) {
+      // Email clearly shows which Rx was cancelled and which is the new one.
+      await this.mailService.sendPrescriptionNotification({
+        to: email,
+        familyMemberName,
+        patientName: prescription.patientName,
+        doctorName,
+        action: 'CANCELLED_AND_REPLACED',
+        cancelledPrescription: toDetail(cancelledRx),
+        newPrescription: toDetail(prescription),
+      });
+    } else {
+      // Default: NEW — send only the newly created prescription.
+      await this.mailService.sendPrescriptionNotification({
+        to: email,
+        familyMemberName,
+        patientName: prescription.patientName,
+        doctorName,
+        action: 'NEW',
+        newPrescription: toDetail(prescription),
+      });
+    }
 
     this.logger.log(
-      `Prescription email sent → ${email} (family member of patient ${prescription.patientName})`,
+      `Prescription email (${action}) sent → ${email} (family member of patient ${prescription.patientName})`,
     );
   }
 }
