@@ -180,7 +180,13 @@ export const selectPaymentPlan = (patientId: string, plan: string) =>
     body: JSON.stringify({ plan }),
   });
 
-// Active Prescriptions
+// Active Prescriptions & Care-Plan Patients
+// Get patients registered to care plans who have active doctor prescriptions
+export const getAssignedPatientsWithPrescriptions = () =>
+  apiFetch<{ patients: Patient[]; prescriptions: CaregiverPrescription[] }>(
+    '/patients/assigned-with-prescriptions',
+  );
+
 // Get all active doctor prescriptions for patients registered to a care plan
 export const getActivePrescriptionsForCaregiver = () =>
   apiFetch<CaregiverPrescription[]>('/prescriptions/active-assigned');

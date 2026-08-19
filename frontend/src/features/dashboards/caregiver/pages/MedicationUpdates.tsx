@@ -2,11 +2,10 @@ import React, { useEffect, useState, useMemo } from "react";
 import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
 import {
-  getAssignedPatients,
+  getAssignedPatientsWithPrescriptions,
   getAllMedicationLogs,
   createMedicationLog,
   updateMedicationLog,
-  getActivePrescriptionsForCaregiver,
   type MedicationLog,
   type CaregiverPrescription,
   type PrescribedMedicine,
@@ -15,7 +14,6 @@ import type { Patient } from "../../../../api/patients/patient.types";
 import {
   IconPill,
   IconCheck,
-  IconClock,
   IconAlertCircle,
   IconSearch,
   IconPlus,
@@ -24,14 +22,13 @@ import {
   IconStethoscope,
 } from "../../common/icons";
 
-type MedicationStatus = "Administered" | "Pending" | "Missed";
-type FilterTab = "All" | "Pending" | "Administered" | "Missed";
+type MedicationStatus = "Administered" | "Missed" | "Pending";
+type FilterTab = "All" | "Administered" | "Missed";
 
 const statusTone = (s: string) =>
   s === "Administered" ? ("emerald" as const)
-  : s === "Pending"    ? ("amber"   as const)
   : s === "Missed"     ? ("red"     as const)
-  :                      ("slate"   as const);
+  :                      ("amber"   as const);
 
 interface ActivePrescribedMedication {
   key: string;
@@ -57,6 +54,7 @@ interface NewLogForm {
   dosage: string;
   frequency: string;
   notes: string;
+  status: "Administered" | "Missed";
 }
 
 const emptyForm = (): NewLogForm => ({
@@ -65,19 +63,22 @@ const emptyForm = (): NewLogForm => ({
   dosage: "",
   frequency: "",
   notes: "",
+  status: "Administered",
 });
 
 const MedicationUpdates: React.FC = () => {
+  // Patients who have registered to a care plan AND have active prescriptions from a doctor
   const [patients, setPatients] = useState<Patient[]>([]);
   const [prescriptions, setPrescriptions] = useState<CaregiverPrescription[]>([]);
   const [logs, setLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingStatusKey, setSavingStatusKey] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savingForm, setSavingForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  // Filters & Tabs
+  // Filters
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<FilterTab>("All");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -86,19 +87,20 @@ const MedicationUpdates: React.FC = () => {
   const [form, setForm] = useState<NewLogForm>(emptyForm());
   const [customMedicine, setCustomMedicine] = useState(false);
 
-  // Fetch all initial data
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [patientsRes, prescriptionsRes, logsRes] = await Promise.all([
-        getAssignedPatients(),
-        getActivePrescriptionsForCaregiver(),
-        getAllMedicationLogs(),
+      const [res, logsRes] = await Promise.all([
+        getAssignedPatientsWithPrescriptions().catch(() => ({
+          patients: [],
+          prescriptions: [],
+        })),
+        getAllMedicationLogs().catch(() => []),
       ]);
 
-      setPatients(patientsRes.patients ?? []);
-      setPrescriptions(prescriptionsRes ?? []);
+      setPatients(res.patients ?? []);
+      setPrescriptions(res.prescriptions ?? []);
       setLogs(logsRes ?? []);
     } catch (err: any) {
       setError(err.message ?? "Failed to load medication updates.");
@@ -116,7 +118,7 @@ const MedicationUpdates: React.FC = () => {
     setTimeout(() => setSuccessToast(null), 3500);
   };
 
-  // Map active prescriptions to structured list of prescribed medicines
+  // Structured list of active prescribed medications from doctor
   const activeMedications = useMemo<ActivePrescribedMedication[]>(() => {
     const list: ActivePrescribedMedication[] = [];
 
@@ -130,7 +132,7 @@ const MedicationUpdates: React.FC = () => {
       const doctorSpecialization = rx.doctor?.specialization;
 
       (rx.medicines ?? []).forEach((med: PrescribedMedicine, idx: number) => {
-        // Find most recent log for this patient and medication
+        // Match with latest medication log for this patient and medication
         const matchingLog = logs.find(
           (l) =>
             l.patientId === rx.patientId &&
@@ -167,19 +169,22 @@ const MedicationUpdates: React.FC = () => {
     return list;
   }, [prescriptions, patients, logs]);
 
-  // Counts for summary cards
+  // Counts for summary metrics
   const counts = useMemo(() => {
     return {
       Administered: activeMedications.filter((m) => m.status === "Administered").length,
-      Pending: activeMedications.filter((m) => m.status === "Pending").length,
       Missed: activeMedications.filter((m) => m.status === "Missed").length,
+      TotalPrescriptions: activeMedications.length,
     };
   }, [activeMedications]);
 
-  // Filtered active medications based on search and tab
+  // Filtered active medications
   const filteredActiveMedications = useMemo(() => {
     return activeMedications.filter((item) => {
-      const matchesTab = activeTab === "All" || item.status === activeTab;
+      const matchesPatient =
+        selectedPatientId === "all" || item.patientId === selectedPatientId;
+      const matchesTab =
+        activeTab === "All" || item.status === activeTab;
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -188,48 +193,50 @@ const MedicationUpdates: React.FC = () => {
         item.doctorName.toLowerCase().includes(q) ||
         (item.diagnosis ?? "").toLowerCase().includes(q);
 
-      return matchesTab && matchesSearch;
+      return matchesPatient && matchesTab && matchesSearch;
     });
-  }, [activeMedications, activeTab, searchQuery]);
+  }, [activeMedications, selectedPatientId, activeTab, searchQuery]);
 
-  // Handle status toggle for a prescribed medication
-  const handleUpdateStatus = async (
+  // Mark medication as Administered or Missed
+  const handleMarkStatus = async (
     item: ActivePrescribedMedication,
-    newStatus: MedicationStatus
+    targetStatus: "Administered" | "Missed"
   ) => {
-    if (item.status === newStatus) return;
-
-    setSavingStatusKey(item.key);
+    setSavingKey(item.key);
     setError(null);
     try {
       if (item.logId) {
-        // Update existing log
-        const updated = await updateMedicationLog(item.logId, { status: newStatus });
+        const updated = await updateMedicationLog(item.logId, { status: targetStatus });
         setLogs((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
       } else {
-        // Create new log record
         const created = await createMedicationLog({
           patientId: item.patientId,
           medicationName: item.medicineName,
           dosage: item.dosage,
           frequency: item.frequency,
-          status: newStatus,
+          status: targetStatus,
           notes: item.instructions || undefined,
         });
         setLogs((prev) => [created, ...prev]);
       }
 
-      showToast(`Updated "${item.medicineName}" to ${newStatus} for ${item.patientName}`);
+      showToast(
+        `Marked "${item.medicineName}" as ${targetStatus} for ${item.patientName}`
+      );
     } catch (err: any) {
       setError(err.message ?? "Failed to update medication status.");
     } finally {
-      setSavingStatusKey(null);
+      setSavingKey(null);
     }
   };
 
-  // Open & Close Add Medication Log Modal
+  // Modal handlers
   const openModal = () => {
-    setForm(emptyForm());
+    const defaultPatientId = patients.length > 0 ? patients[0].id : "";
+    setForm({
+      ...emptyForm(),
+      patientId: defaultPatientId,
+    });
     setCustomMedicine(false);
     setShowModal(true);
   };
@@ -240,25 +247,22 @@ const MedicationUpdates: React.FC = () => {
     setCustomMedicine(false);
   };
 
-  // Available medicines for selected patient in modal
-  const selectedPatientPrescriptions = useMemo(() => {
+  // Medicines available for selected patient in modal
+  const availableMedicinesForModal = useMemo(() => {
     if (!form.patientId) return [];
-    return prescriptions.filter((p) => p.patientId === form.patientId);
-  }, [form.patientId, prescriptions]);
-
-  const availableMedicinesForPatient = useMemo(() => {
+    const patientRx = prescriptions.filter((p) => p.patientId === form.patientId);
     const meds: PrescribedMedicine[] = [];
-    selectedPatientPrescriptions.forEach((rx) => {
+    patientRx.forEach((rx) => {
       (rx.medicines ?? []).forEach((m) => {
-        if (!meds.some((existing) => existing.medicineName.toLowerCase() === m.medicineName.toLowerCase())) {
+        if (!meds.some((x) => x.medicineName.toLowerCase() === m.medicineName.toLowerCase())) {
           meds.push(m);
         }
       });
     });
     return meds;
-  }, [selectedPatientPrescriptions]);
+  }, [form.patientId, prescriptions]);
 
-  const handlePatientSelectChange = (pId: string) => {
+  const handlePatientSelectInModal = (pId: string) => {
     setForm((f) => ({
       ...f,
       patientId: pId,
@@ -269,7 +273,7 @@ const MedicationUpdates: React.FC = () => {
     setCustomMedicine(false);
   };
 
-  const handleMedicineSelectChange = (medName: string) => {
+  const handleMedicineSelectInModal = (medName: string) => {
     if (medName === "__CUSTOM__") {
       setCustomMedicine(true);
       setForm((f) => ({ ...f, medicationName: "", dosage: "", frequency: "" }));
@@ -277,7 +281,7 @@ const MedicationUpdates: React.FC = () => {
     }
 
     setCustomMedicine(false);
-    const found = availableMedicinesForPatient.find((m) => m.medicineName === medName);
+    const found = availableMedicinesForModal.find((m) => m.medicineName === medName);
     setForm((f) => ({
       ...f,
       medicationName: medName,
@@ -290,7 +294,7 @@ const MedicationUpdates: React.FC = () => {
   const handleCreateLog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.patientId) {
-      setError("Please select a patient.");
+      setError("Please select a patient with active prescriptions.");
       return;
     }
     if (!form.medicationName.trim()) {
@@ -307,12 +311,14 @@ const MedicationUpdates: React.FC = () => {
         dosage: form.dosage.trim() || undefined,
         frequency: form.frequency.trim() || undefined,
         notes: form.notes.trim() || undefined,
-        status: "Administered",
+        status: form.status,
       });
 
       setLogs((prev) => [created, ...prev]);
       closeModal();
-      showToast(`Medication "${form.medicationName.trim()}" logged successfully.`);
+      showToast(
+        `Medication "${form.medicationName.trim()}" logged as ${form.status}.`
+      );
     } catch (err: any) {
       setError(err.message ?? "Failed to save medication log.");
     } finally {
@@ -325,7 +331,7 @@ const MedicationUpdates: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* ── Header Toast ──────────────────────────────────────────────────── */}
+      {/* ── Toast ──────────────────────────────────────────────────────────── */}
       {successToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-emerald-600 px-5 py-3.5 text-sm font-semibold text-white shadow-2xl transition-all">
           <IconCheck className="h-5 w-5" />
@@ -333,77 +339,129 @@ const MedicationUpdates: React.FC = () => {
         </div>
       )}
 
-      {/* ── Summary Cards ─────────────────────────────────────────────────── */}
+      {/* ── Summary Metric Cards ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {(["Administered", "Pending", "Missed"] as MedicationStatus[]).map((st) => {
-          const isSelected = activeTab === st;
-          return (
-            <button
-              key={st}
-              onClick={() => setActiveTab((prev) => (prev === st ? "All" : st))}
-              className={[
-                "group relative overflow-hidden rounded-3xl border p-5 text-left transition duration-200",
-                isSelected
-                  ? st === "Administered"
-                    ? "border-emerald-400 bg-emerald-50/80 shadow-lg shadow-emerald-500/10 ring-2 ring-emerald-500/20"
-                    : st === "Pending"
-                    ? "border-amber-400 bg-amber-50/80 shadow-lg shadow-amber-500/10 ring-2 ring-amber-500/20"
-                    : "border-red-400 bg-red-50/80 shadow-lg shadow-red-500/10 ring-2 ring-red-500/20"
-                  : "border-slate-200/70 bg-white/80 backdrop-blur-xl hover:-translate-y-0.5 hover:shadow-md",
-              ].join(" ")}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  {st}
-                </span>
-                <Badge tone={statusTone(st)}>{st}</Badge>
-              </div>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">
-                {loading ? "…" : counts[st]}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {st === "Administered"
-                  ? "Prescribed medicines marked as administered"
-                  : st === "Pending"
-                  ? "Awaiting administration for today"
-                  : "Medications marked as missed"}
-              </p>
-            </button>
-          );
-        })}
+        {/* Total Active Prescriptions */}
+        <button
+          onClick={() => setActiveTab("All")}
+          className={[
+            "rounded-3xl border p-5 text-left transition duration-200",
+            activeTab === "All"
+              ? "border-emerald-400 bg-emerald-50/80 shadow-md ring-2 ring-emerald-500/20"
+              : "border-slate-200/70 bg-white/80 backdrop-blur-xl hover:shadow-md",
+          ].join(" ")}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Active Prescriptions
+            </span>
+            <Badge tone="slate">Total</Badge>
+          </div>
+          <p className="mt-2 text-3xl font-extrabold text-slate-900">
+            {loading ? "…" : counts.TotalPrescriptions}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Prescriptions for care-plan registered patients
+          </p>
+        </button>
+
+        {/* Administered */}
+        <button
+          onClick={() => setActiveTab((prev) => (prev === "Administered" ? "All" : "Administered"))}
+          className={[
+            "rounded-3xl border p-5 text-left transition duration-200",
+            activeTab === "Administered"
+              ? "border-emerald-400 bg-emerald-50/80 shadow-md ring-2 ring-emerald-500/20"
+              : "border-slate-200/70 bg-white/80 backdrop-blur-xl hover:shadow-md",
+          ].join(" ")}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Administered
+            </span>
+            <Badge tone="emerald">Administered</Badge>
+          </div>
+          <p className="mt-2 text-3xl font-extrabold text-slate-900">
+            {loading ? "…" : counts.Administered}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Medications successfully administered
+          </p>
+        </button>
+
+        {/* Missed */}
+        <button
+          onClick={() => setActiveTab((prev) => (prev === "Missed" ? "All" : "Missed"))}
+          className={[
+            "rounded-3xl border p-5 text-left transition duration-200",
+            activeTab === "Missed"
+              ? "border-red-400 bg-red-50/80 shadow-md ring-2 ring-red-500/20"
+              : "border-slate-200/70 bg-white/80 backdrop-blur-xl hover:shadow-md",
+          ].join(" ")}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700">
+              Missed
+            </span>
+            <Badge tone="red">Missed</Badge>
+          </div>
+          <p className="mt-2 text-3xl font-extrabold text-slate-900">
+            {loading ? "…" : counts.Missed}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Medications marked as missed or skipped
+          </p>
+        </button>
       </div>
 
-      {/* ── Toolbar: Search + Filter Tabs + Action Button ──────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-2">
-          {(["All", "Pending", "Administered", "Missed"] as FilterTab[]).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
+      {/* ── Toolbar: Patient Selector + Search + Add Button ───────────────── */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Select Patient Dropdown (ONLY patients with active prescriptions) */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-700 shrink-0">
+              Select Patient:
+            </label>
+            <select
+              value={selectedPatientId}
+              onChange={(e) => setSelectedPatientId(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
+            >
+              <option value="all">All Patients with Active Prescriptions ({patients.length})</option>
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.fullName} {p.paymentPlan ? `· ${p.paymentPlan} Plan` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50/70 p-1">
+            {(["All", "Administered", "Missed"] as FilterTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={[
-                  "rounded-2xl px-4 py-2 text-xs font-semibold transition",
-                  isActive
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                  "rounded-xl px-3.5 py-1.5 text-xs font-bold transition",
+                  activeTab === tab
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900",
                 ].join(" ")}
               >
                 {tab}
-                {tab !== "All" && !loading && ` (${counts[tab as MedicationStatus]})`}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Search bar */}
-          <div className="relative min-w-[240px] flex-1 sm:flex-initial">
+          {/* Search */}
+          <div className="relative min-w-[220px] flex-1 sm:flex-initial">
             <IconSearch className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search patient, medicine, doctor…"
+              placeholder="Search medication, doctor…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-xs text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
@@ -437,14 +495,14 @@ const MedicationUpdates: React.FC = () => {
         </div>
       )}
 
-      {/* ── SECTION 1: Active Doctor Prescriptions & Medication Updates ─────── */}
+      {/* ── SECTION 1: Active Doctor Prescriptions & Mark Administered / Missed ── */}
       <TableShell
-        title="Medication Updates & Prescriptions"
-        subtitle="Active doctor prescriptions for patients registered to a care plan. Mark medications as administered, pending, or missed."
+        title="Medication Updates"
+        subtitle="Active doctor prescriptions for patients on a care plan. Mark medications as administered or missed."
       >
         {loading ? (
           <div className="py-16 text-center text-sm text-slate-400">
-            Fetching active prescriptions and care plan patients…
+            Loading active prescriptions for registered patients…
           </div>
         ) : filteredActiveMedications.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
@@ -452,27 +510,27 @@ const MedicationUpdates: React.FC = () => {
               <IconPill className="h-6 w-6" />
             </div>
             <p className="text-sm font-bold text-slate-800">
-              {activeMedications.length === 0
-                ? "No active prescriptions found for registered care plan patients."
-                : `No ${activeTab.toLowerCase()} medications match your filter.`}
+              {patients.length === 0
+                ? "No patients with active prescriptions found."
+                : "No medications match the current filter."}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {activeMedications.length === 0
-                ? "Prescriptions issued by doctors will automatically appear here once patients are subscribed to a care plan."
-                : "Try switching tabs or adjusting your search keywords."}
+              {patients.length === 0
+                ? "Only patients who have registered to a care plan and received active prescriptions from a doctor will appear here."
+                : "Try selecting a different patient or clearing filters."}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {filteredActiveMedications.map((item) => {
-              const isUpdating = savingStatusKey === item.key;
+              const isUpdating = savingKey === item.key;
               return (
                 <div
                   key={item.key}
                   className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md"
                 >
                   <div className="space-y-3">
-                    {/* Patient & Care Plan Header */}
+                    {/* Patient & Doctor Header */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-xs font-bold text-emerald-700">
@@ -490,7 +548,6 @@ const MedicationUpdates: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Doctor Info */}
                       <div className="text-right">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
                           <IconStethoscope className="h-3.5 w-3.5 text-blue-600" />
@@ -504,7 +561,7 @@ const MedicationUpdates: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Medication details */}
+                    {/* Medicine details */}
                     <div className="rounded-2xl bg-slate-50 p-3.5 space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -524,7 +581,7 @@ const MedicationUpdates: React.FC = () => {
                         </span>
                         {item.durationDays && (
                           <span className="text-slate-400">
-                            · Duration: {item.durationDays} days
+                            · {item.durationDays} days
                           </span>
                         )}
                       </div>
@@ -538,55 +595,42 @@ const MedicationUpdates: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Status Marking Actions */}
+                  {/* Status Marking: Administered or Missed */}
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-slate-500">
-                      Current Status:
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-500">
+                        Status:
+                      </span>
+                      <Badge tone={statusTone(item.status)}>{item.status}</Badge>
+                    </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       {/* Administered Button */}
                       <button
                         type="button"
                         disabled={isUpdating}
-                        onClick={() => handleUpdateStatus(item, "Administered")}
+                        onClick={() => handleMarkStatus(item, "Administered")}
                         className={[
-                          "inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition disabled:opacity-50",
+                          "inline-flex items-center gap-1 rounded-xl px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50",
                           item.status === "Administered"
                             ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/20"
-                            : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700",
+                            : "bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700",
                         ].join(" ")}
                       >
                         <IconCheck className="h-3.5 w-3.5" />
                         Administered
                       </button>
 
-                      {/* Pending Button */}
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => handleUpdateStatus(item, "Pending")}
-                        className={[
-                          "inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition disabled:opacity-50",
-                          item.status === "Pending"
-                            ? "bg-amber-500 text-white shadow-sm ring-2 ring-amber-500/20"
-                            : "bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700",
-                        ].join(" ")}
-                      >
-                        <IconClock className="h-3.5 w-3.5" />
-                        Pending
-                      </button>
-
                       {/* Missed Button */}
                       <button
                         type="button"
                         disabled={isUpdating}
-                        onClick={() => handleUpdateStatus(item, "Missed")}
+                        onClick={() => handleMarkStatus(item, "Missed")}
                         className={[
-                          "inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition disabled:opacity-50",
+                          "inline-flex items-center gap-1 rounded-xl px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50",
                           item.status === "Missed"
                             ? "bg-red-600 text-white shadow-sm ring-2 ring-red-500/20"
-                            : "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-700",
+                            : "bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700",
                         ].join(" ")}
                       >
                         <IconX className="h-3.5 w-3.5" />
@@ -601,10 +645,10 @@ const MedicationUpdates: React.FC = () => {
         )}
       </TableShell>
 
-      {/* ── SECTION 2: Clean Medication Log (No scheduled, date, status, action) */}
+      {/* ── SECTION 2: Clean Medication Log (No scheduled, date, status, action) ── */}
       <TableShell
         title="Medication Log"
-        subtitle="Clean history of logged medications for your assigned patients."
+        subtitle="Clean history of logged medications for assigned patients."
       >
         {loading ? (
           <div className="py-12 text-center text-sm text-slate-400">
@@ -645,7 +689,7 @@ const MedicationUpdates: React.FC = () => {
                 {logs.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
-                      No medication logs recorded yet. Use "+ Log Medication" to record an entry.
+                      No medication logs recorded yet. Click "+ Log Medication" to add an entry.
                     </td>
                   </tr>
                 )}
@@ -655,7 +699,7 @@ const MedicationUpdates: React.FC = () => {
         )}
       </TableShell>
 
-      {/* ── Modal: Add Log Medication ───────────────────────────────────────── */}
+      {/* ── Modal: Add Log Medication (Only patients with active prescriptions) ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl">
@@ -663,7 +707,7 @@ const MedicationUpdates: React.FC = () => {
               <div>
                 <h3 className="text-base font-bold text-slate-900">Log Medication</h3>
                 <p className="text-xs text-slate-500">
-                  Record a medication log for an assigned patient.
+                  Select a patient with active prescriptions to record medication administration.
                 </p>
               </div>
               <button
@@ -675,24 +719,29 @@ const MedicationUpdates: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateLog} className="space-y-4">
-              {/* Patient */}
+              {/* Select Patient (ONLY patients with active prescriptions) */}
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Patient <span className="text-red-500">*</span>
+                  Select Patient <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
                   value={form.patientId}
-                  onChange={(e) => handlePatientSelectChange(e.target.value)}
+                  onChange={(e) => handlePatientSelectInModal(e.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
                 >
-                  <option value="">Select patient…</option>
+                  <option value="">Choose patient with active prescriptions…</option>
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.fullName} {p.paymentPlan ? `(${p.paymentPlan} Plan)` : ""}
                     </option>
                   ))}
                 </select>
+                {patients.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    No patients currently have active doctor prescriptions.
+                  </p>
+                )}
               </div>
 
               {/* Medication Selection */}
@@ -701,7 +750,7 @@ const MedicationUpdates: React.FC = () => {
                   <label className="text-xs font-semibold text-slate-600">
                     Medication <span className="text-red-500">*</span>
                   </label>
-                  {form.patientId && availableMedicinesForPatient.length > 0 && (
+                  {form.patientId && availableMedicinesForModal.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
@@ -710,22 +759,22 @@ const MedicationUpdates: React.FC = () => {
                       }}
                       className="text-xs font-semibold text-emerald-600 hover:underline"
                     >
-                      {customMedicine ? "Choose from prescriptions" : "+ Enter custom name"}
+                      {customMedicine ? "Pick from active prescriptions" : "+ Enter custom medication"}
                     </button>
                   )}
                 </div>
 
-                {!customMedicine && availableMedicinesForPatient.length > 0 ? (
+                {!customMedicine && availableMedicinesForModal.length > 0 ? (
                   <select
                     required
                     value={form.medicationName}
-                    onChange={(e) => handleMedicineSelectChange(e.target.value)}
+                    onChange={(e) => handleMedicineSelectInModal(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
                   >
                     <option value="">Select prescribed medication…</option>
-                    {availableMedicinesForPatient.map((m, idx) => (
+                    {availableMedicinesForModal.map((m, idx) => (
                       <option key={idx} value={m.medicineName}>
-                        {m.medicineName} {m.dosage ? `(${m.dosage})` : ""} - {m.frequency}
+                        {m.medicineName} {m.dosage ? `(${m.dosage})` : ""} · {m.frequency}
                       </option>
                     ))}
                     <option value="__CUSTOM__">Other (Enter custom medication)…</option>
@@ -742,6 +791,41 @@ const MedicationUpdates: React.FC = () => {
                 )}
               </div>
 
+              {/* Status */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  Status <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, status: "Administered" }))}
+                    className={[
+                      "rounded-2xl border py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5",
+                      form.status === "Administered"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <IconCheck className="h-4 w-4" />
+                    Administered
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, status: "Missed" }))}
+                    className={[
+                      "rounded-2xl border py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5",
+                      form.status === "Missed"
+                        ? "border-red-500 bg-red-50 text-red-700 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <IconX className="h-4 w-4" />
+                    Missed
+                  </button>
+                </div>
+              </div>
+
               {/* Dosage & Frequency */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
@@ -750,7 +834,7 @@ const MedicationUpdates: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 500mg, 1 tablet"
+                    placeholder="e.g. 500mg"
                     value={form.dosage}
                     onChange={(e) => setForm((f) => ({ ...f, dosage: e.target.value }))}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
@@ -763,7 +847,7 @@ const MedicationUpdates: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Twice daily after meals"
+                    placeholder="e.g. 3 times a day"
                     value={form.frequency}
                     onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
@@ -774,22 +858,22 @@ const MedicationUpdates: React.FC = () => {
               {/* Notes */}
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Caregiver Notes / Observations
+                  Caregiver Notes
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Patient tolerated well, taken with water, etc…"
+                  placeholder="Observations, patient reaction, taken after breakfast…"
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
                 />
               </div>
 
-              {/* Actions */}
+              {/* Submit Buttons */}
               <div className="mt-6 flex gap-3">
                 <button
                   type="submit"
-                  disabled={savingForm}
+                  disabled={savingForm || patients.length === 0}
                   className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 disabled:opacity-60"
                 >
                   {savingForm ? "Saving…" : "Save Log"}
