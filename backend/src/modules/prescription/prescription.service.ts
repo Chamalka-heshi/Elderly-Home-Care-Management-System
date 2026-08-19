@@ -413,15 +413,20 @@ export class PrescriptionService {
     });
 
     if (action === 'CONTINUED') {
-      // Email shows the kept/continued prescription (which may be the previousRx or the newly created one).
-      const rxForEmail = continuedRx ?? prescription;
+      // Email contains BOTH the previous/existing prescription and the new continuation prescription.
+      const prevRx = continuedRx ? toDetail(continuedRx) : undefined;
+      const currRx = toDetail(prescription);
+
       await this.mailService.sendPrescriptionNotification({
         to: email,
         familyMemberName,
         patientName: prescription.patientName,
         doctorName,
         action: 'CONTINUED',
-        continuedPrescription: toDetail(rxForEmail),
+        previousPrescription: prevRx,
+        currentPrescription: currRx,
+        continuedPrescription: prevRx,
+        newPrescription: currRx,
       });
     } else if (action === 'CANCELLED_AND_REPLACED' && cancelledRx) {
       // Email clearly shows which Rx was cancelled and which is the new one.

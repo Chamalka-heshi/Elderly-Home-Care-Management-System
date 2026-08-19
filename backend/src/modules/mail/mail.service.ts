@@ -44,9 +44,12 @@ interface PrescriptionEmailOpts {
   doctorName: string;
   /** The clinical action the doctor performed */
   action: 'NEW' | 'CONTINUED' | 'CANCELLED_AND_REPLACED';
-  /** Present for NEW and CANCELLED_AND_REPLACED */
+  /** Present for NEW, CONTINUED, and CANCELLED_AND_REPLACED */
   newPrescription?: PrescriptionDetail;
-  /** Present for CONTINUED */
+  currentPrescription?: PrescriptionDetail;
+  /** Present for CONTINUED (the old/previous prescription that was continued) */
+  previousPrescription?: PrescriptionDetail;
+  /** Legacy / fallback field */
   continuedPrescription?: PrescriptionDetail;
   /** Present for CANCELLED_AND_REPLACED */
   cancelledPrescription?: PrescriptionDetail;
@@ -604,14 +607,42 @@ export class MailService implements OnModuleInit {
     let introParagraph = '';
     let bodyContent = '';
 
-    if (action === 'CONTINUED' && opts.continuedPrescription) {
-      introParagraph = `Dr. <strong>${doctorName}</strong> has reviewed the existing prescription for <strong>${patientName}</strong> and decided to <strong>continue it</strong>. No new prescription has been issued.`;
-      bodyContent = rxDetailCard(
-        opts.continuedPrescription,
-        '#0d6b6b',
-        '✔  Continued Prescription',
-        'CONTINUED',
-      );
+    const prevRx = opts.previousPrescription ?? opts.continuedPrescription;
+    const currRx = opts.currentPrescription ?? opts.newPrescription;
+
+    if (action === 'CONTINUED') {
+      introParagraph = `Dr. <strong>${doctorName}</strong> has continued the prescription for <strong>${patientName}</strong>.`;
+
+      if (prevRx && currRx && prevRx.id !== currRx.id) {
+        bodyContent =
+          rxDetailCard(
+            prevRx,
+            '#0d6b6b',
+            '✔  PREVIOUS PRESCRIPTION',
+            'CONTINUED',
+          ) +
+          `<div style="text-align:center;padding:16px 0;font-size:24px;color:#8a97a8;" aria-hidden="true">&#8595;</div>` +
+          rxDetailCard(
+            currRx,
+            '#0d6b6b',
+            '✔  CONTINUED / NEW PRESCRIPTION',
+            'ACTIVE',
+          );
+      } else if (prevRx) {
+        bodyContent = rxDetailCard(
+          prevRx,
+          '#0d6b6b',
+          '✔  PREVIOUS PRESCRIPTION',
+          'CONTINUED',
+        );
+      } else if (currRx) {
+        bodyContent = rxDetailCard(
+          currRx,
+          '#0d6b6b',
+          '✔  CONTINUED / NEW PRESCRIPTION',
+          'ACTIVE',
+        );
+      }
     } else if (action === 'CANCELLED_AND_REPLACED' && opts.cancelledPrescription && opts.newPrescription) {
       introParagraph = `Dr. <strong>${doctorName}</strong> has made prescription changes for <strong>${patientName}</strong>. The previous prescription has been <strong>cancelled</strong> and a <strong>new prescription</strong> has been issued in its place.`;
       bodyContent =
@@ -631,7 +662,7 @@ export class MailService implements OnModuleInit {
         );
     } else {
       // Default: NEW (also fallback for edge cases)
-      const rx = opts.newPrescription;
+      const rx = currRx;
       introParagraph = `Dr. <strong>${doctorName}</strong> has issued a <strong>new prescription</strong> for <strong>${patientName}</strong>. Please find the full details below.`;
       bodyContent = rx
         ? rxDetailCard(rx, '#0d6b6b', '✔  New Prescription', 'ACTIVE')

@@ -225,23 +225,36 @@ describe('MailService', () => {
       expect(mail.html).toContain('Amoxicillin');
     });
 
-    it('should render CONTINUED action email with continued prescription label', async () => {
+    it('should render CONTINUED action email with both previous and continuation prescriptions', async () => {
       const continuedOpts = {
         to: 'family@test.com',
         familyMemberName: 'Jane Doe',
-        patientName: 'John Patient',
-        doctorName: 'Dr. Smith',
+        patientName: 'Anoma Jayawardena',
+        doctorName: 'Dr. Chathuni Jayaweera',
         action: 'CONTINUED' as const,
-        continuedPrescription: {
-          issuedDate: '2024-01-01',
-          medicines: [{ medicineName: 'Aspirin', dosage: '100mg', frequency: 'Once daily', durationDays: 30 }],
+        previousPrescription: {
+          id: 'rx-old-1234',
+          issuedDate: '2026-08-18',
+          validUntil: '2026-09-18',
+          diagnosis: 'Osteoarthritis and Hypercholesterolemia',
+          medicines: [{ medicineName: 'Paracetamol', dosage: '500mg', frequency: 'TDS', durationDays: 30 }],
+          status: 'active',
+        },
+        currentPrescription: {
+          id: 'rx-new-5678',
+          issuedDate: '2026-08-19',
+          validUntil: '2026-09-19',
+          diagnosis: 'Osteoarthritis follow-up',
+          medicines: [{ medicineName: 'Atorvastatin', dosage: '20mg', frequency: 'At bedtime', durationDays: 30 }],
           status: 'active',
         },
       };
       await service.sendPrescriptionNotification(continuedOpts);
       const mail = mockTransporter.sendMail.mock.calls[0][0];
-      expect(mail.html).toContain('CONTINUED');
-      expect(mail.html).toContain('Aspirin');
+      expect(mail.html).toContain('PREVIOUS PRESCRIPTION');
+      expect(mail.html).toContain('Paracetamol');
+      expect(mail.html).toContain('CONTINUED / NEW PRESCRIPTION');
+      expect(mail.html).toContain('Atorvastatin');
     });
 
     it('should render CANCELLED_AND_REPLACED email with both cancelled and new labels', async () => {
