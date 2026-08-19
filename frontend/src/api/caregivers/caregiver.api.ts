@@ -26,6 +26,33 @@ export interface VitalRecord {
   updatedAt: string;
 }
 
+export interface PrescribedMedicine {
+  medicineName: string;
+  dosage: string;
+  frequency: string;
+  durationDays?: number;
+  instructions?: string;
+}
+
+export interface CaregiverPrescription {
+  id: string;
+  appointmentId?: string | null;
+  patientId?: string | null;
+  patientName: string;
+  patientAge?: number;
+  diagnosis?: string | null;
+  notes?: string | null;
+  issuedDate: string;
+  validUntil?: string | null;
+  medicines: PrescribedMedicine[];
+  status: string;
+  doctor?: {
+    user?: { fullName: string };
+    specialization?: string;
+  };
+  createdAt?: string;
+}
+
 export interface MedicationLog {
   id: string;
   patientId: string;
@@ -152,3 +179,13 @@ export const selectPaymentPlan = (patientId: string, plan: string) =>
     method: 'POST',
     body: JSON.stringify({ plan }),
   });
+
+// Active Prescriptions
+// Get all active doctor prescriptions for patients registered to a care plan
+export const getActivePrescriptionsForCaregiver = () =>
+  apiFetch<CaregiverPrescription[]>('/prescriptions/active-assigned');
+
+// Get all prescriptions for a specific patient
+export const getPrescriptionsForPatient = (patientId: string) =>
+  apiFetch<CaregiverPrescription[]>(`/prescriptions/patient/${patientId}`);
+
