@@ -446,6 +446,9 @@ export class BackupService implements OnModuleInit {
   // Restore
   // ──────────────────────────────────────────────────────────────────────────
 
+  // Cache for column type metadata used during restore
+  private columnTypeCache: Map<string, Record<string, { data_type: string; udt_name: string }>> = new Map();
+
   async restoreBackup(
     id: string,
     userId: string,
@@ -556,66 +559,115 @@ export class BackupService implements OnModuleInit {
         else this.logger.warn(`Table "${t}" not found in current schema — skipping`);
       }
 
-      // ── STEP 7: Transactional restore ─────────────────────────────────────
-      await this.dataSource.transaction(async (manager) => {
+      // Build a cache of column type metadata for all tables we will restore
+      if (existingTables.length > 0) {
+        const cols = await this.dataSource.query<{
+          table_name: string;
+          column_name: string;
+          data_type: string;
+          udt_name: string;
+        }[]>(`
+          SELECT table_name, column_name, data_type, udt_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = ANY($1)
+        `, [existingTables]);
 
-        // 7a. Acquire PostgreSQL advisory lock to prevent concurrent restores.
-        //     If another restore is in progress, this query WAITS until it
-        //     finishes (or the transaction ends) and then proceeds.
-        //     The lock is automatically released when this transaction commits
-        //     or rolls back.
-        await manager.query('SELECT pg_advisory_xact_lock($1)', [RESTORE_ADVISORY_LOCK_ID]);
+        for (const r of cols) {
+          const m = this.columnTypeCache.get(r.table_name) ?? {};
+          m[r.column_name] = { data_type: r.data_type, udt_name: r.udt_name };
+          this.columnTypeCache.set(r.table_name, m);
+        }
+      }
+
+      // Helper: safely truncate value for logging
+      const trunc = (v: unknown, n = 200) => {
+        try {
+          const s = typeof v === 'string' ? v : JSON.stringify(v);
+          return s.length > n ? s.slice(0, n) + '…' : s;
+        } catch {
+          return String(v).slice(0, n) + '…';
+        }
+      };
+
+      // Helper: normalize a single value according to the cached PG type
+
+      // ── STEP 7: Transactional restore using manual QueryRunner so session
+      //             cleanup can be performed safely even if the transaction
+      //             is aborted. This ensures the original error is preserved.
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      let originalError: any = null;
+
+      try {
+        // Acquire advisory lock
+        await queryRunner.query('SELECT pg_advisory_xact_lock($1)', [RESTORE_ADVISORY_LOCK_ID]);
         this.logger.log(`Advisory lock acquired (id: ${RESTORE_ADVISORY_LOCK_ID})`);
 
-        // 7b. Truncate all tables in one statement — PostgreSQL resolves the
-        //     FK dependency order automatically via CASCADE.
+        // Truncate
         if (existingTables.length > 0) {
           const tableList = existingTables.map((t) => `"${t}"`).join(', ');
-          await manager.query(`TRUNCATE TABLE ${tableList} CASCADE`);
+          await queryRunner.query(`TRUNCATE TABLE ${tableList} CASCADE`);
         }
 
-        // 7c. Disable FK trigger checks during bulk insert so that insert
-        //     order does not matter.  This is reset in the finally block.
-        await manager.query('SET session_replication_role = replica');
+        // Disable FK triggers
+        await queryRunner.query('SET session_replication_role = replica');
 
-        try {
-          // 7d. Re-insert all rows, 500 at a time to stay within parameter limits.
-          for (const tableName of existingTables) {
-            const rows = snapshot.tables[tableName] as Record<string, unknown>[];
-            if (!rows || rows.length === 0) continue;
+        // Re-insert rows
+        for (const tableName of existingTables) {
+          const rows = snapshot.tables[tableName] as Record<string, unknown>[];
+          if (!rows || rows.length === 0) continue;
 
-            const columns = Object.keys(rows[0]);
-            const colList = columns.map((c) => `"${c}"`).join(', ');
-            const CHUNK   = 500;
+          const columns = Object.keys(rows[0]);
+          const colList = columns.map((c) => `"${c}"`).join(', ');
+          const CHUNK   = 500;
 
-            for (let i = 0; i < rows.length; i += CHUNK) {
-              const chunk  = rows.slice(i, i + CHUNK);
-              const values: unknown[] = [];
-              const placeholders = chunk.map((row, ri) => {
-                const rowPlaceholders = columns.map((col, ci) => {
-                  values.push(row[col] ?? null);
-                  return `$${ri * columns.length + ci + 1}`;
-                });
-                return `(${rowPlaceholders.join(', ')})`;
+          for (let i = 0; i < rows.length; i += CHUNK) {
+            const chunk  = rows.slice(i, i + CHUNK);
+            const values: unknown[] = [];
+            const placeholders = chunk.map((row, ri) => {
+              const rowPlaceholders = columns.map((col, ci) => {
+                const raw = row[col] ?? null;
+                const norm = this.normalizeRestoreValue(tableName, col, raw);
+                values.push(norm);
+                return `$${ri * columns.length + ci + 1}`;
               });
-              await manager.query(
-                `INSERT INTO "${tableName}" (${colList}) VALUES ${placeholders.join(', ')} ON CONFLICT DO NOTHING`,
-                values,
-              );
-            }
+              return `(${rowPlaceholders.join(', ')})`;
+            });
+
+            await queryRunner.query(
+              `INSERT INTO "${tableName}" (${colList}) VALUES ${placeholders.join(', ')} ON CONFLICT DO NOTHING`,
+              values,
+            );
           }
-
-          // 7e. Reset PostgreSQL sequences to the correct next value.
-          //     After restoring data, SERIAL / BIGSERIAL sequences still hold
-          //     their pre-restore values.  We query the actual sequences linked
-          //     to columns in the restored tables and set them to MAX(id).
-          await this.resetSequences(manager, existingTables);
-
-        } finally {
-          // 7f. Always re-enable FK constraints regardless of success/failure.
-          await manager.query('SET session_replication_role = DEFAULT');
         }
-      });
+
+        // Reset sequences
+        await this.resetSequences(queryRunner.manager, existingTables);
+
+        // Commit transaction
+        await queryRunner.commitTransaction();
+
+      } catch (err) {
+        originalError = err;
+        try {
+          await queryRunner.rollbackTransaction();
+        } catch (rbErr) {
+          this.logger.error('Rollback failed during restore cleanup', rbErr as any);
+        }
+        // rethrow after cleanup so outer catch preserves the original error
+        throw err;
+      } finally {
+        // Always ensure session_replication_role is reset on the same session.
+        // Because we've committed or rolled back above, it's safe to run this.
+        try {
+          await queryRunner.query('SET session_replication_role = DEFAULT');
+        } catch (setErr) {
+          this.logger.error('Failed to reset session_replication_role in restore cleanup', setErr as any);
+        }
+        await queryRunner.release();
+      }
 
       // ── STEP 8: Audit log — success ───────────────────────────────────────
       await this.log(
@@ -833,6 +885,108 @@ export class BackupService implements OnModuleInit {
         this.logger.warn(`Could not reset sequence "${seq.sequence_name}": ${err instanceof Error ? err.message : err}`);
       }
     }
+  }
+
+  /**
+   * Normalize a restore value for a specific table.column using cached
+   * PostgreSQL type metadata gathered during restore preparation.
+   *
+   * Rules:
+   * - For json/jsonb columns: objects/arrays -> JSON.stringify, strings that
+   *   are already valid JSON are left alone, non-JSON strings are stringified
+   *   into valid JSON string literals. Null stays null.
+   * - For json[] (udt_name = _json/_jsonb): each element is normalized
+   *   similarly and the resulting JS array is passed as the parameter.
+   *
+   * This helper relies on columnTypeCache being populated prior to restore.
+   */
+  private normalizeRestoreValue(tableName: string, columnName: string, value: unknown): unknown {
+    const map = this.columnTypeCache.get(tableName) ?? {};
+    const meta = map[columnName];
+
+    const trunc = (v: unknown, n = 200) => {
+      try {
+        const s = typeof v === 'string' ? v : JSON.stringify(v);
+        return s.length > n ? s.slice(0, n) + '…' : s;
+      } catch {
+        return String(v).slice(0, n) + '…';
+      }
+    };
+
+    if (value === null || value === undefined) return null;
+
+    // If we don't know the PG type, return value as-is
+    if (!meta) return value;
+
+    const pgType = (meta.data_type || '').toLowerCase();
+    const udt = (meta.udt_name || '').toLowerCase();
+
+    // Handle json / jsonb
+    if (pgType === 'json' || pgType === 'jsonb' || udt === 'json' || udt === 'jsonb') {
+      try {
+        if (typeof value === 'object') {
+          return JSON.stringify(value);
+        }
+        if (typeof value === 'string') {
+          // If already valid JSON, leave as-is to avoid double-encoding
+          try {
+            JSON.parse(value);
+            return value;
+          } catch (e) {
+            // Not valid JSON string — convert into JSON string literal
+            return JSON.stringify(value);
+          }
+        }
+        // Other primitives (number, boolean) stringify safely
+        return JSON.stringify(value as any);
+      } catch (convErr) {
+        this.logger.error(`JSON normalization failed for ${tableName}.${columnName}`, convErr as any);
+        this.logger.error(`PG type=${meta.data_type}/${meta.udt_name} typeof=${typeof value} isArray=${Array.isArray(value)} value=${trunc(value)}`);
+        throw convErr;
+      }
+    }
+
+    // Handle array types (udt_name starting with underscore, e.g. _json, _int4)
+    if (udt.startsWith('_')) {
+      const elemType = udt.slice(1);
+      // If it's an array of json/jsonb — normalize each element
+      if (elemType === 'json' || elemType === 'jsonb') {
+        if (!Array.isArray(value)) {
+          // If source is a single object, wrap it in array
+          const single = value as any;
+          try {
+            if (typeof single === 'object') return [JSON.stringify(single)];
+            if (typeof single === 'string') {
+              try { JSON.parse(single); return [single]; } catch { return [JSON.stringify(single)]; }
+            }
+            return [JSON.stringify(single)];
+          } catch (e) {
+            this.logger.error(`JSON[] normalization failed for ${tableName}.${columnName}`, e as any);
+            this.logger.error(`PG type=${meta.data_type}/${meta.udt_name} typeof=${typeof value} isArray=${Array.isArray(value)} value=${trunc(value)}`);
+            throw e;
+          }
+        }
+        try {
+          return (value as unknown[]).map((el) => {
+            if (el === null || el === undefined) return null;
+            if (typeof el === 'object') return JSON.stringify(el);
+            if (typeof el === 'string') {
+              try { JSON.parse(el); return el; } catch { return JSON.stringify(el); }
+            }
+            return JSON.stringify(el);
+          });
+        } catch (e) {
+          this.logger.error(`JSON[] normalization failed for ${tableName}.${columnName}`, e as any);
+          this.logger.error(`PG type=${meta.data_type}/${meta.udt_name} typeof=${typeof value} isArray=${Array.isArray(value)} value=${trunc(value)}`);
+          throw e;
+        }
+      }
+      // For non-json arrays, return as-is
+      return value;
+    }
+
+    // Default: return original value
+    return value;
   }
 
   /**
