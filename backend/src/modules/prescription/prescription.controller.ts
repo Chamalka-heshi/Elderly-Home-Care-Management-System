@@ -52,14 +52,22 @@ export class PrescriptionsController {
     );
   }
 
+  //Retrieves active prescriptions for patients registered to a care plan for caregiver monitoring
+  @Get('active-assigned')
+  @Roles(UserRole.CAREGIVER, UserRole.ADMIN, UserRole.DOCTOR)
+  findActiveAssigned() {
+    return this.prescriptionService.findActiveForCaregiver();
+  }
+
   //Returns clinical instructions for a specific patient to assist in treatment planning
   @Get('patient/:patientId')
-  @Roles(UserRole.DOCTOR)
+  @Roles(UserRole.DOCTOR, UserRole.CAREGIVER, UserRole.ADMIN)
   getPatientPrescriptions(
     @GetUser('sub') userId: string,
+    @GetUser('role') role: string,
     @Param('patientId') patientId: string,
   ) {
-    return this.prescriptionService.findForPatient(patientId, userId);
+    return this.prescriptionService.findForPatient(patientId, userId, role);
   }
 
   //Returns granular details for a specific prescription record while verifying clinical ownership

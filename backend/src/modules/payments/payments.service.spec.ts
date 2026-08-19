@@ -12,6 +12,7 @@ import { FamilyMember } from '../family/entities/family-member.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { DataSource } from 'typeorm';
 import { MailService } from '../mail/mail.service';
+import { ConfigService } from '@nestjs/config';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
@@ -39,6 +40,10 @@ describe('PaymentsService', () => {
     transaction: jest.fn(),
   };
 
+  const mockConfigService = {
+    get: jest.fn().mockReturnValue(''),
+  };
+
   const mockQueryBuilder = {
     innerJoinAndSelect: jest.fn().mockReturnThis(),
     leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -60,11 +65,13 @@ describe('PaymentsService', () => {
         },
         { provide: getRepositoryToken(FamilyMember), useValue: mockFamilyRepo },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: ConfigService, useValue: mockConfigService },
         {
           provide: MailService,
           useValue: {
             sendBookingConfirmation: jest.fn(),
             sendPaymentReceipt: jest.fn(),
+            sendPaymentReceiptEmail: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -140,11 +147,13 @@ describe('PaymentsService', () => {
               return {
                 findOne: jest.fn().mockResolvedValue({
                   id: 'p1',
+                  bookingId: 'b1',
                   paymentMethod: PaymentMethod.BANK_TRANSFER,
                   status: PaymentStatus.PENDING_APPROVAL,
                 }),
                 save: jest.fn().mockResolvedValue({
                   id: 'p1',
+                  bookingId: 'b1',
                   status: PaymentStatus.PAID,
                 } as any),
               };
