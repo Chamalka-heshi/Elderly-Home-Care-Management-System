@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PatientsService } from './patients.service';
 import { Patient } from './entities/patient.entity';
+import { Gender } from './dto/create-patient.dto';
 import { FamilyMember } from '../family/entities/family-member.entity';
 import { VitalRecord } from '../caregivers/entities/vital-record.entity';
 import { Prescription } from '../prescription/entities/prescription.entity';
@@ -34,6 +35,7 @@ describe('PatientsService', () => {
 
   const mockPrescriptionRepo = {
     find: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -62,28 +64,34 @@ describe('PatientsService', () => {
   });
 
   describe('create', () => {
-    const dto: any = { fullName: 'Test Patient', nic: '123' };
-
     it('should create patient', async () => {
       mockFamilyRepo.findOne.mockResolvedValue({ id: 'f1' });
-      mockPatientRepo.create.mockReturnValue(dto);
-      mockPatientRepo.save.mockResolvedValue({ id: 'p1', ...dto });
+      mockPatientRepo.findOne.mockResolvedValue(null);
+      mockPatientRepo.create.mockReturnValue({ id: 'p1' });
+      mockPatientRepo.save.mockResolvedValue({ id: 'p1' });
 
-      const result = await service.create('f1', dto);
-      expect(result.id).toEqual('p1');
+      const result = await service.create('f1', {
+        fullName: 'John',
+        dateOfBirth: '1950-01-01',
+        gender: Gender.MALE,
+        nic: '123456789V',
+      });
+      expect(result.id).toBe('p1');
     });
 
     it('should throw ConflictException on duplicate NIC', async () => {
       mockFamilyRepo.findOne.mockResolvedValue({ id: 'f1' });
-      mockPatientRepo.create.mockReturnValue(dto);
-
       const error = new QueryFailedError('query', [], new Error(''));
       (error as any).code = '23505';
       mockPatientRepo.save.mockRejectedValue(error);
-
-      await expect(service.create('f1', dto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.create('f1', {
+          fullName: 'John',
+          dateOfBirth: '1950-01-01',
+          gender: Gender.MALE,
+          nic: '123456789V',
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -140,6 +148,40 @@ describe('PatientsService', () => {
       expect(result.patient.id).toBe('p1');
       expect(result.vitalRecords.length).toBe(1);
       expect(result.prescriptions.length).toBe(1);
+    });
+  });
+
+  describe('findAssignedWithActivePrescriptions', () => {
+    it('should return patients with active prescriptions', async () => {
+      mockPatientRepo.find.mockResolvedValue([
+        { id: 'p1', fullName: 'John Doe', paymentPlan: 'BASIC' },
+      ]);
+      const mockQb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          {
+            id: 'rx1',
+            patientId: 'p1',
+            status: 'active',
+            medicines: [{ medicineName: 'Metformin', dosage: '500mg' }],
+          },
+        ]),
+      };
+      mockPrescriptionRepo.createQueryBuilder.mockReturnValue(mockQb);
+
+      const result = await service.findAssignedWithActivePrescriptions();
+      expect(result.patients.length).toBe(1);
+      expect(result.prescriptions.length).toBe(1);
+    });
+
+    it('should return empty when no patients have plan', async () => {
+      mockPatientRepo.find.mockResolvedValue([]);
+      const result = await service.findAssignedWithActivePrescriptions();
+      expect(result.patients.length).toBe(0);
+      expect(result.prescriptions.length).toBe(0);
     });
   });
 });
