@@ -3,6 +3,8 @@ import TableShell from "../../common/widgets/TableShell";
 import Badge from "../../common/widgets/Badge";
 import {
   getAssignedPatientsWithPrescriptions,
+  getAssignedPatients,
+  getActivePrescriptionsForCaregiver,
   getAllMedicationLogs,
   createMedicationLog,
   updateMedicationLog,
@@ -91,13 +93,47 @@ const MedicationUpdates: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [res, logsRes] = await Promise.all([
-        getAssignedPatientsWithPrescriptions().catch(() => ({
-          patients: [],
-          prescriptions: [],
-        })),
-        getAllMedicationLogs().catch(() => []),
-      ]);
+      let res = await getAssignedPatientsWithPrescriptions().catch(() => ({
+        patients: [],
+        prescriptions: [],
+      }));
+
+      // Fallback: if res.patients or res.prescriptions is empty, also try getting assigned patients and active prescriptions
+      if (!res.patients?.length || !res.prescriptions?.length) {
+        try {
+          const [assignedRes, activeRx] = await Promise.all([
+            getAssignedPatients().catch(() => ({ patients: [] as Patient[], total: 0 })),
+            getActivePrescriptionsForCaregiver().catch(() => [] as CaregiverPrescription[]),
+          ]);
+
+          const allAssigned: Patient[] = assignedRes.patients ?? [];
+          const rxList: CaregiverPrescription[] = activeRx ?? [];
+
+          const patientsWithRx = allAssigned.filter((p: Patient) =>
+            rxList.some(
+              (rx: CaregiverPrescription) =>
+                rx.patientId === p.id ||
+                (p.fullName &&
+                  rx.patientName &&
+                  rx.patientName.trim().toLowerCase() === p.fullName.trim().toLowerCase()),
+            ),
+          );
+
+          res = {
+            patients:
+              patientsWithRx.length > 0
+                ? patientsWithRx
+                : res.patients?.length
+                ? res.patients
+                : allAssigned,
+            prescriptions: rxList.length > 0 ? rxList : res.prescriptions ?? [],
+          };
+        } catch {
+          // ignore fallback error
+        }
+      }
+
+      const logsRes = await getAllMedicationLogs().catch(() => []);
 
       setPatients(res.patients ?? []);
       setPrescriptions(res.prescriptions ?? []);
@@ -123,8 +159,13 @@ const MedicationUpdates: React.FC = () => {
     const list: ActivePrescribedMedication[] = [];
 
     prescriptions.forEach((rx) => {
-      const patient = patients.find((p) => p.id === rx.patientId);
+      const patient = patients.find(
+        (p) =>
+          p.id === rx.patientId ||
+          (p.fullName && rx.patientName && p.fullName.trim().toLowerCase() === rx.patientName.trim().toLowerCase()),
+      );
       const patientName = rx.patientName || patient?.fullName || "Unknown Patient";
+      const patientId = patient?.id || rx.patientId || "";
       const patientPlan = patient?.paymentPlan;
       const doctorName = rx.doctor?.user?.fullName
         ? `Dr. ${rx.doctor.user.fullName}`
@@ -135,8 +176,8 @@ const MedicationUpdates: React.FC = () => {
         // Match with latest medication log for this patient and medication
         const matchingLog = logs.find(
           (l) =>
-            l.patientId === rx.patientId &&
-            l.medicationName.trim().toLowerCase() === med.medicineName.trim().toLowerCase()
+            (l.patientId === patientId || (patient && l.patientId === patient.id)) &&
+            l.medicationName.trim().toLowerCase() === med.medicineName.trim().toLowerCase(),
         );
 
         const currentStatus: MedicationStatus =
@@ -149,7 +190,7 @@ const MedicationUpdates: React.FC = () => {
         list.push({
           key: `${rx.id}-${med.medicineName}-${idx}`,
           prescriptionId: rx.id,
-          patientId: rx.patientId ?? "",
+          patientId,
           patientName,
           patientPlan,
           medicineName: med.medicineName,
@@ -250,7 +291,14 @@ const MedicationUpdates: React.FC = () => {
   // Medicines available for selected patient in modal
   const availableMedicinesForModal = useMemo(() => {
     if (!form.patientId) return [];
-    const patientRx = prescriptions.filter((p) => p.patientId === form.patientId);
+    const selectedPatient = patients.find((p) => p.id === form.patientId);
+    const patientRx = prescriptions.filter(
+      (p) =>
+        p.patientId === form.patientId ||
+        (selectedPatient &&
+          p.patientName &&
+          p.patientName.trim().toLowerCase() === selectedPatient.fullName?.trim().toLowerCase()),
+    );
     const meds: PrescribedMedicine[] = [];
     patientRx.forEach((rx) => {
       (rx.medicines ?? []).forEach((m) => {
@@ -260,7 +308,7 @@ const MedicationUpdates: React.FC = () => {
       });
     });
     return meds;
-  }, [form.patientId, prescriptions]);
+  }, [form.patientId, prescriptions, patients]);
 
   const handlePatientSelectInModal = (pId: string) => {
     setForm((f) => ({

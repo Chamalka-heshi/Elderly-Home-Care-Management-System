@@ -126,6 +126,62 @@ export class PatientsService {
     });
   }
 
+  //Retrieves care-plan registered patients who have active doctor prescriptions
+  async findAssignedWithActivePrescriptions(): Promise<{
+    patients: Patient[];
+    prescriptions: Prescription[];
+  }> {
+    const patients = await this.patientsRepository.find({
+      where: { paymentPlan: Not(IsNull()) },
+      relations: ['familyMember'],
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!patients.length) {
+      return { patients: [], prescriptions: [] };
+    }
+
+    const patientIds = patients.map((p) => p.id);
+    const patientNames = patients.map((p) => p.fullName.trim().toLowerCase());
+
+    const prescriptions = await this.prescriptionRepository
+      .createQueryBuilder('rx')
+      .leftJoinAndSelect('rx.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'doctorUser')
+      .where('(LOWER(rx.status) = :status OR rx.status IS NULL)', { status: 'active' })
+      .andWhere(
+        '(rx.patientId IN (:...patientIds) OR LOWER(TRIM(rx.patientName)) IN (:...patientNames))',
+        { patientIds, patientNames },
+      )
+      .orderBy('rx.createdAt', 'DESC')
+      .getMany();
+
+    // Map patientId for prescriptions matched by patientName
+    prescriptions.forEach((rx) => {
+      if (!rx.patientId || !patientIds.includes(rx.patientId)) {
+        const matched = patients.find(
+          (p) => p.fullName.trim().toLowerCase() === rx.patientName?.trim().toLowerCase(),
+        );
+        if (matched) {
+          rx.patientId = matched.id;
+        }
+      }
+    });
+
+    const activePatientIds = new Set(
+      prescriptions
+        .filter((rx) => (rx.medicines ?? []).length > 0 && rx.patientId)
+        .map((rx) => rx.patientId),
+    );
+
+    const filteredPatients = patients.filter((p) => activePatientIds.has(p.id));
+
+    return {
+      patients: filteredPatients,
+      prescriptions,
+    };
+  }
+
 //Updates the financial coverage level for a patient to unlock advanced care features
   async setPaymentPlan(
     patientId: string,

@@ -24,6 +24,13 @@ export class PatientsController {
     return { patients, total: patients.length };
   }
 
+  //Surfaces only patients who have active prescriptions from a doctor for caregiver medication tracking
+  @Get('assigned-with-prescriptions')
+  @Roles(UserRole.CAREGIVER, UserRole.ADMIN, UserRole.DOCTOR)
+  async findAssignedWithPrescriptions() {
+    return this.patientsService.findAssignedWithActivePrescriptions();
+  }
+
 //Provides a consolidated medical timeline to assist doctors in clinical decision-making
   @Get(':id/medical-history')
   @Roles(UserRole.DOCTOR, UserRole.ADMIN)
